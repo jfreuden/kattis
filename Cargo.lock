@@ -7,7 +7,15 @@ name = "aleidibio"
 version = "0.1.0"
 
 [[package]]
+name = "dragafra"
+version = "0.1.0"
+
+[[package]]
 name = "fifa"
+version = "0.1.0"
+
+[[package]]
+name = "flatbokuveisla"
 version = "0.1.0"
 
 [[package]]
@@ -32,6 +40,10 @@ version = "0.1.0"
 
 [[package]]
 name = "placeholder"
+version = "0.1.0"
+
+[[package]]
+name = "reduplikation"
 version = "0.1.0"
 
 [[package]]

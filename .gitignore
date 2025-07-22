@@ -8,5 +8,5 @@
 /dataSources/
 /dataSources.local.xml
 /.idea/
-/completed/*/target/
+/completed/trivial/*/target/
 /progress/*/target/

@@ -19,11 +19,23 @@ name = "flatbokuveisla"
 version = "0.1.0"
 
 [[package]]
+name = "hello"
+version = "0.1.0"
+
+[[package]]
 name = "hipphipp"
 version = "0.1.0"
 
 [[package]]
+name = "kvedja"
+version = "0.1.0"
+
+[[package]]
 name = "leggjasaman"
+version = "0.1.0"
+
+[[package]]
+name = "lubbilaerir"
 version = "0.1.0"
 
 [[package]]
@@ -47,6 +59,10 @@ name = "reduplikation"
 version = "0.1.0"
 
 [[package]]
+name = "skeytasaman"
+version = "0.1.0"
+
+[[package]]
 name = "storafmaeli"
 version = "0.1.0"
 
@@ -64,6 +80,10 @@ version = "0.1.0"
 
 [[package]]
 name = "velkomin"
+version = "0.1.0"
+
+[[package]]
+name = "verditheradgodu"
 version = "0.1.0"
 
 [[package]]

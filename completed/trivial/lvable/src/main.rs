@@ -8,7 +8,7 @@ fn prompt() -> String {
 
 
 fn main() {
-    let len = prompt().parse::<u64>().expect("not a number");
+    let _len = prompt().parse::<u64>().expect("not a number");
     let word = prompt();
 
     // 2 - contains("l") - contains("lv")

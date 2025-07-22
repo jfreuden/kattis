@@ -43,6 +43,10 @@ name = "lvable"
 version = "0.1.0"
 
 [[package]]
+name = "metronome"
+version = "0.1.0"
+
+[[package]]
 name = "millifaersla"
 version = "0.1.0"
 
@@ -59,6 +63,10 @@ name = "reduplikation"
 version = "0.1.0"
 
 [[package]]
+name = "shortcuttowhat"
+version = "0.1.0"
+
+[[package]]
 name = "skeytasaman"
 version = "0.1.0"
 
@@ -68,6 +76,10 @@ version = "0.1.0"
 
 [[package]]
 name = "takkar"
+version = "0.1.0"
+
+[[package]]
+name = "telja"
 version = "0.1.0"
 
 [[package]]

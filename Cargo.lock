@@ -41,3 +41,7 @@ version = "0.1.0"
 [[package]]
 name = "velkomin"
 version = "0.1.0"
+
+[[package]]
+name = "vidsnuningur"
+version = "0.1.0"

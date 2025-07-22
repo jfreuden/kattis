@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "aleidibio"
+version = "0.1.0"
+
+[[package]]
 name = "fifa"
 version = "0.1.0"
 
@@ -16,6 +20,10 @@ version = "0.1.0"
 
 [[package]]
 name = "lvable"
+version = "0.1.0"
+
+[[package]]
+name = "millifaersla"
 version = "0.1.0"
 
 [[package]]
@@ -36,6 +44,10 @@ version = "0.1.0"
 
 [[package]]
 name = "til_hamingju"
+version = "0.1.0"
+
+[[package]]
+name = "tolvunarfraedingartelja"
 version = "0.1.0"
 
 [[package]]

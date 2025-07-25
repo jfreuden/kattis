@@ -23,6 +23,10 @@ name = "flatbokuveisla"
 version = "0.1.0"
 
 [[package]]
+name = "flytibaka"
+version = "0.1.0"
+
+[[package]]
 name = "hello"
 version = "0.1.0"
 

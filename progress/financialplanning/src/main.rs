@@ -68,6 +68,8 @@ fn main() {
 
         if next_strategy.retire_time(retirement_plan) <= current_strategy.retire_time(retirement_plan) {
             current_strategy = next_strategy;
+        } else {
+            break;
         }
     }
     println!("{}", current_strategy.retire_time(retirement_plan));

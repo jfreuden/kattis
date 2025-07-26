@@ -4,7 +4,7 @@
 /// This will allow the top to contain the helper methods, with the main method up top for copying
 /// The used read may be place
 
-fn read_line() -> String {
+fn read_str() -> String {
     let mut response = String::new();
     std::io::stdin()
         .read_line(&mut response)
@@ -43,7 +43,129 @@ where
 }
 
 fn main() {
-    println!("Hello, world!");
+
+}
+
+fn parking2() {
+    let test_cases: u64 = read_one();
+    let mut distances: Vec<u64> = vec![];
+    for _ in 0..test_cases {
+        let _visit_count = read_one::<u64>();
+        let mut positions: Vec<u64> = read_vec();
+        positions.sort();
+        let max_width = positions.last().unwrap() - positions.first().unwrap();
+        distances.push(2 * max_width);
+    }
+
+    for distance in distances {
+        println!("{}", distance);
+    }
+}
+
+fn magictrick() {
+    let configuration = read_str();
+    let mut charset = std::collections::HashSet::<char>::new();
+    let mut unique = true;
+    for char in configuration.chars() {
+        if charset.insert(char) != true {
+            unique = false;
+        }
+    }
+    println!("{}", unique as u8);
+}
+
+fn bookingaroom() {
+    let [total_rooms, booked_rooms]: [u64; 2] = read_array();
+    let mut all_rooms: std::collections::BTreeSet<u64> = (1..total_rooms + 1).collect();
+    for _ in 0..booked_rooms {
+        all_rooms.remove(&read_one());
+    }
+    println!("{}", all_rooms.first().map(|n| n.to_string()).unwrap_or("too late".to_string()));
+}
+
+fn lineup() {
+    let count: u64 = read_one();
+    let mut players: Vec<String> = vec![];
+    for _ in 0..count {
+        players.push(read_str());
+    }
+
+    if (players.is_sorted()) {
+        println!("INCREASING")
+    } else if players.iter().rev().is_sorted() {
+        println!("DECREASING")
+    } else {
+        println!("NEITHER")
+    }
+}
+
+fn fyi() {
+    println!("{}", read_str().starts_with("555") as u8);
+}
+
+fn tarifa() {
+    let data_cap: u64 = read_one();
+    let months: u64 = read_one();
+
+    let mut used_data = 0;
+    for _ in 0..months {
+        used_data += read_one::<u64>();
+    }
+    println!("{}", data_cap * (months + 1) - used_data);
+}
+
+fn coffeecupcombo() {
+    let _count: u64 = read_one();
+    let mut machinestring: Vec<char> = read_str().chars().collect::<Vec<char>>();
+    let mut win_string = vec!['0'; 2];
+    win_string.append(&mut machinestring);
+
+    let classes_with_coffee = win_string.windows(3).filter(|window| {
+       window.contains(&'1')
+    }).count();
+    println!("{}", classes_with_coffee);
+}
+
+fn jumbojavelin() {
+    let count: u64 = read_one();
+    let mut javelins: Vec<u64> = vec![];
+    for _ in 0..count {
+        let length: u64 = read_one();
+        javelins.push(length);
+    }
+    let fused_size = javelins.iter().sum::<u64>()
+        - javelins.iter().count() as u64 + 1;
+    println!("{}", fused_size);
+}
+
+fn cold() {
+    let _count: u64 = read_one();
+    let numbers: Vec<i64> = read_vec();
+    println!("{}", numbers.iter().filter(|x| x.is_negative()).count());
+}
+
+fn oddities() {
+    let count: u64 = read_one();
+    let mut numbers: Vec<i64> = vec![];
+    for _ in 0..count {
+        let number: i64 = read_one();
+        numbers.push(number);
+    }
+
+    for number in numbers {
+        match (number % 2).abs() {
+            0 => println!("{} is even", number),
+            1 => println!("{} is odd", number),
+            _ => panic!("This shouldn't happen"),
+        }
+    }
+}
+
+fn timeloop() {
+    let count: u64 = read_one();
+    for i in 0..count {
+        println!("{} Abracadabra", i + 1);
+    }
 }
 
 fn bijele() {
@@ -76,7 +198,7 @@ fn blandadbest() {
     if lines > 1 {
         println!("blandad best")
     } else {
-        println!("{}", read_line())
+        println!("{}", read_str())
     }
 }
 
@@ -110,7 +232,7 @@ fn oddecho() {
     let mut words: Vec<String> = vec![];
 
     for i in 0..linecount {
-        let word = read_line();
+        let word = read_str();
         if i % 2 == 0 {
             words.push(word);
         }
@@ -122,7 +244,7 @@ fn oddecho() {
 }
 
 fn hipphipphurra() {
-    let name = read_line();
+    let name = read_str();
     let age: u64 = read_one();
     for _ in 0..age {
         println!("Hipp hipp hurra, {}!", name);
@@ -164,5 +286,5 @@ fn skak() {
 }
 
 fn bergmal() {
-    println!("{}", read_line());
+    println!("{}", read_str());
 }

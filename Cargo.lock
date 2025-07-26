@@ -23,6 +23,10 @@ name = "fifa"
 version = "0.1.0"
 
 [[package]]
+name = "financialplanning"
+version = "0.1.0"
+
+[[package]]
 name = "flatbokuveisla"
 version = "0.1.0"
 

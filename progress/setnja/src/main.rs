@@ -20,6 +20,27 @@ impl MediocreBigint {
     }
 
     fn normalize(&mut self) {
+        let leftover = self.digits.iter_mut().rfold(
+            0,
+            |carry, x| {
+                let original = *x as u16;
+                let carry_sum: u16 = original + carry as u16;
+                let (div, modulo) = (carry_sum / 10, carry_sum % 10);
+                *x = modulo as u8;
+                div as u8
+            });
+        let (div, modulo) = (leftover / 10, leftover % 10);
+        let mut newfront = vec![];
+        if div > 0 {
+            newfront.push(div);
+        }
+        if modulo > 0 {
+            newfront.push(modulo);
+        }
+        if newfront.len() > 0 {
+            newfront.append(self.digits.as_mut());
+            self.digits = newfront;
+        }
         // can go from the tail and carry upwards
         // can reverse and return a new normalized
         // can split out normalized vector, and a carry vector, then shift over
@@ -53,8 +74,6 @@ impl MediocreBigint {
         // Is there a better way of splitting out or handling the carries? It would be nice
         // maybe just being okay adding up to 25 was better. It can never go over 34 that way.
 
-
-        todo!()
     }
 
 }
@@ -63,21 +82,56 @@ impl std::ops::Add for MediocreBigint {
     type Output = MediocreBigint;
 
     fn add(self, rhs: Self) -> Self::Output {
-        // go through the digits and add rhs to self
-        // if one of the additions would overflow, carry the remainder into the next digit
+        // Go one digit at a time and add the digits from the left and right to the output, pushing to the vector.
+        let left_digits: Vec<u8> = self.digits.iter().rev().cloned().collect();
+        let right_digits: Vec<u8> = rhs.digits.iter().rev().cloned().collect();
+        let digit_count = std::cmp::max(left_digits.len(), right_digits.len());
+        let mut output_digits: Vec<u8> = Vec::with_capacity(digit_count);
+
+        let mut left_iter = left_digits.iter();
+        let mut right_iter = right_digits.iter();
+        let mut carry: u8 = 0;
+        for _ in 0..digit_count {
+            let left = left_iter.next();
+            let right = right_iter.next();
+
+            if left.is_none() && right.is_none() {
+                panic!("This should not happen");
+            } else {
+                let left_value = *left.unwrap_or(&0u8);
+                let right_value = *right.unwrap_or(&0u8);
+                let (out_value, overflowed) = left_value.overflowing_add(right_value);
+                if overflowed {
+                    // what happens when I add 000 255 to 255 255 and carry happens?
+                    // carries at most 25 up, but gets added in the next stage
+                    // also, I have to handle when new digit is added
+                    // the case where I overflowed and then added a carry is okay, it'll just be non-normalized
+                    // but the case where I did NOT overflow and then added a carry that will is honestly more annoying
+                    todo!("overflow");
+                }
+                output_digits.push(out_value);
+            }
+        }
+        if carry > 0 {
+            output_digits.push(carry);
+            carry = 0;
+        }
+
+        output_digits.reverse();
+        return MediocreBigint{digits: output_digits}
     }
 }
 
 impl std::ops::Mul for MediocreBigint {
     type Output = MediocreBigint;
-    fn mul(self, rhs: Self) -> Self::Output {
+    fn mul(self, _rhs: Self) -> Self::Output {
         todo!()
     }
 }
 
 impl std::ops::Div for MediocreBigint {
     type Output = MediocreBigint;
-    fn div(self, rhs: Self) -> Self::Output {
+    fn div(self, _rhs: Self) -> Self::Output {
         todo!()
     }
 }
@@ -141,10 +195,11 @@ mod tests {
     fn test_add_zero() {
         let a = MediocreBigint { digits: vec![1, 0, 0, 1, 1] };
         let zero = MediocreBigint::new();
-        let c = a.clone() + zero;
+        assert_eq!(zero.to_string(), "0");
+        let c = a.clone() + zero.clone();
         assert_eq!(c, a);
 
-        let d = c.clone() + a.clone();
+        let d = zero + a.clone();
         assert_eq!(d, a);
     }
 
@@ -168,9 +223,34 @@ mod tests {
     fn test_add_carry() {
         let a = MediocreBigint { digits: vec![1, 7, 7, 6] };
         let b = MediocreBigint { digits: vec![7, 6] };
-        let c = a + b;
+        let mut c = a + b;
+        c.normalize();
         use std::str::FromStr;
         assert_eq!(c, MediocreBigint::from_str(&(1776 + 76).to_string()).unwrap());
+    }
+
+    #[test]
+    fn test_add_mega_denorm() {
+        let a = MediocreBigint { digits: vec![255] };
+        let mut b = a.clone();
+        b.normalize();
+        assert_eq!(a.digits, vec![255]);
+        assert_eq!(b.digits, vec![2, 5, 5]);
+
+        let mut c = a.clone() + a.clone();
+
+
+        let mut d = a.clone() + b.clone();
+
+
+        let mut e = b.clone() + b.clone();
+
+
+        c.normalize();
+        d.normalize();
+        e.normalize();
+        assert_eq!(c, d);
+        assert_eq!(d, e);
     }
 
     #[test]

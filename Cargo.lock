@@ -83,6 +83,10 @@ name = "reduplikation"
 version = "0.1.0"
 
 [[package]]
+name = "setnja"
+version = "0.1.0"
+
+[[package]]
 name = "shortcuttowhat"
 version = "0.1.0"
 

@@ -183,14 +183,85 @@ fn read_str() -> String {
     response.trim_end().to_string()
 }
 
-fn main() {
+fn solve(walk: &str) -> String {
     use std::str::FromStr;
-    println!("{}", MediocreBigint::from_str("").unwrap());
+
+    let segments = walk.split_inclusive('*');
+
+    let mut accumulator = MediocreBigint::from_str("1").unwrap();
+    for segment in segments {
+        let steps = segment.chars();
+        for step in steps {
+            match step {
+                '*' => {
+                    // this is adding value from the other branches to all branches (i.e., future L's shouldn't work off of L+R+P, but I should add the value of L+R+P
+                    // so I should somehow keep the accumulator the same for 'subcalls'? (not a thing here)
+                    // essentially the issue is that "in the next step of the walk, the accumulator is too high" but then... how come the value keeps being too low then?
+                    accumulator = accumulator * MediocreBigint::from_str("5").unwrap() + MediocreBigint::from_str("1").unwrap()
+                }
+                'P' => {
+                    accumulator = accumulator
+                }
+                'L' => {
+                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap()
+                }
+                'R' => {
+                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap() + MediocreBigint::from_str("1").unwrap()
+                }
+                _ => panic!("This should not happen"),
+            }
+        }
+
+
+    }
+
+
+    accumulator.to_string()
+}
+
+fn main() {
+    let walk = read_str();
+    println!("{}", solve(walk.as_str()));
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn test_solve_middle_star() {
+        assert_eq!(solve("P*P"), "6");
+    }
+
+    #[test]
+    fn test_solve_repeated_alternating() {
+        assert_eq!(solve("LLLLLRRRRRLLLLLRRRRRLLLLLRRRRRLLLLL"), "35400942560");
+    }
+
+    #[test]
+    fn test_solve_left_star() {
+        assert_eq!(solve("L*"), "11");
+    }
+
+    #[test]
+    fn test_solve_right_star() {
+        assert_eq!(solve("R*"), "16");
+    }
+
+    #[test]
+    fn test_solve_double_star() {
+        assert_eq!(solve("**"), "33");
+    }
+
+    #[test]
+    fn test_solve_right_star_right() {
+        assert_eq!(solve("R*R"), "35");
+    }
+
+    #[test]
+    fn test_solve_left_star_right() {
+        assert_eq!(solve("L*R"), "25");
+    }
+
 
 
     #[test]

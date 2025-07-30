@@ -41,39 +41,6 @@ impl MediocreBigint {
             newfront.append(self.digits.as_mut());
             self.digits = newfront;
         }
-        // can go from the tail and carry upwards
-        // can reverse and return a new normalized
-        // can split out normalized vector, and a carry vector, then shift over
-
-        // I hate the idea this could have multiple carry
-        //    000 255 255 255 255 255
-        //     25  25  25  25  25   0
-        //          5   5   5   5   5
-        //    =======================
-        //     25  30  30  30  30   5
-        // which is, and this is true, NOT decimal.
-        //      5   0   0   0   0   5
-        //+ 2   3   3   3   3   0   0
-        // ==========================
-        //= 2   8   3   3   3   0   5
-        // Maybe I do the split and add version, but I do it by hundreds AND tens?
-        // Still can end up with multiple overflow tho... or can I?
-        //
-        //    000 000 000 000 255 255
-        //ones                  5   5
-        //tens              5   5   0
-        //hundreds      2   2   0   0
-        // ==========================
-        //              2   7  10   5
-        // similar issue. All for the following reasons:
-        // ones has max 9.
-        // tens has max 9.
-        // hundreds has max 2.
-        // So it can always overflow again. That being said, 9+9+2 is the max that could be demanded
-        // in a normalization stage. so a max carry of 2.
-        // Is there a better way of splitting out or handling the carries? It would be nice
-        // maybe just being okay adding up to 25 was better. It can never go over 34 that way.
-
     }
 
 }
@@ -90,7 +57,7 @@ impl std::ops::Add for MediocreBigint {
 
         let mut left_iter = left_digits.iter();
         let mut right_iter = right_digits.iter();
-        let mut carry: u8 = 0;
+        let mut carry: u16 = 0;
         for _ in 0..digit_count {
             let left = left_iter.next();
             let right = right_iter.next();
@@ -100,32 +67,71 @@ impl std::ops::Add for MediocreBigint {
             } else {
                 let left_value = *left.unwrap_or(&0u8);
                 let right_value = *right.unwrap_or(&0u8);
-                let (out_value, overflowed) = left_value.overflowing_add(right_value);
-                if overflowed {
-                    // what happens when I add 000 255 to 255 255 and carry happens?
-                    // carries at most 25 up, but gets added in the next stage
-                    // also, I have to handle when new digit is added
-                    // the case where I overflowed and then added a carry is okay, it'll just be non-normalized
-                    // but the case where I did NOT overflow and then added a carry that will is honestly more annoying
-                    todo!("overflow");
-                }
-                output_digits.push(out_value);
+
+                carry += left_value as u16 + right_value as u16;
+                let (div, modulo) = (carry / 10, carry % 10);
+                output_digits.push(modulo as u8);
+                carry = div;
             }
         }
-        if carry > 0 {
-            output_digits.push(carry);
-            carry = 0;
+        while carry > 0 {
+            let (div, modulo) = (carry / 10, carry % 10);
+            output_digits.push(modulo as u8);
+            carry = div;
         }
 
         output_digits.reverse();
-        return MediocreBigint{digits: output_digits}
+        MediocreBigint{digits: output_digits}
     }
 }
 
 impl std::ops::Mul for MediocreBigint {
     type Output = MediocreBigint;
-    fn mul(self, _rhs: Self) -> Self::Output {
-        todo!()
+    fn mul(self, rhs: Self) -> Self::Output {
+        // Implement multiplication using the standard algorithm
+        // For each digit in rhs, multiply it with all digits in self
+        // Then add the results together with appropriate shifts
+        
+        if self.digits.is_empty() || rhs.digits.is_empty() {
+            return MediocreBigint::new();
+        }
+        
+        let mut result = MediocreBigint::new();
+        
+        for (i, &r_digit) in rhs.digits.iter().rev().enumerate() {
+            let mut partial_result = Vec::new();
+            
+            // Add zeros for the shift based on position
+            for _ in 0..i {
+                partial_result.push(0);
+            }
+            
+            let mut carry = 0u16;
+            
+            // Multiply each digit of self by the current digit of rhs
+            for &l_digit in self.digits.iter().rev() {
+                let product = (l_digit as u16) * (r_digit as u16) + carry;
+                let (div, modulo) = (product / 10, product % 10);
+                partial_result.push(modulo as u8);
+                carry = div;
+            }
+            
+            // Handle any remaining carry
+            while carry > 0 {
+                let (div, modulo) = (carry / 10, carry % 10);
+                partial_result.push(modulo as u8);
+                carry = div;
+            }
+            
+            // Reverse to get the correct order and create a MediocreBigint
+            partial_result.reverse();
+            let partial_bigint = MediocreBigint { digits: partial_result };
+            
+            // Add this partial result to the total
+            result = result + partial_bigint;
+        }
+        
+        result
     }
 }
 
@@ -169,22 +175,18 @@ impl std::str::FromStr for MediocreBigint {
 }
 
 
-
+fn read_str() -> String {
+    let mut response = String::new();
+    std::io::stdin()
+        .read_line(&mut response)
+        .expect("Failed to get input");
+    response.trim_end().to_string()
+}
 
 fn main() {
     use std::str::FromStr;
     println!("{}", MediocreBigint::from_str("").unwrap());
 }
-
-
-// implement operator for a custom shitbigint struct (positives only)
-
-// use i64 and then use negative to do the carry?
-// use something else?
-// type is basically a VecDeque which can scale upward to add "digits"
-// with the custom add, will need to add with carry
-// multiply, probably by splitting the bits and then doing it
-
 
 #[cfg(test)]
 mod tests {
@@ -201,6 +203,43 @@ mod tests {
 
         let d = zero + a.clone();
         assert_eq!(d, a);
+    }
+    
+    #[test]
+    fn test_mul_zero() {
+        let a = MediocreBigint { digits: vec![1, 0, 0, 1, 1] };
+        let zero = MediocreBigint::new();
+        assert_eq!(zero.to_string(), "0");
+        let c = a.clone() * zero.clone();
+        assert_eq!(c.to_string(), "0");
+
+        let d = zero.clone() * a.clone();
+        assert_eq!(d.to_string(), "0");
+    }
+    
+    #[test]
+    fn test_mul_small() {
+        let a = MediocreBigint { digits: vec![2] };
+        let b = MediocreBigint { digits: vec![3] };
+        let c = a * b;
+        assert_eq!(c.digits, vec![6]);
+    }
+    
+    #[test]
+    fn test_mul_carry() {
+        let a = MediocreBigint { digits: vec![7] };
+        let b = MediocreBigint { digits: vec![8] };
+        let c = a * b;
+        assert_eq!(c.digits, vec![5, 6]);
+    }
+    
+    #[test]
+    fn test_mul_larger() {
+        use std::str::FromStr;
+        let a = MediocreBigint::from_str("123").unwrap();
+        let b = MediocreBigint::from_str("456").unwrap();
+        let c = a * b;
+        assert_eq!(c, MediocreBigint::from_str("56088").unwrap());
     }
 
     #[test]

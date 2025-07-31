@@ -1,3 +1,39 @@
+/// A struct that acts as a peekable zip on peekable iterators.
+/// next() returns what peek() would return without advancing the iterator unless zip would return
+/// a result
+struct PeekingZip<'a, 'b, I: Iterator, J: Iterator>
+{
+    iter_a: &'a mut std::iter::Peekable<I>,
+    iter_b: &'b mut std::iter::Peekable<J>,
+}
+
+impl<'a, 'b, I: Iterator, J: Iterator> PeekingZip<'a, 'b, I, J>
+{
+    /// Creates a new PeekingIterator from mutable references to iterators
+    fn new(iter_a: &'a mut std::iter::Peekable<I>, iter_b: &'b mut std::iter::Peekable<J>) -> Self {
+        PeekingZip {
+            iter_a,
+            iter_b,
+        }
+    }
+}
+
+impl<'a, 'b, I: Iterator, J: Iterator> Iterator for PeekingZip<'a, 'b, I, J>
+{
+    type Item = (I::Item, J::Item);
+
+    /// Returns the same value that peek() would return
+    /// only advancing the iterator if Zip should return a value
+    /// this allows continuing the iterator from the remainder without losing any values
+    fn next(&mut self) -> Option<(I::Item, J::Item)> {
+        // Return a copy of the peeked value if available
+        let _peek_a = self.iter_a.peek()?;
+        let _peek_b = self.iter_b.peek()?;
+
+        Some((self.iter_a.next()?, self.iter_b.next()?))
+    }
+}
+
 /// MediocreBigint is a bad implementation of bigint making use of smaller limbs to handle carries
 /// Each digit is base 10 input or output, i.e. between 0 and 9
 /// The digit capacity is 8 bits, i.e. between 0 and 255
@@ -57,30 +93,37 @@ impl std::ops::AddAssign for MediocreBigint {
 
 impl std::ops::AddAssign<&MediocreBigint> for MediocreBigint {
     fn add_assign(&mut self, rhs: &MediocreBigint) {
-        let left_iter = self.digits.iter_mut();
-        let mut right_iter = rhs.digits.iter();
+        let mut left_iter = self.digits.iter_mut().peekable();
+        let mut right_iter = rhs.digits.iter().peekable();
         let mut carry: u16 = 0;
-        let mut right: Option<&u8>;
-        for left in left_iter {
-            right = right_iter.next();
-            if carry == 0 && right.is_none() {
-                return;
-            }
-            let left_value = *left;
-            let right_value = *right.unwrap_or(&0u8);
-            carry += left_value as u16 + right_value as u16;
+
+        for (left, right) in PeekingZip::new(&mut left_iter, &mut right_iter) {
+            // Handle when we have both values
+            carry += *left as u16 + *right as u16;
             let (div, modulo) = (carry / 10, carry % 10);
             *left = modulo as u8;
             carry = div;
         }
-        right = right_iter.next();
-        while right.is_some() {
-            carry += *right.unwrap() as u16;
+
+        for left in left_iter {
+            // Handle leftover self values (guaranteed no rights)
+            if carry == 0 {
+                return;
+            }
+            carry += *left as u16;
+            let (div, modulo) = (carry / 10, carry % 10);
+            *left = modulo as u8;
+            carry = div;
+        }
+
+        for right in right_iter {
+            // Handle leftover rhs values (guaranteed no lefts)
+            carry += *right as u16;
             let (div, modulo) = (carry / 10, carry % 10);
             self.digits.push(modulo as u8);
             carry = div;
-            right = right_iter.next();
         }
+
         while carry > 0 {
             let (div, modulo) = (carry / 10, carry % 10);
             self.digits.push(modulo as u8);

@@ -43,13 +43,11 @@ impl std::ops::Add for MediocreBigint {
 
     fn add(self, rhs: Self) -> Self::Output {
         // Go one digit at a time and add the digits from the left and right to the output, pushing to the vector.
-        let left_digits: Vec<u8> = self.digits.iter().cloned().collect();
-        let right_digits: Vec<u8> = rhs.digits.iter().cloned().collect();
-        let digit_count = std::cmp::max(left_digits.len(), right_digits.len());
+        let digit_count = std::cmp::max(self.digits.len(), rhs.digits.len());
         let mut output_digits: Vec<u8> = Vec::with_capacity(digit_count);
 
-        let mut left_iter = left_digits.iter();
-        let mut right_iter = right_digits.iter();
+        let mut left_iter = self.digits.iter();
+        let mut right_iter = rhs.digits.iter();
         let mut carry: u16 = 0;
         for _ in 0..digit_count {
             let left = left_iter.next();

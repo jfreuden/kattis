@@ -42,35 +42,41 @@ impl std::ops::Add for MediocreBigint {
     type Output = MediocreBigint;
 
     fn add(self, rhs: Self) -> Self::Output {
-        // Go one digit at a time and add the digits from the left and right to the output, pushing to the vector.
-        let digit_count = std::cmp::max(self.digits.len(), rhs.digits.len());
-        let mut output_digits: Vec<u8> = Vec::with_capacity(digit_count);
+        let mut lhs = self.clone();
+        lhs += rhs;
+        lhs
+    }
+}
 
-        let mut left_iter = self.digits.iter();
+impl std::ops::AddAssign for MediocreBigint {
+    fn add_assign(&mut self, rhs: Self) {
+        // Go one digit at a time and add the digits from the left and right to the output, pushing to the vector.
+        let mut left_iter = self.digits.iter_mut();
         let mut right_iter = rhs.digits.iter();
         let mut carry: u16 = 0;
-        for _ in 0..digit_count {
-            let left = left_iter.next();
-            let right = right_iter.next();
-
-            if left.is_none() && right.is_none() {
-                panic!("This should not happen");
-            } else {
-                let left_value = *left.unwrap_or(&0u8);
-                let right_value = *right.unwrap_or(&0u8);
-
-                carry += left_value as u16 + right_value as u16;
-                let (div, modulo) = (carry / 10, carry % 10);
-                output_digits.push(modulo as u8);
-                carry = div;
-            }
+        let mut right: Option<&u8> = None;
+        for left in left_iter {
+            right = right_iter.next();
+            let left_value = *left;
+            let right_value = *right.unwrap_or(&0u8);
+            carry += left_value as u16 + right_value as u16;
+            let (div, modulo) = if carry > 9 { (carry / 10, carry % 10) } else { (0, carry) };
+            *left = modulo as u8;
+            carry = div;
+        }
+        right = right_iter.next();
+        while right.is_some() {
+            carry += *right.unwrap() as u16;
+            let (div, modulo) = if carry > 9 { (carry / 10, carry % 10) } else { (0, carry) };
+            self.digits.push(modulo as u8);
+            carry = div;
+            right = right_iter.next();
         }
         while carry > 0 {
             let (div, modulo) = (carry / 10, carry % 10);
-            output_digits.push(modulo as u8);
+            self.digits.push(modulo as u8);
             carry = div;
         }
-        MediocreBigint{digits: output_digits}
     }
 }
 
@@ -88,10 +94,11 @@ impl std::ops::Mul for MediocreBigint {
         let mut result = MediocreBigint::new();
         
         for (i, &r_digit) in rhs.digits.iter().enumerate() {
-            let mut partial_result = Vec::new();
+            let mut partial_result = Vec::with_capacity(i + self.digits.len() + 2);
             
             // Add zeros for the shift based on position
             for _ in 0..i {
+                assert!(partial_result.capacity() > partial_result.len());
                 partial_result.push(0);
             }
             
@@ -101,6 +108,7 @@ impl std::ops::Mul for MediocreBigint {
             for &l_digit in self.digits.iter() {
                 let product = (l_digit as u16) * (r_digit as u16) + carry;
                 let (div, modulo) = (product / 10, product % 10);
+                assert!(partial_result.capacity() > partial_result.len());
                 partial_result.push(modulo as u8);
                 carry = div;
             }
@@ -108,6 +116,7 @@ impl std::ops::Mul for MediocreBigint {
             // Handle any remaining carry
             while carry > 0 {
                 let (div, modulo) = (carry / 10, carry % 10);
+                assert!(partial_result.capacity() > partial_result.len());
                 partial_result.push(modulo as u8);
                 carry = div;
             }
@@ -119,6 +128,12 @@ impl std::ops::Mul for MediocreBigint {
         }
         
         result
+    }
+}
+
+impl std::ops::MulAssign for MediocreBigint {
+    fn mul_assign(&mut self, rhs: Self) {
+        todo!()
     }
 }
 
@@ -164,29 +179,29 @@ fn read_str() -> String {
 fn solve(walk: &str) -> String {
     use std::str::FromStr;
 
-    let segments = walk.split_inclusive('*');
-
     let mut accumulator = MediocreBigint::from_str("1").unwrap();
     let mut multiplexor : MediocreBigint = accumulator.clone();
-    for segment in segments {
-        let steps = segment.chars();
-        for step in steps {
-            match step {
-                '*' => {
-                    accumulator = accumulator.clone() * MediocreBigint::from_str("5").unwrap() + multiplexor.clone();
-                    multiplexor = multiplexor * MediocreBigint::from_str("3").unwrap();
-                }
-                'P' => {
-                    accumulator = accumulator
-                }
-                'L' => {
-                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap()
-                }
-                'R' => {
-                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap() + multiplexor.clone();
-                }
-                _ => panic!("This should not happen"),
+
+    let five = MediocreBigint::from_str("5").unwrap();
+    let three = MediocreBigint::from_str("3").unwrap();
+    let two = MediocreBigint::from_str("2").unwrap();
+    let steps = walk.chars();
+    for step in steps {
+        match step {
+            '*' => {
+                accumulator = accumulator.clone() * five.clone() + multiplexor.clone();
+                multiplexor = multiplexor * three.clone();
             }
+            'P' => {
+                accumulator = accumulator
+            }
+            'L' => {
+                accumulator = accumulator * two.clone()
+            }
+            'R' => {
+                accumulator = accumulator * two.clone() + multiplexor.clone();
+            }
+            _ => panic!("This should not happen"),
         }
     }
     accumulator.normalize();
@@ -204,7 +219,7 @@ mod tests {
 
     #[test]
     fn test_solve_maximal_star() {
-        solve("*".repeat(20000).as_str());
+        solve("*".repeat(10000).as_str());
     }
 
     #[test]

@@ -42,7 +42,7 @@ impl std::ops::Add for MediocreBigint {
     type Output = MediocreBigint;
 
     fn add(self, rhs: Self) -> Self::Output {
-        let mut lhs = self.clone();
+        let mut lhs = self;
         lhs += rhs;
         lhs
     }
@@ -50,6 +50,13 @@ impl std::ops::Add for MediocreBigint {
 
 impl std::ops::AddAssign for MediocreBigint {
     fn add_assign(&mut self, rhs: Self) {
+        // Delegate to the reference implementation
+        self.add_assign(&rhs);
+    }
+}
+
+impl std::ops::AddAssign<&MediocreBigint> for MediocreBigint {
+    fn add_assign(&mut self, rhs: &MediocreBigint) {
         // Go one digit at a time and add the digits from the left and right to the output, pushing to the vector.
         let mut left_iter = self.digits.iter_mut();
         let mut right_iter = rhs.digits.iter();
@@ -83,32 +90,84 @@ impl std::ops::AddAssign for MediocreBigint {
 impl std::ops::Mul for MediocreBigint {
     type Output = MediocreBigint;
     fn mul(self, rhs: Self) -> Self::Output {
-        // Implement multiplication using the standard algorithm
-        // For each digit in rhs, multiply it with all digits in self
-        // Then add the results together with appropriate shifts
-        
+        // Use the optimized MulAssign implementation
+        let mut result = self.clone();
+        result *= rhs;
+        result
+    }
+}
+
+impl std::ops::MulAssign for MediocreBigint {
+    fn mul_assign(&mut self, rhs: Self) {
+        // Delegate to the reference implementation
+        self.mul_assign(&rhs);
+    }
+}
+
+impl std::ops::MulAssign<&MediocreBigint> for MediocreBigint {
+    fn mul_assign(&mut self, rhs: &MediocreBigint) {
+        // Handle empty cases
         if self.digits.is_empty() || rhs.digits.is_empty() {
-            return MediocreBigint::new();
+            self.digits.clear();
+            return;
         }
         
-        let mut result = MediocreBigint::new();
-        
-        for (i, &r_digit) in rhs.digits.iter().enumerate() {
-            let mut partial_result = Vec::with_capacity(i + self.digits.len() + 2);
-            
-            // Add zeros for the shift based on position
-            for _ in 0..i {
-                assert!(partial_result.capacity() > partial_result.len());
-                partial_result.push(0);
+        // Special case for single digit multiplication to avoid unnecessary allocations
+        if rhs.digits.len() == 1 && rhs.digits[0] < 10 {
+            let r_digit = rhs.digits[0];
+            if r_digit == 0 {
+                self.digits.clear();
+                return;
+            }
+            if r_digit == 1 {
+                return; // Identity
             }
             
             let mut carry = 0u16;
+            // Multiply in place
+            for digit in &mut self.digits {
+                let product = (*digit as u16) * (r_digit as u16) + carry;
+                let (div, modulo) = (product / 10, product % 10);
+                *digit = modulo as u8;
+                carry = div;
+            }
             
-            // Multiply each digit of self by the current digit of rhs
-            for &l_digit in self.digits.iter() {
+            // Handle any remaining carry
+            while carry > 0 {
+                let (div, modulo) = (carry / 10, carry % 10);
+                self.digits.push(modulo as u8);
+                carry = div;
+            }
+            return;
+        }
+        
+        // For general case, we need a separate result vector
+        // Store original digits and clear self to reuse it
+        let original_digits = std::mem::take(&mut self.digits);
+        let original_self = MediocreBigint { digits: original_digits };
+        
+        // Pre-allocate result with enough capacity for the worst case
+        let mut result = MediocreBigint::new();
+        result.digits.reserve(original_self.digits.len() + rhs.digits.len() + 1);
+        
+        // For each digit in rhs, multiply it with all digits in original_self
+        for (i, &r_digit) in rhs.digits.iter().enumerate() {
+            // Skip multiplication by zero
+            if r_digit == 0 {
+                continue;
+            }
+            
+            let mut partial_result = Vec::with_capacity(i + original_self.digits.len() + 2);
+            
+            // Add zeros for the shift based on position
+            partial_result.extend(std::iter::repeat(0).take(i));
+            
+            let mut carry = 0u16;
+            
+            // Multiply each digit of original_self by the current digit of rhs
+            for &l_digit in original_self.digits.iter() {
                 let product = (l_digit as u16) * (r_digit as u16) + carry;
                 let (div, modulo) = (product / 10, product % 10);
-                assert!(partial_result.capacity() > partial_result.len());
                 partial_result.push(modulo as u8);
                 carry = div;
             }
@@ -116,24 +175,19 @@ impl std::ops::Mul for MediocreBigint {
             // Handle any remaining carry
             while carry > 0 {
                 let (div, modulo) = (carry / 10, carry % 10);
-                assert!(partial_result.capacity() > partial_result.len());
                 partial_result.push(modulo as u8);
                 carry = div;
             }
-
+            
+            // Create partial_bigint without cloning
             let partial_bigint = MediocreBigint { digits: partial_result };
             
             // Add this partial result to the total
-            result = result + partial_bigint;
+            result += partial_bigint;
         }
         
-        result
-    }
-}
-
-impl std::ops::MulAssign for MediocreBigint {
-    fn mul_assign(&mut self, rhs: Self) {
-        todo!()
+        // Move the result back into self
+        self.digits = result.digits;
     }
 }
 
@@ -185,21 +239,20 @@ fn solve(walk: &str) -> String {
     let five = MediocreBigint::from_str("5").unwrap();
     let three = MediocreBigint::from_str("3").unwrap();
     let two = MediocreBigint::from_str("2").unwrap();
-    let steps = walk.chars();
-    for step in steps {
+    for step in walk.chars() {
         match step {
             '*' => {
-                accumulator = accumulator.clone() * five.clone() + multiplexor.clone();
-                multiplexor = multiplexor * three.clone();
+                accumulator *= &five;
+                accumulator += &multiplexor;
+                multiplexor *= &three;
             }
-            'P' => {
-                accumulator = accumulator
-            }
+            'P' => { }
             'L' => {
-                accumulator = accumulator * two.clone()
+                accumulator *= &two
             }
             'R' => {
-                accumulator = accumulator * two.clone() + multiplexor.clone();
+                accumulator *= &two;
+                accumulator += &multiplexor;
             }
             _ => panic!("This should not happen"),
         }

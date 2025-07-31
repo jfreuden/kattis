@@ -6,7 +6,6 @@
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 struct MediocreBigint {
     digits: Vec<u8>
-
 }
 
 impl MediocreBigint {
@@ -135,13 +134,6 @@ impl std::ops::Mul for MediocreBigint {
     }
 }
 
-impl std::ops::Div for MediocreBigint {
-    type Output = MediocreBigint;
-    fn div(self, _rhs: Self) -> Self::Output {
-        todo!()
-    }
-}
-
 impl std::fmt::Display for MediocreBigint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         assert_eq!(self.is_normalized(), true);
@@ -174,7 +166,6 @@ impl std::str::FromStr for MediocreBigint {
     }
 }
 
-
 fn read_str() -> String {
     let mut response = String::new();
     std::io::stdin()
@@ -189,15 +180,14 @@ fn solve(walk: &str) -> String {
     let segments = walk.split_inclusive('*');
 
     let mut accumulator = MediocreBigint::from_str("1").unwrap();
+    let mut multiplexor : MediocreBigint = accumulator.clone();
     for segment in segments {
         let steps = segment.chars();
         for step in steps {
             match step {
                 '*' => {
-                    // this is adding value from the other branches to all branches (i.e., future L's shouldn't work off of L+R+P, but I should add the value of L+R+P
-                    // so I should somehow keep the accumulator the same for 'subcalls'? (not a thing here)
-                    // essentially the issue is that "in the next step of the walk, the accumulator is too high" but then... how come the value keeps being too low then?
-                    accumulator = accumulator * MediocreBigint::from_str("5").unwrap() + MediocreBigint::from_str("1").unwrap()
+                    accumulator = accumulator.clone() * MediocreBigint::from_str("5").unwrap() + multiplexor.clone();
+                    multiplexor = multiplexor * MediocreBigint::from_str("3").unwrap();
                 }
                 'P' => {
                     accumulator = accumulator
@@ -206,16 +196,13 @@ fn solve(walk: &str) -> String {
                     accumulator = accumulator * MediocreBigint::from_str("2").unwrap()
                 }
                 'R' => {
-                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap() + MediocreBigint::from_str("1").unwrap()
+                    accumulator = accumulator * MediocreBigint::from_str("2").unwrap() + multiplexor.clone();
                 }
                 _ => panic!("This should not happen"),
             }
         }
-
-
     }
-
-
+    accumulator.normalize();
     accumulator.to_string()
 }
 
@@ -227,6 +214,12 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_solve_maximal_star() {
+        solve("*".repeat(10000).as_str());
+    }
+
     #[test]
     fn test_solve_middle_star() {
         assert_eq!(solve("P*P"), "6");
@@ -261,8 +254,6 @@ mod tests {
     fn test_solve_left_star_right() {
         assert_eq!(solve("L*R"), "25");
     }
-
-
 
     #[test]
     fn test_add_zero() {
@@ -348,13 +339,8 @@ mod tests {
         assert_eq!(b.digits, vec![2, 5, 5]);
 
         let mut c = a.clone() + a.clone();
-
-
         let mut d = a.clone() + b.clone();
-
-
         let mut e = b.clone() + b.clone();
-
 
         c.normalize();
         d.normalize();
@@ -419,6 +405,4 @@ mod tests {
         a.normalize();
         assert_eq!(a.digits, vec![1, 0]);
     }
-
-
 }

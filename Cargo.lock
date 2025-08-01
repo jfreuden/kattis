@@ -11,6 +11,10 @@ name = "aleidibio"
 version = "0.1.0"
 
 [[package]]
+name = "bowlstack"
+version = "0.1.0"
+
+[[package]]
 name = "combined_trivial"
 version = "0.1.0"
 

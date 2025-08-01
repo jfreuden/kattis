@@ -806,29 +806,29 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn test_add_mega_denorm() {
-    //     let a = MediocreBigint {
-    //         digits: vec![MediocreDigitSize::MAX],
-    //     };
-    //     let mut b = a.clone();
-    //     b.normalize();
-    //     assert_eq!(a.digits, vec![MediocreDigitSize::MAX]);
-    //     assert_eq!(
-    //         b.digits,
-    //         vec![MediocreDigitSize::MAX % LIMIT as MediocreDigitSize, MediocreDigitSize::MAX / LIMIT as MediocreDigitSize]
-    //     );
-    //
-    //     let mut c = a.clone() + a.clone();
-    //     let mut d = a.clone() + b.clone();
-    //     let mut e = b.clone() + b.clone();
-    //
-    //     c.normalize();
-    //     d.normalize();
-    //     e.normalize();
-    //     assert_eq!(c, d);
-    //     assert_eq!(d, e);
-    // }
+    #[test]
+    fn test_add_mega_denorm() {
+        let a = MediocreBigint {
+            digits: vec![MediocreDigitSize::MAX / 2],
+        };
+        let mut b = a.clone();
+        b.normalize();
+        assert_eq!(a.digits, vec![MediocreDigitSize::MAX / 2]);
+        assert_eq!(
+            b.digits,
+            vec![(MediocreDigitSize::MAX / 2) % LIMIT as MediocreDigitSize, (MediocreDigitSize::MAX / 2) / LIMIT as MediocreDigitSize]
+        );
+
+        let mut c = a.clone() + a.clone();
+        let mut d = a.clone() + b.clone();
+        let mut e = b.clone() + b.clone();
+
+        c.normalize();
+        d.normalize();
+        e.normalize();
+        assert_eq!(c, d);
+        assert_eq!(d, e);
+    }
 
     #[test]
     fn test_simple_mega() {

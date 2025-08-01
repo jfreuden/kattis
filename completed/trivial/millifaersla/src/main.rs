@@ -11,6 +11,6 @@ fn main() {
     map.insert("Fjee", read_u64());
     map.insert("Dolladollabilljoll", read_u64());
 
-    let (output, _fee) = map.iter().min_by_key(|&(_key, value) | value).unwrap();
+    let (output, _fee) = map.iter().min_by_key(|&(_key, value)| value).unwrap();
     println!("{}", output);
 }

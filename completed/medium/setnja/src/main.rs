@@ -816,7 +816,10 @@ mod tests {
         assert_eq!(a.digits, vec![MediocreDigitSize::MAX / 2]);
         assert_eq!(
             b.digits,
-            vec![(MediocreDigitSize::MAX / 2) % LIMIT as MediocreDigitSize, (MediocreDigitSize::MAX / 2) / LIMIT as MediocreDigitSize]
+            vec![
+                (MediocreDigitSize::MAX / 2) % LIMIT as MediocreDigitSize,
+                (MediocreDigitSize::MAX / 2) / LIMIT as MediocreDigitSize
+            ]
         );
 
         let mut c = a.clone() + a.clone();

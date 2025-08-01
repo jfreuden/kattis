@@ -1,25 +1,19 @@
 /// A struct that acts as a peekable zip on peekable iterators.
 /// next() returns what peek() would return without advancing the iterator unless zip would return
 /// a result
-struct PeekingZip<'a, 'b, I: Iterator, J: Iterator>
-{
+struct PeekingZip<'a, 'b, I: Iterator, J: Iterator> {
     iter_a: &'a mut std::iter::Peekable<I>,
     iter_b: &'b mut std::iter::Peekable<J>,
 }
 
-impl<'a, 'b, I: Iterator, J: Iterator> PeekingZip<'a, 'b, I, J>
-{
+impl<'a, 'b, I: Iterator, J: Iterator> PeekingZip<'a, 'b, I, J> {
     /// Creates a new PeekingIterator from mutable references to iterators
     fn new(iter_a: &'a mut std::iter::Peekable<I>, iter_b: &'b mut std::iter::Peekable<J>) -> Self {
-        PeekingZip {
-            iter_a,
-            iter_b,
-        }
+        PeekingZip { iter_a, iter_b }
     }
 }
 
-impl<'a, 'b, I: Iterator, J: Iterator> Iterator for PeekingZip<'a, 'b, I, J>
-{
+impl<'a, 'b, I: Iterator, J: Iterator> Iterator for PeekingZip<'a, 'b, I, J> {
     type Item = (I::Item, J::Item);
 
     /// Returns the same value that peek() would return
@@ -55,5 +49,4 @@ fn main() {
     for b in b_iter {
         println!("b: {}", b);
     }
-
 }

@@ -6,7 +6,7 @@ fn read_i64() -> i64 {
 
 fn main() {
     let value = read_i64();
-    for i in 1..value + 1  {
+    for i in 1..value + 1 {
         println!("{}", i);
     }
 }

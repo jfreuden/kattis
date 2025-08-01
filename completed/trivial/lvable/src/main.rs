@@ -6,7 +6,6 @@ fn prompt() -> String {
     response.trim_end().to_string()
 }
 
-
 fn main() {
     let _len = prompt().parse::<u64>().expect("not a number");
     let word = prompt();
@@ -16,9 +15,8 @@ fn main() {
     // one of = 1
     // both, correct = 0
     // both, not lv (vl or l***********v) = 1
-    println!("{}",
-             2 -
-                 word.contains("l") as u8 -
-                 word.contains("lv") as u8
+    println!(
+        "{}",
+        2 - word.contains("l") as u8 - word.contains("lv") as u8
     );
 }

@@ -12,24 +12,30 @@ fn read_str() -> String {
     response.trim_end().to_string()
 }
 
-fn read_one<T: std::str::FromStr>() -> T where T::Err: std::fmt::Debug {
+fn read_one<T: std::str::FromStr>() -> T
+where
+    T::Err: std::fmt::Debug,
+{
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).unwrap();
     line.trim().parse::<T>().unwrap()
 }
 
-fn read_vec<T: std::str::FromStr>() -> Vec<T> where T::Err: std::fmt::Debug {
+fn read_vec<T: std::str::FromStr>() -> Vec<T>
+where
+    T::Err: std::fmt::Debug,
+{
     let mut line = String::new();
     std::io::stdin().read_line(&mut line).unwrap();
-    line.split_whitespace().map(|tok| {
-        tok.parse::<T>().expect("Failed to parse input")
-    }).collect()
+    line.split_whitespace()
+        .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
+        .collect()
 }
 
 fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> Result<[T; K], E>
 where
     T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>
+    [T; K]: TryFrom<Vec<T>, Error = E>,
 {
     read_vec::<T>().try_into()
 }
@@ -37,14 +43,12 @@ where
 fn read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
 where
     T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>
+    [T; K]: TryFrom<Vec<T>, Error = E>,
 {
     try_read_array().unwrap()
 }
 
-fn main() {
-
-}
+fn main() {}
 
 fn parking2() {
     let test_cases: u64 = read_one();
@@ -80,7 +84,13 @@ fn bookingaroom() {
     for _ in 0..booked_rooms {
         all_rooms.remove(&read_one());
     }
-    println!("{}", all_rooms.first().map(|n| n.to_string()).unwrap_or("too late".to_string()));
+    println!(
+        "{}",
+        all_rooms
+            .first()
+            .map(|n| n.to_string())
+            .unwrap_or("too late".to_string())
+    );
 }
 
 fn lineup() {
@@ -120,9 +130,10 @@ fn coffeecupcombo() {
     let mut win_string = vec!['0'; 2];
     win_string.append(&mut machinestring);
 
-    let classes_with_coffee = win_string.windows(3).filter(|window| {
-       window.contains(&'1')
-    }).count();
+    let classes_with_coffee = win_string
+        .windows(3)
+        .filter(|window| window.contains(&'1'))
+        .count();
     println!("{}", classes_with_coffee);
 }
 
@@ -133,8 +144,7 @@ fn jumbojavelin() {
         let length: u64 = read_one();
         javelins.push(length);
     }
-    let fused_size = javelins.iter().sum::<u64>()
-        - javelins.iter().count() as u64 + 1;
+    let fused_size = javelins.iter().sum::<u64>() - javelins.iter().count() as u64 + 1;
     println!("{}", fused_size);
 }
 
@@ -172,16 +182,19 @@ fn bijele() {
     let piece_counts: [i64; 6] = read_array();
     const CORRECT_COUNTS: [i64; 6] = [1, 1, 2, 2, 2, 8];
 
-    let adjustments = std::iter::zip(piece_counts.iter(), CORRECT_COUNTS.iter()).map(move |(&mine, &usual)| {
-        (usual - mine).to_string()
-    }).collect::<Vec<String>>();
+    let adjustments = std::iter::zip(piece_counts.iter(), CORRECT_COUNTS.iter())
+        .map(move |(&mine, &usual)| (usual - mine).to_string())
+        .collect::<Vec<String>>();
 
     println!("{}", adjustments.join(" "));
 }
 
 fn goggi() {
     let tokens = read_vec::<String>();
-    let ints = tokens.iter().map(|s| s.parse::<u64>().unwrap_or_default()).collect::<Vec<u64>>();
+    let ints = tokens
+        .iter()
+        .map(|s| s.parse::<u64>().unwrap_or_default())
+        .collect::<Vec<u64>>();
     let [a, _, b] = ints.try_into().unwrap();
 
     if a > b {
@@ -252,7 +265,12 @@ fn hipphipphurra() {
 }
 
 fn bladra2() {
-    let [v0, acc, time] = read_vec::<i64>().iter().map(|&x| x as f64).collect::<Vec<f64>>().try_into().unwrap();
+    let [v0, acc, time] = read_vec::<i64>()
+        .iter()
+        .map(|&x| x as f64)
+        .collect::<Vec<f64>>()
+        .try_into()
+        .unwrap();
 
     println!("{}", v0 * time + 0.5 * acc * time * time);
 }
@@ -282,7 +300,10 @@ fn skak() {
     let [rook_x, rook_y] = read_vec::<u64>().try_into().unwrap();
     let [pawn_x, pawn_y] = read_vec::<u64>().try_into().unwrap();
 
-    println!("{}", 2 - (rook_x == pawn_x) as u64 - (rook_y == pawn_y) as u64);
+    println!(
+        "{}",
+        2 - (rook_x == pawn_x) as u64 - (rook_y == pawn_y) as u64
+    );
 }
 
 fn bergmal() {

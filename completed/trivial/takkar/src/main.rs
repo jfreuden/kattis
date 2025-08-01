@@ -8,14 +8,13 @@ fn prompt() -> u64 {
     response.trim_end().to_string().parse().unwrap()
 }
 
-
 fn main() {
     let trump = prompt();
     let un = prompt();
     let output = match trump.cmp(&un) {
-        Ordering::Less => { "FAKE NEWS!" }
-        Ordering::Equal => { "WORLD WAR 3!" }
-        Ordering::Greater => { "MAGA!" }
+        Ordering::Less => "FAKE NEWS!",
+        Ordering::Equal => "WORLD WAR 3!",
+        Ordering::Greater => "MAGA!",
     };
     println!("{}", output);
 }

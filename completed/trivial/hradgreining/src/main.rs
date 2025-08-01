@@ -14,6 +14,6 @@ fn main() {
         }
         false => {
             println!("Ekki veikur!");
-        },
+        }
     };
 }

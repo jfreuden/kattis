@@ -3,9 +3,13 @@
 /// The digit capacity is 8 bits, i.e. between 0 and 255
 /// the carry hides in the higher bits and get normalized back out into the digits
 /// output must simply read out the digits as a string
+const LIMIT_POWER: u32 = 7;
+const LIMIT_BASE: u64 = 10;
+const LIMIT: u64 = u64::pow(LIMIT_BASE, LIMIT_POWER);
+
 #[derive(Debug, Clone, PartialOrd, PartialEq)]
 struct MediocreBigint {
-    digits: Vec<u8>
+    digits: Vec<u32>
 }
 
 impl MediocreBigint {
@@ -15,20 +19,20 @@ impl MediocreBigint {
     }
 
     fn is_normalized(&self) -> bool {
-        self.digits.iter().fold(true, |normal, &digit| { normal && digit < 10_u8 })
+        self.digits.iter().fold(true, |normal, &digit| { normal && digit < LIMIT as u32 })
     }
 
     fn normalize(&mut self) {
         let leftover = self.digits.iter_mut().fold(
             0,
             |carry, x| {
-                let original = *x as u16;
-                let carry_sum: u16 = original + carry as u16;
-                let (div, modulo) = (carry_sum / 10, carry_sum % 10);
-                *x = modulo as u8;
-                div as u8
+                let original = *x as u64;
+                let carry_sum: u64 = original + carry as u64;
+                let (div, modulo) = (carry_sum / LIMIT, carry_sum % LIMIT);
+                *x = modulo as u32;
+                div as u32
             });
-        let (div, modulo) = (leftover / 10, leftover % 10);
+        let (div, modulo) = (leftover / LIMIT as u32, leftover % LIMIT as u32);
         if modulo > 0 {
             self.digits.push(modulo);
         }
@@ -60,24 +64,24 @@ impl std::ops::AddAssign<&MediocreBigint> for MediocreBigint {
         let overlap = std::cmp::min(self.digits.len(), rhs.digits.len());
         let mut left_iter = self.digits[..overlap].iter_mut();
         let mut right_iter = rhs.digits[..overlap].iter();
-        let mut carry: u16 = 0;
+        let mut carry: u64 = 0;
         
         while let (Some(left), Some(right)) = (left_iter.next(), right_iter.next()){
             // Handle when we have both values
-            carry += *left as u16 + *right as u16;
-            (carry, *left) = (carry / 10, (carry % 10) as u8);
+            carry += *left as u64 + *right as u64;
+            (carry, *left) = (carry / LIMIT, (carry % LIMIT) as u32);
         }
         
         left_iter = self.digits[overlap..].iter_mut();
         right_iter = rhs.digits[overlap..].iter();
 
         if let Some(left) = left_iter.next() {
-            *left += carry as u8;
+            *left += carry as u32;
         } else if let Some(right) = right_iter.next() {
-            self.digits.push(*right + carry as u8);
+            self.digits.push(*right + carry as u32);
             self.digits.append(right_iter.copied().collect::<Vec<_>>().as_mut());
         } else if carry > 0 {
-            self.digits.push(carry as u8);
+            self.digits.push(carry as u32);
         }
     }
 }
@@ -108,7 +112,7 @@ impl std::ops::MulAssign<&MediocreBigint> for MediocreBigint {
         }
         
         // Special case for single digit multiplication to avoid unnecessary allocations
-        if rhs.digits.len() == 1 && rhs.digits[0] < 10 {
+        if rhs.digits.len() == 1 && rhs.digits[0] < LIMIT as u32 {
             let r_digit = rhs.digits[0];
             if r_digit == 0 {
                 self.digits.clear();
@@ -118,19 +122,19 @@ impl std::ops::MulAssign<&MediocreBigint> for MediocreBigint {
                 return; // Identity
             }
             
-            let mut carry = 0u16;
+            let mut carry = 0u64;
             // Multiply in place
             for digit in &mut self.digits {
-                let product = (*digit as u16) * (r_digit as u16) + carry;
-                let (div, modulo) = (product / 10, product % 10);
-                *digit = modulo as u8;
+                let product = (*digit as u64) * (r_digit as u64) + carry;
+                let (div, modulo) = (product / LIMIT, product % LIMIT);
+                *digit = modulo as u32;
                 carry = div;
             }
             
             // Handle any remaining carry
             while carry > 0 {
-                let (div, modulo) = (carry / 10, carry % 10);
-                self.digits.push(modulo as u8);
+                let (div, modulo) = (carry / LIMIT, carry % LIMIT);
+                self.digits.push(modulo as u32);
                 carry = div;
             }
             return;
@@ -157,20 +161,20 @@ impl std::ops::MulAssign<&MediocreBigint> for MediocreBigint {
             // Add zeros for the shift based on position
             partial_result.extend(std::iter::repeat(0).take(i));
             
-            let mut carry = 0u16;
+            let mut carry = 0u64;
             
             // Multiply each digit of original_self by the current digit of rhs
             for &l_digit in original_self.digits.iter() {
-                let product = (l_digit as u16) * (r_digit as u16) + carry;
-                let (div, modulo) = (product / 10, product % 10);
-                partial_result.push(modulo as u8);
+                let product = (l_digit as u64) * (r_digit as u64) + carry;
+                let (div, modulo) = (product / LIMIT, product % LIMIT);
+                partial_result.push(modulo as u32);
                 carry = div;
             }
             
             // Handle any remaining carry
             while carry > 0 {
-                let (div, modulo) = (carry / 10, carry % 10);
-                partial_result.push(modulo as u8);
+                let (div, modulo) = (carry / LIMIT, carry % LIMIT);
+                partial_result.push(modulo as u32);
                 carry = div;
             }
             
@@ -192,7 +196,21 @@ impl std::fmt::Display for MediocreBigint {
         display.normalize();
         // Read digit by digit and write out char by char
         if display.digits.len() > 0 {
-            display.digits.iter().rev().map(ToString::to_string).collect::<String>().fmt(f)
+            let mut string = String::new();
+            for (i, &digit) in display.digits.iter().enumerate() {
+                let mut number = digit;
+                for _ in 0..LIMIT_POWER {
+                    let (div, modulo) = (number / 10, number % 10);
+                    number = div;
+                    
+                    if (i == display.digits.len() - 1) && (modulo == 0) {
+                        continue;
+                    }
+                    string.push(char::from_digit(modulo, 10).unwrap());
+                    number = div;
+                }
+            }
+            string.chars().rev().collect::<String>().fmt(f)
         } else {
             0u8.fmt(f)
         }
@@ -208,9 +226,10 @@ impl std::str::FromStr for MediocreBigint {
         } else {
             Vec::new()
         };
-
-        for char in s.chars() {
-            segments.push(u8::from_str_radix(&char.to_string(), 10)?);
+        for chunk in s.as_bytes().chunks(LIMIT_POWER as usize) {
+            let substr = std::string::String::from_utf8_lossy(chunk);
+            let digit = substr.parse()?;
+            segments.push(digit);
         }
         segments.reverse();
         Ok(MediocreBigint { digits: segments })
@@ -347,7 +366,7 @@ mod tests {
         let a = MediocreBigint { digits: vec![7] };
         let b = MediocreBigint { digits: vec![8] };
         let c = a * b;
-        assert_eq!(c.digits, vec![6, 5]);
+        assert_eq!(c.to_string(), "56");
     }
     
     #[test]
@@ -385,25 +404,40 @@ mod tests {
         assert_eq!(c, MediocreBigint::from_str(&(1776 + 76).to_string()).unwrap());
     }
 
+    // #[test]
+    // fn test_add_mega_denorm() {
+    //     let a = MediocreBigint { digits: vec![255] };
+    //     let mut b = a.clone();
+    //     b.normalize();
+    //     assert_eq!(a.digits, vec![255]);
+    //     assert_eq!(b.digits, vec![5, 5, 2]);
+    // 
+    //     let mut c = a.clone() + a.clone();
+    //     let mut d = a.clone() + b.clone();
+    //     let mut e = b.clone() + b.clone();
+    // 
+    //     c.normalize();
+    //     d.normalize();
+    //     e.normalize();
+    //     assert_eq!(c, d);
+    //     assert_eq!(d, e);
+    // }
+
     #[test]
-    fn test_add_mega_denorm() {
-        let a = MediocreBigint { digits: vec![255] };
-        let mut b = a.clone();
-        b.normalize();
-        assert_eq!(a.digits, vec![255]);
-        assert_eq!(b.digits, vec![5, 5, 2]);
-
-        let mut c = a.clone() + a.clone();
-        let mut d = a.clone() + b.clone();
-        let mut e = b.clone() + b.clone();
-
-        c.normalize();
-        d.normalize();
-        e.normalize();
-        assert_eq!(c, d);
-        assert_eq!(d, e);
+    fn test_simple_mega() {
+        use std::str::FromStr;
+        let a = MediocreBigint::from_str("211111111111").unwrap();
+        let b = MediocreBigint::from_str("4").unwrap();
+        assert_eq!((a * b).to_string(), "844444444444");
     }
-
+    
+    #[test]
+    fn test_display_bookends() {
+        use std::str::FromStr;
+        let a = MediocreBigint::from_str("7700000000000000000000042").unwrap();
+        assert_eq!(a.to_string(), "7700000000000000000000042");
+    }
+    
     #[test]
     fn test_create() {
         let int = MediocreBigint::new();
@@ -416,15 +450,15 @@ mod tests {
         assert_eq!(int.to_string(), "0");
     }
 
-    #[test]
-    fn test_is_normalized() {
-        let a = MediocreBigint { digits: vec![] };
-        let b = MediocreBigint { digits: vec![2, 1, 1] };
-        let c = MediocreBigint { digits: vec![0, 0, 1, 20]};
-        assert!(a.is_normalized());
-        assert!(b.is_normalized());
-        assert_eq!(c.is_normalized(), false);
-    }
+    // #[test]
+    // fn test_is_normalized() {
+    //     let a = MediocreBigint { digits: vec![] };
+    //     let b = MediocreBigint { digits: vec![2, 1, 1] };
+    //     let c = MediocreBigint { digits: vec![0, 0, 1, 20]};
+    //     assert!(a.is_normalized());
+    //     assert!(b.is_normalized());
+    //     assert_eq!(c.is_normalized(), false);
+    // }
 
     #[test]
     fn test_clone() {
@@ -435,16 +469,16 @@ mod tests {
         assert_ne!(a, b);
     }
 
-    #[test]
-    fn test_normalize() {
-        let mut a = MediocreBigint { digits: vec![1, 10, 1, 1, 1] };
-        let b = a.clone();
-        assert_eq!(a, b);
-        a.normalize();
-        assert_ne!(a, b);
-        assert!(a.is_normalized());
-        assert!(a.digits.eq(&vec![1, 0, 2, 1, 1]));
-    }
+    // #[test]
+    // fn test_normalize() {
+    //     let mut a = MediocreBigint { digits: vec![1, 10, 1, 1, 1] };
+    //     let b = a.clone();
+    //     assert_eq!(a, b);
+    //     a.normalize();
+    //     assert_ne!(a, b);
+    //     assert!(a.is_normalized());
+    //     assert!(a.digits.eq(&vec![1, 0, 2, 1, 1]));
+    // }
 
     #[test]
     fn test_normalize_zero() {
@@ -454,9 +488,10 @@ mod tests {
     }
 
     #[test]
-    fn test_normalize_create_digit() {
-        let mut a = MediocreBigint { digits: vec![10] };
+    fn test_ten_is_ten() {
+        use std::str::FromStr;
+        let mut a = MediocreBigint::from_str("10").unwrap();
         a.normalize();
-        assert_eq!(a.digits, vec![0, 1]);
+        assert_eq!(a.to_string(), "10");
     }
 }

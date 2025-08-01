@@ -71,7 +71,7 @@ impl std::ops::AddAssign<&MediocreBigint> for MediocreBigint {
         let mut right_iter = rhs.digits[..overlap].iter();
         let mut carry: MediocreCarrySize = 0;
 
-        while let (Some(left), Some(right)) = (left_iter.next(), right_iter.next()) {
+        for (left, right) in left_iter.zip(right_iter) {
             // Handle when we have both values
             carry += *left as MediocreCarrySize + *right as MediocreCarrySize;
             (carry, *left) = (carry / LIMIT, (carry % LIMIT) as MediocreDigitSize);

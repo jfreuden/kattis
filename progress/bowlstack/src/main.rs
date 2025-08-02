@@ -98,8 +98,8 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
                 let [bottom, top]: [Bowl; 2] = window.try_into().unwrap();
                 let m1 = bottom.slope();
                 let m2 = top.slope();
-                let r1 = bottom.bottom_radius.clone() as BowlFloat;
-                let r2 = top.bottom_radius.clone() as BowlFloat;
+                let r1 = bottom.bottom_radius as BowlFloat;
+                let r2 = top.bottom_radius as BowlFloat;
 
                 let gap = (m1 * r1 - m2 * r2) - m1 * r1 - m2 * r2; // THIS IS WRONG
                 highestbottom += gap;

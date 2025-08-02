@@ -160,9 +160,14 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
             } else if m2 == m1 {
                 // Special case: for identical slopes, b_2 is zero
             } else if m2 > m1 {
-                // P_21 case
+                // Steeper only allows P_21 case
             } else if m2 < m1 {
-                // P_22 case
+                // Shallow could be P_12 case or P_22 case
+                if R2 > R1 {
+                    // P_12 case
+                } else {
+                    // P_22 case
+                }
             } else {
                 panic!("Holy shit! We are all gonna die, this case shouldn't happen, holy fucking hell, someone take a look at these demon bowls and tell me what's wrong! {:?}, {:?}", bottom, top)
             }

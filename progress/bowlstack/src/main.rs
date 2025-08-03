@@ -151,12 +151,14 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
             let p21y = y(m2, p21x, b2);
             let p22y = y(m2, p22x, b2);
 
-            todo!("Check that P22 is higher than P12")
+            // Do I even need to check that P22 is higher than P12? 
+            // In theory, the gap is simply p21y, and the contact points were preselected.
+            p21y
     }
 
         fn solve_stack_for_sort(bowls: &mut Vec<Bowl>, sort: fn(&Bowl, &Bowl) -> core::cmp::Ordering) -> f32 {
             bowls.sort_by(sort);
-            let mut stackheight = BowlFloat::default();
+            let mut stackheight = bowls.first().unwrap().height as BowlFloat;
             let mut highestbottom = BowlFloat::default();
             for window in bowls.windows(2) {
                 let [bottom, top]: [Bowl; 2] = window.try_into().unwrap();

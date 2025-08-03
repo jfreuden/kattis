@@ -122,27 +122,20 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
             let b_floor = -y(m2, p21x, BowlFloat::default());
             
             let b2 = if r2 <= r1 {
-                // Floor case -------- had let p21y = BowlFloat::default(); here, unsure if needed
-                b_floor
+                b_floor // Floor case -------- had let p21y = BowlFloat::default(); here, unsure if needed
             } else if r2 >= R1 {
-                // Ceiling case (or rim case, if you prefer)
-                b_floor + h2
+                b_floor + h2 // Ceiling case (or rim case, if you prefer)
             } else if m2 >= m1 {
-                // Steeper only allows P_21 case
                 if m2 == m1 {
-                    // Special case: for identical slopes, b_2 is zero
-                    BowlFloat::default()
+                    BowlFloat::default() // Special case: for identical slopes, b_2 is zero
                 } else {
-                    b(m1, m2, p21x)
+                    b(m1, m2, p21x) // Steeper only allows P_21 case
                 }
-            } else if m2 < m1 {
-                // Shallow could be P_12 case or P_22 case
+            } else if m2 < m1 { // Shallow could be P_12 case or P_22 case
                 if R2 > R1 {
-                    // P_12 case
-                    b(m1, m2, p12x)
+                    b(m1, m2, p12x) // P_12 case
                 } else {
-                    // P_22 case
-                    b(m1, m2, p22x)
+                    b(m1, m2, p22x) // P_22 case
                 }
             } else {
                 panic!("Holy shit! We are all gonna die, this case shouldn't happen, holy fucking hell, someone take a look at these demon bowls and tell me what's wrong! {:?}, {:?}", bottom, top)
@@ -151,7 +144,7 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
             let p21y = y(m2, p21x, b2);
             let p22y = y(m2, p22x, b2);
 
-            // Do I even need to check that P22 is higher than P12? 
+            // Do I even need to check that P22 is higher than P12?
             // In theory, the gap is simply p21y, and the contact points were preselected.
             p21y
     }

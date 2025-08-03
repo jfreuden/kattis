@@ -65,17 +65,18 @@ impl From<[BowlFloat; 3]> for Bowl {
     }
 }
 
-impl Bowl  {
-    fn new<T>(height: T, bottom_radius: T, top_radius: T) -> Self 
-    where BowlFloat: From<T>
+impl Bowl {
+    fn new<T>(height: T, bottom_radius: T, top_radius: T) -> Self
+    where
+        BowlFloat: From<T>,
     {
         Bowl {
             height: BowlFloat::from(height),
             bottom_radius: BowlFloat::from(bottom_radius),
-            top_radius: BowlFloat::from(top_radius)
+            top_radius: BowlFloat::from(top_radius),
         }
     }
-    
+
     fn slope(&self) -> BowlFloat {
         self.height as BowlFloat / (self.top_radius - self.bottom_radius) as BowlFloat
     }
@@ -138,7 +139,7 @@ fn find_gap(bottom: &Bowl, top: &Bowl) -> BowlFloat {
     let b2 = if r2 <= r1 && y(m2, p22x, b_floor) >= y(m1, p22x, BowlFloat::default()) {
         b_floor // Floor case -------- had let p21y = BowlFloat::default(); here, unsure if needed
     } else if r2 >= R1 {
-        b_floor + h2 // Ceiling case (or rim case, if you prefer)
+        b_floor + h1 // Ceiling case (or rim case, if you prefer)
     } else if m2 >= m1 {
         if m2 == m1 {
             BowlFloat::default() // Special case: for identical slopes, b_2 is zero
@@ -172,9 +173,7 @@ fn solve_stack_for_sort(
     sort: fn(&Bowl, &Bowl) -> core::cmp::Ordering,
 ) -> BowlFloat {
     bowls.sort_by(sort);
-    
-    // TODO: if a bowl is so tiny that it could sit inside the final bowl, it doesn't matter what it's slope is
-    
+
     let mut stackheight = bowls.first().unwrap().height as BowlFloat;
     let mut highestbottom = BowlFloat::default();
     let mut highestbowl = bowls.first().unwrap().clone();
@@ -240,7 +239,6 @@ impl<T> Permutations<T> for Vec<T> {
 }
 
 impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
-
     fn solve(bowls: &mut Vec<Bowl>) -> BowlFloat {
         let shallower = solve_stack_for_sort(bowls, CMP_SHALLOWER);
         let steeper = solve_stack_for_sort(bowls, CMP_STEEPER);
@@ -248,22 +246,26 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
     }
 }
 
-
-
 /// A reference implementation solver for generating test cases.
 fn brute_solve(bowls: &mut Vec<Bowl>) -> BowlFloat {
     let all_stacksizes: Vec<BowlFloat> = bowls.map_permutations(|bowlstack| {
-        let mut rims: Vec<(BowlFloat, &Bowl)> = vec![(BowlFloat::default(), bowlstack.first().unwrap())];
+        let mut rims: Vec<(BowlFloat, &Bowl)> =
+            vec![(BowlFloat::default(), bowlstack.first().unwrap())];
 
         for top in bowlstack {
             // compare this top against all the bowls in the stack
-            let thisbottom = rims.iter().map(|&(floor, otherbottom)| {
-                find_gap(&otherbottom, &top) + floor
-            }).reduce(BowlFloat::max).unwrap();
+            let thisbottom = rims
+                .iter()
+                .map(|&(floor, otherbottom)| find_gap(&otherbottom, &top) + floor)
+                .reduce(BowlFloat::max)
+                .unwrap();
 
             rims.push((thisbottom, &top));
         }
-        rims.iter().map(|&(floor, &bowl)| floor + bowl.height).reduce(BowlFloat::max).unwrap()
+        rims.iter()
+            .map(|&(floor, &bowl)| floor + bowl.height)
+            .reduce(BowlFloat::max)
+            .unwrap()
     });
     all_stacksizes.into_iter().reduce(BowlFloat::min).unwrap()
 }
@@ -290,7 +292,7 @@ fn main() {
 #[cfg(test)]
 mod bowlstack_tests {
     use super::*;
-    const SELECTED_SOLVER: fn(&mut Vec<Bowl>) -> BowlFloat = |bowls| solve(bowls);
+    const SELECTED_SOLVER: fn(&mut Vec<Bowl>) -> BowlFloat = |bowls| brute_solve(bowls);
 
     #[test]
     fn test_solve_kattis_example() {
@@ -303,7 +305,10 @@ mod bowlstack_tests {
             ],
         ];
 
-        let answers = case_bowls.iter_mut().map(SELECTED_SOLVER).collect::<Vec<BowlFloat>>();
+        let answers = case_bowls
+            .iter_mut()
+            .map(SELECTED_SOLVER)
+            .collect::<Vec<BowlFloat>>();
         assert_eq!(answers, vec![70., 55.])
     }
 
@@ -337,7 +342,7 @@ mod bowlstack_tests {
         let plate = Bowl::from([1, 100, 101]);
         let bowl = Bowl::from([9, 1, 9]);
 
-        assert_eq!(find_gap(&bowl, &plate), plate.height as BowlFloat);
+        assert_eq!(find_gap(&bowl, &plate), bowl.height as BowlFloat);
     }
 
     #[test]
@@ -355,7 +360,7 @@ mod bowlstack_tests {
         // P_21 case -- when the bowl sits on it's base somewhere along the slope
         let bottom = Bowl::from([40, 10, 50]);
         let top = Bowl::from([60, 20, 30]);
-        
+
         assert_eq!(find_gap(&bottom, &top), 10 as BowlFloat);
     }
 
@@ -379,14 +384,14 @@ mod bowlstack_tests {
             Bowl::new(30, 26, 36),
             Bowl::new(30, 25, 35),
         ];
-        
+
         assert_eq!(SELECTED_SOLVER(&mut bowls), 30.)
     }
-    
+
     #[test]
     fn test_solve_adversarial_tiny_troll_bowl() {
         // if a bowl is so tiny that it could sit inside the final bowl, it doesn't matter what it's slope is
-        
+
         // tiny bowl with slope 4, plate with slope 2, bowl with slope 1 (don't put it on bottom)
         let tiny_bowl = Bowl::new(4, 1, 2);
         assert_eq!(tiny_bowl.slope(), 4.0);
@@ -394,22 +399,38 @@ mod bowlstack_tests {
         assert_eq!(plate.slope(), 2.0);
         let bowl = Bowl::new(20, 100, 120);
         assert_eq!(bowl.slope(), 1.0);
-        
+
+        assert_eq!(find_gap(&tiny_bowl, &plate), tiny_bowl.height as BowlFloat);
+        assert_eq!(find_gap(&tiny_bowl, &bowl), tiny_bowl.height as BowlFloat);
+        assert_eq!(find_gap(&plate, &tiny_bowl), BowlFloat::default());
+        assert_eq!(find_gap(&plate, &bowl), BowlFloat::default());
+        assert_eq!(find_gap(&bowl, &tiny_bowl), BowlFloat::default());
+        assert_eq!(find_gap(&bowl, &plate), bowl.height as BowlFloat);
         assert_eq!(SELECTED_SOLVER(&mut vec![tiny_bowl, plate, bowl]), 20.);
-        
+
         // tiny bowl with slope 1, plate with slope 2, bowl with slope 4
-        
+
         // tiny bowl with slope 2, plate with slope 1, bowl with slope 4
-        
-        // 
-        
-        
+
+        //
+
         let mut case_bowls: Vec<Bowl> = vec![];
     }
-    
+
     #[test]
-    fn test_normal_stack_in_pots() {
+    fn test_solve_normal_stack_in_pots() {
         // Test a normal stack inside a couple of pots.
+        todo!()
+    }
+
+    #[test]
+    fn test_solve_track_viable_rims() {
+        // This one is hard to describe, but I have a pic on a sticky note.
+        // Essentially just trying to catch errors when you only track the last bowl,
+        // and the errors when you only track the tallest and last bowl.
+        // Essentially the situation is one where a pair of plates rest along a slope,
+        // but the slope they rest on belongs to an earlier bowl in the stack that is neither the
+        // previous bowl nor the tallest, nor other bowls of interest.
         todo!()
     }
 
@@ -427,18 +448,6 @@ mod bowlstack_tests {
         assert_eq!(answers, 81) // Wrong answer says it's 87.5 (outputting 87)  (brute_solve says 81)
     }
 
-    // fn test_solve_same_heights() {
-    //     let mut bowls = vec![
-    //         Bowl::from([10, 2, 20]),
-    //         Bowl::from([10, 10, 15]),
-    //         Bowl::from([10, 12, 27]),
-    //         Bowl::from([10, 14, 29]),
-    //         Bowl::from([10, 30, 31]),
-    //         Bowl::from([10, 7, 51]),
-    //         Bowl::from([10, 9, 53]),
-    //     ];
-    // }
-    
     #[test]
     fn test_map_permutations_len() {
         let mut bowls = vec![
@@ -452,14 +461,29 @@ mod bowlstack_tests {
             Bowl::from([10, 11, 55]),
             Bowl::from([10, 13, 57]),
         ];
-        
-        assert_eq!(bowls.map_permutations(|bowlstack| {BowlFloat::default()}).len(), 362880)
+
+        assert_eq!(
+            bowls
+                .map_permutations(|bowlstack| { BowlFloat::default() })
+                .len(),
+            362880
+        )
     }
-    
+
     #[test]
     fn test_map_permutations_contents() {
-        let mut bowls: Vec<BowlInt> = vec![1,2,3];
-        let out = bowls.map_permutations(|x| {x.to_vec()});
-        assert_eq!(out, vec![vec![1,2,3], vec![1,3,2], vec![2,1,3], vec![2,3,1], vec![3,1,2], vec![3,2,1]]);
+        let mut bowls: Vec<BowlInt> = vec![1, 2, 3];
+        let out = bowls.map_permutations(|x| x.to_vec());
+        assert_eq!(
+            out,
+            vec![
+                vec![1, 2, 3],
+                vec![1, 3, 2],
+                vec![2, 1, 3],
+                vec![2, 3, 1],
+                vec![3, 1, 2],
+                vec![3, 2, 1]
+            ]
+        );
     }
 }

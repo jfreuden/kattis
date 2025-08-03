@@ -36,7 +36,7 @@ where
 }
 
 type BowlInt = u32;
-type BowlFloat = f64;
+type BowlFloat = f32;
 
 #[derive(Debug, Copy, Clone)]
 struct Bowl {
@@ -68,12 +68,12 @@ impl From<[BowlFloat; 3]> for Bowl {
 impl Bowl {
     fn new<T>(height: T, bottom_radius: T, top_radius: T) -> Self
     where
-        BowlFloat: From<T>,
+        f64: From<T>,
     {
         Bowl {
-            height: BowlFloat::from(height),
-            bottom_radius: BowlFloat::from(bottom_radius),
-            top_radius: BowlFloat::from(top_radius),
+            height: f64::from(height) as BowlFloat,
+            bottom_radius: f64::from(bottom_radius) as BowlFloat,
+            top_radius: f64::from(top_radius) as BowlFloat,
         }
     }
 
@@ -261,6 +261,9 @@ fn brute_solve(bowls: &mut Vec<Bowl>) -> BowlFloat {
                 .unwrap();
 
             rims.push((thisbottom, &top));
+            rims.retain(|&(bowl_bottom, bowl)| {
+                bowl_bottom + bowl.height >= thisbottom + top.height
+            });
         }
         rims.iter()
             .map(|&(floor, &bowl)| floor + bowl.height)
@@ -292,12 +295,15 @@ fn main() {
 #[cfg(test)]
 mod bowlstack_tests {
     use super::*;
-    const SELECTED_SOLVER: fn(&mut Vec<Bowl>) -> BowlFloat = |bowls| brute_solve(bowls);
+    const SELECTED_SOLVER: fn(&mut Vec<Bowl>) -> BowlFloat = |bowls| solve(bowls);
 
     #[test]
     fn test_solve_kattis_example() {
         let mut case_bowls: Vec<Vec<Bowl>> = vec![
-            vec![Bowl::from([60, 20, 30]), Bowl::from([40, 10, 50])],
+            vec![
+                Bowl::from([60, 20, 30]),
+                Bowl::from([40, 10, 50])
+            ],
             vec![
                 Bowl::from([50, 30, 80]),
                 Bowl::from([35, 25, 70]),
@@ -319,10 +325,6 @@ mod bowlstack_tests {
             Bowl::from([10, 12, 22]),
             Bowl::from([10, 14, 24]),
         ];
-
-        for bowl in &bowls {
-            println!("Bowl: {:?}, slope: {:?}", bowl, bowl.slope());
-        }
 
         assert_eq!(SELECTED_SOLVER(&mut bowls), 30.)
     }
@@ -420,7 +422,16 @@ mod bowlstack_tests {
     #[test]
     fn test_solve_normal_stack_in_pots() {
         // Test a normal stack inside a couple of pots.
-        todo!()
+        let mut bowls = vec![
+            Bowl::from([50, 30, 80]),
+            Bowl::from([35, 25, 70]),
+            Bowl::from([40, 10, 90]),
+            Bowl::new(200, 100, 120),
+            Bowl::new(100, 110, 130),
+            Bowl::new(120, 45, 50),
+        ];
+
+        assert_eq!(SELECTED_SOLVER(&mut bowls), 200.)
     }
 
     #[test]
@@ -432,6 +443,48 @@ mod bowlstack_tests {
         // but the slope they rest on belongs to an earlier bowl in the stack that is neither the
         // previous bowl nor the tallest, nor other bowls of interest.
         todo!()
+    }
+    
+    #[test]
+    fn test_solve_10_bowls() {
+        let mut bowls = vec![
+            Bowl::from([60, 20, 30]),
+            Bowl::from([50, 30, 80]),
+            Bowl::from([40, 10, 90]),
+            Bowl::from([40, 10, 50]),
+            Bowl::from([1, 1, 6]),
+            Bowl::from([1, 1, 70]),
+            Bowl::from([9, 1, 9]),
+            Bowl::new(30, 25, 35),
+            Bowl::from([10, 14, 29]),
+            Bowl::from([10, 9, 53]),
+            Bowl::from([10, 1, 11]),
+            // Bowl::from([35, 25, 70]),
+            // Bowl::from([50, 30, 80]),
+            // Bowl::from([35, 25, 70]),
+            // Bowl::from([40, 10, 90]),
+            // Bowl::from([30, 10, 40]),
+            // Bowl::from([10, 12, 22]),
+            // Bowl::from([10, 14, 24]),
+            // Bowl::from([1, 1, 9]),
+            // Bowl::from([1, 100, 101]),
+            // Bowl::new(30, 30, 40),
+            // Bowl::new(30, 29, 39),
+            // Bowl::new(30, 28, 38),
+            // Bowl::new(30, 27, 37),
+            // Bowl::new(30, 26, 36),
+            // Bowl::new(4, 1, 2),
+            // Bowl::new(2, 400, 401),
+            // Bowl::new(20, 100, 120),
+            // Bowl::from([10, 2, 20]),
+            // Bowl::from([10, 10, 15]),
+            // Bowl::from([10, 12, 27]),
+            // Bowl::from([10, 30, 31]),
+            // Bowl::from([10, 7, 51]),
+            // Bowl::from([10, 11, 55]),
+            // Bowl::from([10, 13, 57]),
+        ];
+        assert_eq!(SELECTED_SOLVER(&mut bowls).trunc(), 80.0);
     }
 
     #[test]

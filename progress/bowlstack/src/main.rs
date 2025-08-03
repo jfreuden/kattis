@@ -246,7 +246,29 @@ fn brute_solve(bowls: &mut Vec<Bowl>) -> BowlFloat {
     let all_stacksizes: Vec<BowlFloat> = bowls.map_permutations(|bowlstack| {
         let mut stackheight = bowlstack.first().unwrap().height as BowlFloat;
         let mut highestbottom = BowlFloat::default();
-        let mut highestbowl = bowlstack.first().unwrap().clone();
+
+        let mut rims: Vec<(BowlFloat, &Bowl)> = vec![(BowlFloat::default(), bowlstack.first().unwrap())];
+
+        for window in bowlstack.windows(2) {
+            let [bottom, top]: [Bowl; 2] = window.try_into().unwrap();
+            let gap_bottom = find_gap(&bottom, &top);
+
+            // Now see if we get a bigger gap with any of the other rims
+            let other_gaps = rims.iter().map(|&(floor, otherbottom)| {
+
+            }).min().unwrap();
+            // the synth bowl solution wasn't correct. It needs to actually check the real bowl.
+            // Maybe instead of accumulating "gap" I should keep the real coords
+
+
+
+            // Save this bowl's adjusted rim to the rims list
+            highestbottom = BowlFloat::max(highestbottom + gap_bottom, othergap_whatever);
+            rims.push((0.0, &top));
+        }
+
+        let stacksize = rims.last().unwrap().clone().1;
+
         
         
         for (i, window) in bowlstack.windows(2).enumerate() {

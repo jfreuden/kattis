@@ -121,42 +121,35 @@ impl Solvable<&mut Vec<Bowl>> for &mut Vec<Bowl> {
             let p12y = y(m1, p12x, BowlFloat::default());
             let b_floor = -y(m2, p21x, BowlFloat::default());
             
-            if r2 <= r1 {
-                // Floor case
-                let b2 = b_floor;
-                let clamped_p21y = BowlFloat::default();
-                let clamped_p22y = y(m2, p22x, b2);
+            let b2 = if r2 <= r1 {
+                // Floor case -------- had let p21y = BowlFloat::default(); here, unsure if needed
+                b_floor
             } else if r2 >= R1 {
                 // Ceiling case (or rim case, if you prefer)
-                let b2 = b_floor + h2;
-                let p21y = y(m2, p21x, b2);
+                b_floor + h2
             } else if m2 >= m1 {
                 // Steeper only allows P_21 case
-                let b2 = if m2 == m1 {
+                if m2 == m1 {
                     // Special case: for identical slopes, b_2 is zero
                     BowlFloat::default()
                 } else {
                     b(m1, m2, p21x)
-                };
-                let p21y = y(m2, p21x, b2);
+                }
             } else if m2 < m1 {
                 // Shallow could be P_12 case or P_22 case
                 if R2 > R1 {
                     // P_12 case
-                    let b2 = b(m1, m2, p12x);
-                    let p21y = y(m2, p21x, b2);
+                    b(m1, m2, p12x)
                 } else {
                     // P_22 case
-                    let b2 = b(m1, m2, p22x);
-                    let p21y = y(m2, p21x, b2);
+                    b(m1, m2, p22x)
                 }
             } else {
                 panic!("Holy shit! We are all gonna die, this case shouldn't happen, holy fucking hell, someone take a look at these demon bowls and tell me what's wrong! {:?}, {:?}", bottom, top)
-            }
+            };
 
-            // UGGHHHHHHHH my cases are ALMOST finished. Note that I don't have a way to know if it's gonna be the P_12 case.
-            // take a look at Desmos and find out.
-
+            let p21y = y(m2, p21x, b2);
+            let p22y = y(m2, p22x, b2);
 
             todo!("Check that P22 is higher than P12")
     }

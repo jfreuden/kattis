@@ -425,17 +425,6 @@ mod bowlstack_tests {
         assert_eq!(SELECTED_SOLVER(&mut bowls), 30.)
     }
 
-
-    #[allow(dead_code)]
-    const CMP_STEEPER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| {
-        BowlFloat::total_cmp(&a.slope(), &b.slope()).then_with(|| {
-            BowlFloat::total_cmp(&a.bottom_radius, &b.bottom_radius)
-                .then_with(|| BowlFloat::total_cmp(&a.height, &b.height))
-        })
-    };
-    #[allow(dead_code)]
-    const CMP_SHALLOWER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| CMP_STEEPER(b, a);
-
     #[test]
     fn test_sort_adversarial_tiny_troll_bowl(){
         // Address the troll bowl with a new sorter, tested here.
@@ -458,7 +447,7 @@ mod bowlstack_tests {
         bowlstack.sort_by(CMP_SHALLOWER);
         assert_eq!(bowlstack, vec![tiny_bowl, plate, bowl]);
 
-        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION once the solver is fixed //////////
         //////// REMOVE THIS SECTION //////////
         //////// REMOVE THIS SECTION //////////
         //////// REMOVE THIS SECTION //////////
@@ -564,7 +553,7 @@ mod bowlstack_tests {
     }
     
     #[test]
-    fn test_solve_10_bowls() {
+    fn test_solve_11_bowls() {
         let mut bowlstack = vec![
             Bowl::new_labelled(60, 20, 30, 'P'),
             Bowl::new_labelled(50, 30, 80, 'Q'),
@@ -622,7 +611,53 @@ mod bowlstack_tests {
         // );
         
         // let result = SELECTED_SOLVER(&mut bowls).trunc();
-        let result = solve_stack_for_sort(&mut bowlstack, CMP_SHALLOWER).trunc();
+
+
+        #[allow(dead_code)]
+        const CMP_STEEPER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| {
+            BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius).reverse().then_with(||
+            BowlFloat::total_cmp(&a.slope(), &b.slope()).then_with(|| {
+                BowlFloat::total_cmp(&a.bottom_radius, &b.bottom_radius)
+                    .then_with(|| BowlFloat::total_cmp(&a.height, &b.height))
+            }))
+        };
+
+        /// A comparison that sorts based off of whether each bowl fits in which
+        /// if a < b, then a fits inside b
+        /// if a == b, then a contacts b   ????????????
+        /// if a > b, then a .... ????? "b fits inside a? a is too big for b? ie. it sits on top?
+        const CMP_BOWLFITS: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| {
+            let h1 = b.height as BowlFloat;
+            let h2 = a.height as BowlFloat;
+            let r1 = b.bottom_radius as BowlFloat;
+            let r2 = a.bottom_radius as BowlFloat;
+            let R1 = b.top_radius as BowlFloat;
+            let R2 = a.top_radius as BowlFloat;
+            let m1 = b.slope();
+            let m2 = a.slope();
+
+            let p11x = BowlFloat::default();
+            let p12x = R1 - r1;
+            let p21x = r2 - r1;
+            let p22x = R2 - r1;
+
+            let p11y = BowlFloat::default();
+            let p12y = y(m1, p12x, BowlFloat::default());
+            let b_floor = -y(m2, p21x, BowlFloat::default());
+
+            if r2 <= r1 && y(m2, p22x, b_floor) >= y(m1, p22x, BowlFloat::default()) {
+                std::cmp::Ordering::Less
+            } else if r2 >= R1 {
+                std::cmp::Ordering::Greater
+            } else {
+                std::cmp::Ordering::Equal
+            }
+        };
+        #[allow(dead_code)]
+        const CMP_SHALLOWER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| CMP_STEEPER(b, a);
+        bowlstack.sort_by(CMP_SHALLOWER);
+        bowlstack.sort_by(CMP_BOWLFITS);
+        let result = solve(&mut bowlstack).trunc();
 
         println!("opti.label:  {:.2?}", bowlstack.iter().map(|x| x.label.unwrap()).collect::<Vec<char>>());
         println!("opti.slope:  {:.2?}", bowlstack.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());

@@ -38,11 +38,12 @@ where
 type BowlInt = u32;
 type BowlFloat = f32;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 struct Bowl {
     height: BowlFloat,
     bottom_radius: BowlFloat,
     top_radius: BowlFloat,
+    label: Option<char>,
 }
 
 impl From<[BowlInt; 3]> for Bowl {
@@ -51,6 +52,7 @@ impl From<[BowlInt; 3]> for Bowl {
             height: height as BowlFloat,
             bottom_radius: bottom_radius as BowlFloat,
             top_radius: top_radius as BowlFloat,
+            label: None,
         }
     }
 }
@@ -61,6 +63,7 @@ impl From<[BowlFloat; 3]> for Bowl {
             height,
             bottom_radius,
             top_radius,
+            label: None,
         }
     }
 }
@@ -74,9 +77,22 @@ impl Bowl {
             height: f64::from(height) as BowlFloat,
             bottom_radius: f64::from(bottom_radius) as BowlFloat,
             top_radius: f64::from(top_radius) as BowlFloat,
+            label: None,
         }
     }
 
+    fn new_labelled<T>(height: T, bottom_radius: T, top_radius: T, label: char) -> Self
+    where
+        f64: From<T>,
+    {
+        Bowl {
+            height: f64::from(height) as BowlFloat,
+            bottom_radius: f64::from(bottom_radius) as BowlFloat,
+            top_radius: f64::from(top_radius) as BowlFloat,
+            label: Some(label),
+        }
+    }
+    
     fn slope(&self) -> BowlFloat {
         self.height as BowlFloat / (self.top_radius - self.bottom_radius) as BowlFloat
     }
@@ -173,7 +189,9 @@ fn solve_stack_for_sort(
     sort: fn(&Bowl, &Bowl) -> core::cmp::Ordering,
 ) -> BowlFloat {
     bowls.sort_by(sort);
-
+    bowls.sort_by(|a, b| {
+        BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius).reverse()
+    });
     let mut rims: Vec<(BowlFloat, &Bowl)> =
         vec![(BowlFloat::default(), bowls.first().unwrap())];
 
@@ -260,12 +278,34 @@ fn brute_solve(bowls: &mut Vec<Bowl>) -> BowlFloat {
                 bowl_bottom + bowl.height >= thisbottom + top.height
             });
         }
-        rims.iter()
+        let output = rims.iter()
             .map(|&(floor, &bowl)| floor + bowl.height)
             .reduce(BowlFloat::max)
-            .unwrap()
+            .unwrap();
+        if output == 81.818184 {
+            println!("bf.label:    {:.2?}", bowlstack.iter().map(|x| x.label.unwrap()).collect::<Vec<char>>());
+            println!("bf.slope:    {:.2?}", bowlstack.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());
+            println!("bf.height:   {:.2?}", bowlstack.iter().map(|x| x.height).collect::<Vec<BowlFloat>>());
+            println!("bf.r:        {:.2?}", bowlstack.iter().map(|x| x.bottom_radius).collect::<Vec<BowlFloat>>());
+            println!("bf.R:        {:.2?}", bowlstack.iter().map(|x| x.top_radius).collect::<Vec<BowlFloat>>());
+            println!("br.floor:    {:.2?}", bowlstack.windows(2).filter(|&window| {
+                let [top, bottom] = window else { todo!() };
+                top.bottom_radius <= bottom.bottom_radius
+            }).count());
+            println!("br.ceil:     {:.2?}", bowlstack.windows(2).filter(|&window| {
+                let [top, bottom] = window else { todo!() };
+                top.bottom_radius >= bottom.top_radius
+            }).count());
+            println!("br.zerogap:  {:.2?}", bowlstack.windows(2).filter(|&window| {
+                let [bottom, top] = window else { panic!() };
+                find_gap(&bottom, &top) == BowlFloat::default()
+            }).count());
+        }
+        output
     });
-    all_stacksizes.into_iter().reduce(BowlFloat::min).unwrap()
+    let rval = all_stacksizes.into_iter().reduce(BowlFloat::min).unwrap();
+    println!("{}", rval);
+    rval
 }
 
 fn main() {
@@ -405,7 +445,44 @@ mod bowlstack_tests {
         // I assume that floor cases are desired and ceiling cases aren't.
         // What's tricky is that this isn't something I can detect in the sorting stage (or is it?)
         // but rather once I have a collection that will be fed into the thingy
-        todo!()
+        let tiny_bowl = Bowl::new(4, 1, 2);
+        assert_eq!(tiny_bowl.slope(), 4.0);
+        let plate = Bowl::new(2, 400, 401);
+        assert_eq!(plate.slope(), 2.0);
+        let bowl = Bowl::new(20, 100, 120);
+        assert_eq!(bowl.slope(), 1.0);
+
+        let mut bowlstack = vec![tiny_bowl, plate, bowl];
+        bowlstack.sort_by(CMP_STEEPER);
+        assert_eq!(bowlstack, vec![bowl, plate, tiny_bowl]);
+        bowlstack.sort_by(CMP_SHALLOWER);
+        assert_eq!(bowlstack, vec![tiny_bowl, plate, bowl]);
+
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+        // Try sorting with a bubble on the condition where r2 >= R1
+        bowlstack.sort_by(CMP_STEEPER);
+        bowlstack.sort_by(|b, a| {
+            BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius)
+        });
+        println!("{:?}", bowlstack);
+        assert_ne!(bowlstack, vec![bowl, plate, tiny_bowl]);
+        assert_ne!(bowlstack, vec![tiny_bowl, plate, bowl]);
+
+        bowlstack.sort_by(CMP_SHALLOWER);
+        bowlstack.sort_by(|b, a| {
+            BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius)
+        });
+        println!("{:?}", bowlstack);
+        assert_ne!(bowlstack, vec![bowl, plate, tiny_bowl]);
+        assert_ne!(bowlstack, vec![tiny_bowl, plate, bowl]);
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+        //////// REMOVE THIS SECTION //////////
+
 
     }
 
@@ -488,18 +565,18 @@ mod bowlstack_tests {
     
     #[test]
     fn test_solve_10_bowls() {
-        let mut bowls = vec![
-            Bowl::from([60, 20, 30]),
-            Bowl::from([50, 30, 80]),
-            Bowl::from([40, 10, 90]),
-            Bowl::from([40, 10, 50]),
-            Bowl::from([1, 1, 6]),
-            Bowl::from([1, 1, 70]),
-            Bowl::from([9, 1, 9]),
-            Bowl::new(30, 25, 35),
-            Bowl::from([10, 14, 29]),
-            Bowl::from([10, 9, 53]),
-            Bowl::from([10, 1, 11]),
+        let mut bowlstack = vec![
+            Bowl::new_labelled(60, 20, 30, 'P'),
+            Bowl::new_labelled(50, 30, 80, 'Q'),
+            Bowl::new_labelled(40, 10, 90, 'R'),
+            Bowl::new_labelled(40, 10, 50, 'S'),
+            Bowl::new_labelled(15, 17, 60, 'T'),
+            Bowl::new_labelled(19, 41, 70, 'U'),
+            Bowl::new_labelled(9, 1, 9, 'V'),
+            Bowl::new_labelled(30, 25, 35, 'W'),
+            Bowl::new_labelled(10, 14, 29, 'X'),
+            Bowl::new_labelled(10, 9, 53, 'Y'),
+            Bowl::new_labelled(10, 1, 11, 'Z'),
             // Bowl::from([35, 25, 70]),
             // Bowl::from([50, 30, 80]),
             // Bowl::from([35, 25, 70]),
@@ -525,7 +602,48 @@ mod bowlstack_tests {
             // Bowl::from([10, 11, 55]),
             // Bowl::from([10, 13, 57]),
         ];
-        assert_eq!(SELECTED_SOLVER(&mut bowls).trunc(), 80.0);
+
+        
+        // let brtu = brute_solve(&mut bowlstack);
+        // println!("Brute: {:?}", brtu);
+        
+        // println!("bf.label:    {:2.2?}", bowls.iter().enumerate().map(|(i, _)| {('A' as u8 + i as u8) as char}).collect::<Vec<char>>());
+        // println!("bf.slope:    {:2.2?}", bowls.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());
+        // println!("bf.height:   {:.2?}", bowls.iter().map(|x| x.height).collect::<Vec<BowlFloat>>());
+        // println!("bf.r:        {:.2?}", bowls.iter().map(|x| x.bottom_radius).collect::<Vec<BowlFloat>>());
+        // println!("bf.R:        {:.2?}", bowls.iter().map(|x| x.top_radius).collect::<Vec<BowlFloat>>());
+        // 
+        // println!("\
+        // bf.label:    ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K']\n\
+        // bf.slope:    [6.00, 1.00, 0.50, 1.00, 0.20, 0.01, 1.12, 3.00, 0.67, 0.23, 1.00]\n\
+        // bf.height:   [60.00, 50.00, 40.00, 40.00, 1.00, 1.00, 9.00, 30.00, 10.00, 10.00, 10.00]\n\
+        // bf.r:        [20.00, 30.00, 10.00, 10.00, 1.00, 1.00, 1.00, 25.00, 14.00, 9.00, 1.00]\n\
+        // bf.R:        [30.00, 80.00, 90.00, 50.00, 6.00, 70.00, 9.00, 35.00, 29.00, 53.00, 11.00]"
+        // );
+        
+        // let result = SELECTED_SOLVER(&mut bowls).trunc();
+        let result = solve_stack_for_sort(&mut bowlstack, CMP_SHALLOWER).trunc();
+
+        println!("opti.label:  {:.2?}", bowlstack.iter().map(|x| x.label.unwrap()).collect::<Vec<char>>());
+        println!("opti.slope:  {:.2?}", bowlstack.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());
+        println!("opti.height: {:.2?}", bowlstack.iter().map(|x| x.height).collect::<Vec<BowlFloat>>());
+        println!("opti.r:      {:.2?}", bowlstack.iter().map(|x| x.bottom_radius).collect::<Vec<BowlFloat>>());
+        println!("opti.R:      {:.2?}", bowlstack.iter().map(|x| x.top_radius).collect::<Vec<BowlFloat>>());
+        println!("opti.floor:  {:.2?}", bowlstack.windows(2).filter(|&window| {
+            let [top, bottom] = window else { todo!() };
+            top.bottom_radius <= bottom.bottom_radius
+        }).count());
+        println!("opti.ceil:   {:.2?}", bowlstack.windows(2).filter(|&window| {
+            let [top, bottom] = window else { todo!() };
+            top.bottom_radius >= bottom.top_radius
+        }).count());
+        println!("opti.zerogap:{:.2?}", bowlstack.windows(2).filter(|&window| {
+            let [bottom, top] = window else { panic!() };
+            find_gap(&bottom, &top) == BowlFloat::default()
+        }).count());
+        
+        
+        assert_eq!(result.trunc(), 81.0);
     }
 
     #[test]

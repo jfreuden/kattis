@@ -184,14 +184,9 @@ fn find_gap(bottom: &Bowl, top: &Bowl) -> BowlFloat {
     p21y
 }
 
-fn solve_stack_for_sort(
-    bowls: &mut Vec<Bowl>,
-    sort: fn(&Bowl, &Bowl) -> core::cmp::Ordering,
+fn solve_stack_no_sort(
+    bowls: &mut Vec<Bowl>
 ) -> BowlFloat {
-    bowls.sort_by(sort);
-    bowls.sort_by(|a, b| {
-        BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius).reverse()
-    });
     let mut rims: Vec<(BowlFloat, &Bowl)> =
         vec![(BowlFloat::default(), bowls.first().unwrap())];
 
@@ -212,6 +207,17 @@ fn solve_stack_for_sort(
         .map(|&(floor, &bowl)| floor + bowl.height)
         .reduce(BowlFloat::max)
         .unwrap()
+}
+
+fn solve_stack_for_sort(
+    bowls: &mut Vec<Bowl>,
+    sort: fn(&Bowl, &Bowl) -> core::cmp::Ordering,
+) -> BowlFloat {
+    bowls.sort_by(sort);
+    bowls.sort_by(|a, b| {
+        BowlFloat::total_cmp(&a.top_radius, &b.bottom_radius).reverse()
+    });
+    solve_stack_no_sort(bowls)
 }
 
 trait Permutations<T> {
@@ -593,8 +599,8 @@ mod bowlstack_tests {
         ];
 
         
-        // let brtu = brute_solve(&mut bowlstack);
-        // println!("Brute: {:?}", brtu);
+        let brtu = brute_solve(&mut bowlstack);
+        println!("Brute: {:?}", brtu);
         
         // println!("bf.label:    {:2.2?}", bowls.iter().enumerate().map(|(i, _)| {('A' as u8 + i as u8) as char}).collect::<Vec<char>>());
         // println!("bf.slope:    {:2.2?}", bowls.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());
@@ -651,13 +657,15 @@ mod bowlstack_tests {
                 std::cmp::Ordering::Greater
             } else {
                 std::cmp::Ordering::Equal
-            }
+            }.reverse()
         };
         #[allow(dead_code)]
         const CMP_SHALLOWER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| CMP_STEEPER(b, a);
-        bowlstack.sort_by(CMP_SHALLOWER);
-        bowlstack.sort_by(CMP_BOWLFITS);
-        let result = solve(&mut bowlstack).trunc();
+        // bowlstack.sort_by(CMP_STEEPER);
+        bowlstack.sort_by(|a, b| {
+            std::cmp::Ordering::Equal
+        });
+        let result = solve_stack_no_sort(&mut bowlstack).trunc();
 
         println!("opti.label:  {:.2?}", bowlstack.iter().map(|x| x.label.unwrap()).collect::<Vec<char>>());
         println!("opti.slope:  {:.2?}", bowlstack.iter().map(|x| x.slope()).collect::<Vec<BowlFloat>>());

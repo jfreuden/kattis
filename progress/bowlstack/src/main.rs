@@ -174,31 +174,26 @@ fn solve_stack_for_sort(
 ) -> BowlFloat {
     bowls.sort_by(sort);
 
-    let mut stackheight = bowls.first().unwrap().height as BowlFloat;
-    let mut highestbottom = BowlFloat::default();
-    let mut highestbowl = bowls.first().unwrap().clone();
-    for window in bowls.windows(2) {
-        let [bottom, top]: [Bowl; 2] = window.try_into().unwrap();
-        let gap_bottom = find_gap(&bottom, &top);
+    let mut rims: Vec<(BowlFloat, &Bowl)> =
+        vec![(BowlFloat::default(), bowls.first().unwrap())];
 
-        let synth_bowl = Bowl::from([
-            stackheight - highestbottom,
-            bottom.bottom_radius,
-            highestbowl.top_radius,
-        ]);
+    for top in bowls.iter() {
+        // compare this top against all the bowls in the stack
+        let thisbottom = rims
+            .iter()
+            .map(|&(floor, otherbottom)| find_gap(&otherbottom, &top) + floor)
+            .reduce(BowlFloat::max)
+            .unwrap();
 
-        let gap_highest = find_gap(&synth_bowl, &top);
-        highestbottom += BowlFloat::max(gap_bottom, gap_highest);
-
-        let candidate = highestbottom + top.height as BowlFloat;
-        if candidate > stackheight {
-            stackheight = candidate;
-            highestbowl = top.clone();
-        }
-
-        stackheight = BowlFloat::max(candidate, stackheight);
+        rims.push((thisbottom, &top));
+        rims.retain(|&(bowl_bottom, bowl)| {
+            bowl_bottom + bowl.height >= thisbottom + top.height
+        });
     }
-    stackheight
+    rims.iter()
+        .map(|&(floor, &bowl)| floor + bowl.height)
+        .reduce(BowlFloat::max)
+        .unwrap()
 }
 
 trait Permutations<T> {
@@ -287,7 +282,7 @@ fn main() {
     }
 
     for mut bowls in case_bowls {
-        let stackheight = brute_solve(&mut bowls).trunc() as u32;
+        let stackheight = solve(&mut bowls).trunc() as u32;
         println!("{:?}", stackheight);
     }
 }
@@ -390,6 +385,30 @@ mod bowlstack_tests {
         assert_eq!(SELECTED_SOLVER(&mut bowls), 30.)
     }
 
+
+    #[allow(dead_code)]
+    const CMP_STEEPER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| {
+        BowlFloat::total_cmp(&a.slope(), &b.slope()).then_with(|| {
+            BowlFloat::total_cmp(&a.bottom_radius, &b.bottom_radius)
+                .then_with(|| BowlFloat::total_cmp(&a.height, &b.height))
+        })
+    };
+    #[allow(dead_code)]
+    const CMP_SHALLOWER_BETTER: fn(&Bowl, &Bowl) -> core::cmp::Ordering = |a, b| CMP_STEEPER(b, a);
+
+    #[test]
+    fn test_sort_adversarial_tiny_troll_bowl(){
+        // Address the troll bowl with a new sorter, tested here.
+        // must not stack as [tinybowl, plate, bowl] or [bowl, plate, tinybowl]
+
+        // Possible solution to this would be to pre-detect floor and ceiling cases.
+        // I assume that floor cases are desired and ceiling cases aren't.
+        // What's tricky is that this isn't something I can detect in the sorting stage (or is it?)
+        // but rather once I have a collection that will be fed into the thingy
+        todo!()
+
+    }
+
     #[test]
     fn test_solve_adversarial_tiny_troll_bowl() {
         // if a bowl is so tiny that it could sit inside the final bowl, it doesn't matter what it's slope is
@@ -408,7 +427,29 @@ mod bowlstack_tests {
         assert_eq!(find_gap(&plate, &bowl), BowlFloat::default());
         assert_eq!(find_gap(&bowl, &tiny_bowl), BowlFloat::default());
         assert_eq!(find_gap(&bowl, &plate), bowl.height as BowlFloat);
-        assert_eq!(SELECTED_SOLVER(&mut vec![tiny_bowl, plate, bowl]), 20.);
+
+        let mut bowlstack = vec![tiny_bowl, plate, bowl];
+
+        // The issue with this example is that the naive STEEPER and SHALLOWER comparisons
+        // love to stack such that it is either of:
+        // tinybowl, plate, bowl
+        // bowl, plate, tinybowl
+        println!("{:?}", bowlstack);
+        bowlstack.sort_by(CMP_STEEPER);
+        println!("{:?}", bowlstack);
+        bowlstack.sort_by(CMP_SHALLOWER);
+        println!("{:?}", bowlstack);
+        assert_eq!(SELECTED_SOLVER(&mut bowlstack), 20.);
+
+
+        // Possible solution to this would be to pre-detect floor and ceiling cases.
+        // I assume that floor cases are desired and ceiling cases aren't.
+        // What's tricky is that this isn't something I can detect in the sorting stage (or is it?)
+        // but rather once I have a collection that will be fed into the thingy
+
+
+
+
 
         // tiny bowl with slope 1, plate with slope 2, bowl with slope 4
 

@@ -322,7 +322,7 @@ fn main() {
     }
 
     for mut bowls in case_bowls {
-        let stackheight = solve(&mut bowls).trunc() as u32;
+        let stackheight = brute_solve(&mut bowls).trunc() as u32;
         println!("{:?}", stackheight);
     }
 }
@@ -641,7 +641,6 @@ mod bowlstack_tests {
             let [bottom, top] = window else { panic!() };
             find_gap(&bottom, &top) == BowlFloat::default()
         }).count());
-        
         
         assert_eq!(result.trunc(), 81.0);
     }

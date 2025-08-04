@@ -567,7 +567,7 @@ mod bowlstack_tests {
             Bowl::new_labelled(40, 10, 50, 'S'),
             Bowl::new_labelled(15, 17, 60, 'T'),
             Bowl::new_labelled(19, 41, 70, 'U'),
-            Bowl::new_labelled(9, 1, 9, 'V'),
+            Bowl::new_labelled(37, 1, 9, 'V'),
             Bowl::new_labelled(30, 25, 35, 'W'),
             Bowl::new_labelled(10, 14, 29, 'X'),
             Bowl::new_labelled(10, 9, 53, 'Y'),

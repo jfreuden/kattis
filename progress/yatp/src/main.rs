@@ -53,8 +53,60 @@ where
 /// For each node, compute the smallest cost of any path starting at that node.
 /// The final answer is the sum of all of these minimum costs.
 
+/// A Bidirectional edge
+#[derive(Debug, Copy, Clone)]
+struct BiEdge {
+    i: u64,
+    j: u64,
+    weight: u64,
+}
+
+impl BiEdge {
+    fn new(i: u64, j: u64, weight: u64) -> BiEdge {
+        Self { i, j, weight }
+    }
+
+    fn connects(&self, node: u64) -> bool {
+        self.i == node || self.j == node
+    }
+}
+impl std::fmt::Display for BiEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Edge({} -> {}, weight: {})", self.i, self.j, self.weight)
+    }
+}
+
+impl PartialEq for BiEdge {
+    fn eq(&self, other: &BiEdge) -> bool {
+        self.connects(other.i) && self.connects(other.j) && self.weight == other.weight
+    }
+}
+
+fn seek_path(edges: Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
+    if from == to {
+        return vec![]; // No path needed to get to the destination
+    }
+
+    println!("seek_path edges: {:?}, from {} to {}", edges, from, to);
+    // the issue is the to/from here. I took care of the "connects" down below but it's making the trip harder than needed because of the indirectionality
+    for &edge in &edges {
+        if edge.connects(from) {
+            return if edge.connects(to) {
+                std::iter::once(edge).collect()
+            } else {
+                let next_edges = edges.iter().filter(|&candidate| candidate.connects(from) && *candidate != edge).copied().collect();
+                let next = if edge.i == from { edge.j } else { edge.i };
+                std::iter::once(edge).chain(seek_path(next_edges, next, to)).collect()
+            }
+        }
+    }
+    edges // No path to get to the destination
+}
+
+
 fn calculate_cost(nodes: Vec<u64>, edges: Vec<[u64; 3]>, from: u64, to: u64) -> u64 {
     let selected_node_penalty = nodes[from as usize];
+    let cheapest_path_cost = selected_node_penalty * selected_node_penalty;
     let current_node = Some(from);
     while current_node.is_some() {
         let next_nodes = edges.iter().fold(vec![], |mut connections, edge| {
@@ -69,6 +121,8 @@ fn calculate_cost(nodes: Vec<u64>, edges: Vec<[u64; 3]>, from: u64, to: u64) -> 
 
         // BFS towards the target, once found, unwind the relevant edges (rework the below)
 
+
+
         let relevant_edges = edges.iter().filter(|&edge| {
             let &[a, b, _weight] = edge.try_into().unwrap();
             a == current_node.unwrap() || b == current_node.unwrap()
@@ -80,6 +134,7 @@ fn calculate_cost(nodes: Vec<u64>, edges: Vec<[u64; 3]>, from: u64, to: u64) -> 
 }
 
 /// Eschew fancy data structures and do a bad-performance computation for test verification
+/// (even memoization or caching would improve this implementation)
 fn brute_solve(nodes: Vec<u64>, edges: Vec<[u64; 3]>) -> u64   {
     // for node in nodes {
     //     let mut cost = node * node;
@@ -111,6 +166,20 @@ const SELECTED_SOLVER: fn(Vec<u64>, Vec<[u64; 3]>) -> u64 = solve;
 #[cfg(test)]
 mod yatp_tests {
     use super::*;
+
+    #[test]
+    fn test_seek_path() {
+        let edge_weights: Vec<BiEdge> = vec![
+            BiEdge::new(3, 2, 8),
+            BiEdge::new(5, 2, 10),
+            BiEdge::new(4, 3, 10),
+            BiEdge::new(2, 1, 2),
+        ];
+
+        assert_eq!(seek_path(edge_weights.clone(), 1, 2), vec![BiEdge::new(2, 1, 2)]);
+        assert_eq!(seek_path(edge_weights.clone(), 2, 1), vec![BiEdge::new(2, 1, 2)]);
+
+    }
 
     #[test]
     fn test_cost_stay_at_home() {

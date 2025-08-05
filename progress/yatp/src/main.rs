@@ -103,13 +103,12 @@ fn seek_path(edges: Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
     // the issue is the to/from here. I took care of the "connects" down below but it's making the trip harder than needed because of the indirectionality
     // yeah the "edge.connects(from)" is making us miss the edge
     for &edge in &edges {
-        if edge.connects(from) {
-            return if edge.connects(to) {
+        if let Some(attached) = edge.connected_to(from) {
+            return if attached == to {
                 std::iter::once(edge).collect()
             } else {
-                let next_edges = edges.iter().filter(|&candidate| candidate.connects(from) && *candidate != edge).copied().collect();
-                let next = if edge.i == from { edge.j } else { edge.i };
-                std::iter::once(edge).chain(seek_path(next_edges, next, to)).collect()
+                let next_edges = edges.iter().filter(|&candidate| candidate.connected_to(from).is_some() && *candidate != edge).copied().collect();
+                std::iter::once(edge).chain(seek_path(next_edges, attached, to)).collect()
             }
         }
     }
@@ -181,7 +180,56 @@ mod yatp_tests {
     use super::*;
 
     #[test]
-    fn test_seek_path() {
+    fn test_edge_new() {
+        let edge = BiEdge::new(3, 2, 8);
+        assert_eq!(edge, BiEdge { i: 3, j: 2, weight: 8});
+    }
+    
+    #[test]
+    fn test_edge_connects() {
+        let edge = BiEdge::new(3, 2, 8);
+        assert!(edge.connects(3));
+        assert!(edge.connects(2));
+        assert!(!edge.connects(1));
+    }
+    
+    #[test]
+    fn test_edge_connected_to() {
+        let edge = BiEdge::new(3, 2, 8);
+        assert_eq!(edge.connected_to(3), Some(2));
+        assert_eq!(edge.connected_to(2), Some(3));
+        assert_eq!(edge.connected_to(1), None);
+    }
+    
+    #[test]
+    fn test_edge_display() {
+        let edge = BiEdge::new(3, 2, 8);
+        assert_eq!(format!("{}", edge), "Edge(3 -> 2, weight: 8)");
+    }
+    
+    #[test]
+    fn test_edge_eq() {
+        let edge_a = BiEdge::new(3, 2, 8);
+        let edge_b = BiEdge::new(3, 2, 8);
+        let edge_c = BiEdge::new(3, 2, 9);
+        assert_eq!(edge_a, edge_b);
+        assert_ne!(edge_a, edge_c);
+    }
+    
+    #[test]
+    fn test_seek_path_empty() {
+        let edge_weights: Vec<BiEdge> = vec![];
+        assert_eq!(seek_path(edge_weights.clone(), 1, 2), vec![]);
+    }
+    
+    #[test]
+    fn test_seek_path_single() {
+        let edge_weights: Vec<BiEdge> = vec![BiEdge::new(3, 2, 8)];
+        assert_eq!(seek_path(edge_weights.clone(), 1, 2), vec![BiEdge::new(3, 2, 8)]);
+    }
+    
+    #[test]
+    fn test_seek_path_a() {
         let edge_weights: Vec<BiEdge> = vec![
             BiEdge::new(3, 2, 8),
             BiEdge::new(5, 2, 10),
@@ -190,8 +238,18 @@ mod yatp_tests {
         ];
 
         assert_eq!(seek_path(edge_weights.clone(), 1, 2), vec![BiEdge::new(2, 1, 2)]);
-        assert_eq!(seek_path(edge_weights.clone(), 2, 1), vec![BiEdge::new(2, 1, 2)]);
+    }
+    
+    #[test]
+    fn test_seek_path_b() {
+        let edge_weights: Vec<BiEdge> = vec![
+            BiEdge::new(3, 2, 8),
+            BiEdge::new(5, 2, 10),
+            BiEdge::new(4, 3, 10),
+            BiEdge::new(2, 1, 2),
+        ];
 
+        assert_eq!(seek_path(edge_weights.clone(), 2, 1), vec![BiEdge::new(2, 1, 2)]);
     }
 
     #[test]

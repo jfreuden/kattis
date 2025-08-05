@@ -49,7 +49,167 @@ where
 }
 
 fn main() {
-    echoechoecho()
+    vedurheidar()
+}
+
+fn vedurheidar() {
+    let wind_speed: u64 = read_one();
+    let number_roads: u64 = read_one();
+    let mut road_limits: Vec<(String, u64)> = Vec::new();
+    for _ in 0..number_roads {
+        let [name, limit_str] = read_array::<String, 2, _>();
+        road_limits.push((name, limit_str.parse().unwrap()))
+    }
+    for (name, limit) in road_limits {
+        match wind_speed.cmp(&limit) {
+            std::cmp::Ordering::Greater => println!("{} lokud", name),
+            std::cmp::Ordering::Less | std::cmp::Ordering::Equal => println!("{} opin", name),
+        }
+    }
+}
+
+fn barcelona() {
+    let [_bag_count, target_bag]: [i64; 2] = read_array();
+    let bags= read_vec::<i64>();
+    let (bag_position, _bag) = bags.iter().enumerate().find(|&(_, &bag)| bag == target_bag).unwrap();
+    match bag_position {
+        0 => println!("fyrst"),
+        1 => println!("naestfyrst"),
+        _ => println!("{} fyrst", bag_position + 1),
+    }
+}
+
+fn heysata() {
+    let _characters: u64 = read_one();
+    let char: char = read_one();
+    let haystack = read_str();
+    match haystack.contains(char) {
+        true => println!("Unnar fann hana!"),
+        false => println!("Unnar fann hana ekki!"),
+    }
+}
+
+fn pobudget() {
+    let lineitem_count = read_one::<usize>();
+    let mut account_value: i64 = 0;
+    for _ in 0..lineitem_count {
+        let _item_name = read_str();
+        account_value += read_one::<i64>();
+    }
+
+    match account_value.cmp(&0) {
+        std::cmp::Ordering::Less => println!("Nekad"),
+        std::cmp::Ordering::Greater => println!("Usch, vinst"),
+        std::cmp::Ordering::Equal => println!("Lagom")
+    }
+}
+
+fn umferd() {
+    let cells_per_lane: u64 = read_one();
+    let lanes: u64 = read_one();
+    let mut filled_cells: u64 = 0;
+    for _ in 0..lanes {
+        let road = read_str();
+        let cars = road.chars().filter(|&c| c == '#').count() as u64;
+        filled_cells += cars;
+    }
+    let total_cells: u64 = lanes * cells_per_lane;
+    let avg = (total_cells - filled_cells) as f32 / (total_cells) as f32;
+    println!("{}", avg);
+}
+
+fn fjoldibokstafa() {
+    let input = read_str();
+    println!("{}", input.chars().filter(|&c| c.is_alphabetic()).count());
+}
+
+fn kikiboba() {
+    let input = read_str();
+    let count_b = input.chars().filter(|&c| c == 'b').count();
+    let count_k = input.chars().filter(|&c| c == 'k').count();
+    if count_b == 0 && count_k == 0 {
+        println!("none");
+    } else {
+        match count_b.cmp(&count_k) {
+            std::cmp::Ordering::Greater => println!("boba"),
+            std::cmp::Ordering::Equal => println!("boki"),
+            std::cmp::Ordering::Less => println!("kiki"),
+        }
+    }
+}
+
+fn leynithjonusta() {
+    println!("{}", read_str().chars().filter(|&c| c != ' ').collect::<String>());
+}
+
+fn ofugsnuid() {
+    let count = read_one::<u64>();
+    let mut numbers = vec![];
+    for _ in 0..count {
+        numbers.push(read_one::<u64>());
+    }
+    numbers.reverse();
+    for number in numbers {
+        println!("{}", number);
+    }
+}
+
+fn aterriblefortress() {
+    let count = read_one::<u64>();
+    let mut sum: u64 = 0;
+    for _ in 0..count {
+        sum += read_one::<u64>();
+    }
+    println!("{}", sum);
+}
+
+fn isyavowel() {
+    let input = read_str();
+    let num_vowels = input.chars().filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c)).count();
+    let num_y = input.chars().filter(|c|c == &'y').count();
+    println!("{} {}", num_vowels, num_vowels + num_y);
+}
+
+fn addingtrouble() {
+    let [a, b, c] = read_array::<i64, 3, _>();
+    match a + b == c {
+        true => println!("correct!"),
+        false => println!("wrong!"),
+    }
+}
+
+fn whichisgreater() {
+    let [a, b] = read_array::<u64, 2, _>();
+    println!("{}", a.gt(&b) as u8)
+}
+
+fn countthevowels() {
+    let input = read_str();
+    println!("{}", input.chars().filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c)).count());
+}
+
+fn twosum() {
+    addtwonumbers()
+}
+
+fn triarea() {
+    let [height, base] = read_array::<u64, 2, _>().try_into().unwrap();
+    println!("{}", base as f32 * height as f32 / 2.0);
+}
+
+fn nsum() {
+    let _count: usize = read_one();
+    println!("{}", read_vec().iter().sum::<u64>())
+}
+
+fn digitswap() {
+    println!("{}", read_str().chars().rev().collect::<String>());
+}
+
+fn sorttwonumbers() {
+    let mut numbers: [u64; 2] = read_array();
+    numbers.sort();
+    println!("{}", numbers.map(|n| n.to_string()).join(" "));
 }
 
 fn echoechoecho() {

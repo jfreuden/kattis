@@ -1,9 +1,8 @@
-/// This is a single file which will handle all the "with input <trivial> print <trivial output>" problems
-/// The top of the file will be the active space, and will remain with a fn main() method.
+#![allow(dead_code)]
+/// This is a single file that will handle all the "with input <trivial> print <trivial output>" problems
+/// The top of the file will be the active space and will remain with a fn main() method.
 /// Once complete, the subroutine will be renamed to the problem title.
 /// This will allow the top to contain the helper methods, with the main method up top for copying
-/// The used read may be place
-
 fn read_str() -> String {
     let mut response = String::new();
     std::io::stdin()
@@ -118,7 +117,7 @@ fn umferd() {
         filled_cells += cars;
     }
     let total_cells: u64 = lanes * cells_per_lane;
-    let avg = (total_cells - filled_cells) as f32 / (total_cells) as f32;
+    let avg = (total_cells - filled_cells) as f32 / total_cells as f32;
     println!("{}", avg);
 }
 
@@ -282,8 +281,9 @@ fn carrots() {
 }
 
 fn get_root_count(coeffs: Vec<i64>) -> usize {
-    let mut coefficients = coeffs;
-    let discriminant = coefficients[1] * coefficients[1] - 4 * coefficients[0] * coefficients[2]; // b^2 - 4ac
+    let coefficients = coeffs;
+    let discriminant = coefficients[1] * coefficients[1] - 4 * coefficients[0] * coefficients[2];
+    // b^2 - 4a*c
     // This reminder of grade-school math is brought to you by: https://amsi.org.au/ESA_Senior_Years/SeniorTopic2/2a/2a_2content_5.html
     // Δ>0
     //  tells us the equation has two distinct real roots
@@ -384,7 +384,7 @@ fn lineup() {
         players.push(read_str());
     }
 
-    if (players.is_sorted()) {
+    if players.is_sorted() {
         println!("INCREASING")
     } else if players.iter().rev().is_sorted() {
         println!("DECREASING")

@@ -70,8 +70,12 @@ fn vedurheidar() {
 
 fn barcelona() {
     let [_bag_count, target_bag]: [i64; 2] = read_array();
-    let bags= read_vec::<i64>();
-    let (bag_position, _bag) = bags.iter().enumerate().find(|&(_, &bag)| bag == target_bag).unwrap();
+    let bags = read_vec::<i64>();
+    let (bag_position, _bag) = bags
+        .iter()
+        .enumerate()
+        .find(|&(_, &bag)| bag == target_bag)
+        .unwrap();
     match bag_position {
         0 => println!("fyrst"),
         1 => println!("naestfyrst"),
@@ -100,7 +104,7 @@ fn pobudget() {
     match account_value.cmp(&0) {
         std::cmp::Ordering::Less => println!("Nekad"),
         std::cmp::Ordering::Greater => println!("Usch, vinst"),
-        std::cmp::Ordering::Equal => println!("Lagom")
+        std::cmp::Ordering::Equal => println!("Lagom"),
     }
 }
 
@@ -139,7 +143,10 @@ fn kikiboba() {
 }
 
 fn leynithjonusta() {
-    println!("{}", read_str().chars().filter(|&c| c != ' ').collect::<String>());
+    println!(
+        "{}",
+        read_str().chars().filter(|&c| c != ' ').collect::<String>()
+    );
 }
 
 fn ofugsnuid() {
@@ -165,8 +172,11 @@ fn aterriblefortress() {
 
 fn isyavowel() {
     let input = read_str();
-    let num_vowels = input.chars().filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c)).count();
-    let num_y = input.chars().filter(|c|c == &'y').count();
+    let num_vowels = input
+        .chars()
+        .filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c))
+        .count();
+    let num_y = input.chars().filter(|c| c == &'y').count();
     println!("{} {}", num_vowels, num_vowels + num_y);
 }
 
@@ -185,7 +195,13 @@ fn whichisgreater() {
 
 fn countthevowels() {
     let input = read_str();
-    println!("{}", input.chars().filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c)).count());
+    println!(
+        "{}",
+        input
+            .chars()
+            .filter(|c| ['a', 'e', 'i', 'o', 'u', 'A', 'E', 'I', 'O', 'U'].contains(c))
+            .count()
+    );
 }
 
 fn twosum() {
@@ -293,7 +309,6 @@ fn test_get_root_count() {
     assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
     assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
     assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
-
 }
 
 fn dfyrirdreki() {

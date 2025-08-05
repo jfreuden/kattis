@@ -48,7 +48,116 @@ where
     try_read_array().unwrap()
 }
 
-fn main() {}
+fn main() {
+    echoechoecho()
+}
+
+fn echoechoecho() {
+    println!("{}", [read_str().as_str()].repeat(3).join(" "));
+}
+
+fn addtwonumbers() {
+    let [a, b] = read_array::<u64, 2, _>();
+    println!("{}", a + b);
+}
+
+fn jackolanternjuxtaposition() {
+    let [eyes, noses, mouths] = read_array::<u64, 3, _>();
+    println!("{}", eyes * noses * mouths);
+}
+
+fn qaly() {
+    let count = read_one::<u64>();
+    let mut quality_sum: f32 = 0.0;
+    for _ in 0..count {
+        let [quality, years] = read_array::<f32, 2, _>();
+        quality_sum += quality * years;
+    }
+    println!("{:.3}", quality_sum);
+}
+
+fn quadrant() {
+    let x: i64 = read_one();
+    let y: i64 = read_one();
+    match (x.is_positive(), y.is_positive()) {
+        (true, true) => println!("1"),
+        (false, true) => println!("2"),
+        (false, false) => println!("3"),
+        (true, false) => println!("4"),
+    }
+}
+
+fn twostones() {
+    let stones: u64 = read_one();
+    let winner: String = if stones.is_multiple_of(2) {
+        "Bob".to_string()
+    } else {
+        "Alice".to_string()
+    };
+    println!("{}", winner);
+}
+
+fn carrots() {
+    let [contestants, solves]: [u64; 2] = read_array();
+    for _ in 0..contestants {
+        let _ = read_str();
+    }
+    println!("{}", solves);
+}
+
+fn get_root_count(coeffs: Vec<i64>) -> usize {
+    let mut coefficients = coeffs;
+    let discriminant = coefficients[1] * coefficients[1] - 4 * coefficients[0] * coefficients[2]; // b^2 - 4ac
+    // This reminder of grade-school math is brought to you by: https://amsi.org.au/ESA_Senior_Years/SeniorTopic2/2a/2a_2content_5.html
+    // Δ>0
+    //  tells us the equation has two distinct real roots
+    // Δ=0
+    //  tells us the equation has one (repeated) real root
+    // Δ<0
+    //  tells us the equation has no real roots.
+
+    if discriminant > 0 {
+        2
+    } else if discriminant == 0 {
+        1
+    } else {
+        0
+    }
+}
+
+#[test]
+fn test_get_root_count() {
+    assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
+    assert_eq!(get_root_count(vec![1, 1, 1]), 0);
+    assert_eq!(get_root_count(vec![2, 4, 2]), 1);
+    assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
+    assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
+    assert_eq!(get_root_count(vec![-5, 1, 1]), 2);
+
+}
+
+fn dfyrirdreki() {
+    let a: i64 = read_one();
+    let b: i64 = read_one();
+    let c: i64 = read_one();
+    let coefficients = vec![a, b, c];
+    println!("{}", get_root_count(coefficients));
+}
+
+fn bestagjofin() {
+    let guests: u64 = read_one();
+    let mut best_guest = String::new();
+    let mut best_gift_score: u64 = 0;
+    for _ in 0..guests {
+        let [name, gift_score_str] = read_array::<String, 2, _>();
+        let gift_score: u64 = gift_score_str.parse().unwrap();
+        if gift_score > best_gift_score {
+            best_gift_score = gift_score;
+            best_guest = name;
+        }
+    }
+    println!("{}", best_guest);
+}
 
 fn parking2() {
     let test_cases: u64 = read_one();

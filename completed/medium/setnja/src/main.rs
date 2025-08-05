@@ -290,8 +290,7 @@ fn main() {
 }
 
 #[cfg(test)]
-mod setna_tests {
-    use super::*;
+mod setnja_tests {
     use super::*;
 
     #[test]

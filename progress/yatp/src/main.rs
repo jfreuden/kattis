@@ -69,6 +69,18 @@ impl BiEdge {
     fn connects(&self, node: u64) -> bool {
         self.i == node || self.j == node
     }
+
+
+    // TODO: INTEGRATE THIS
+    fn connected_to(self, node: u64) -> Option<u64> {
+        if self.i == node {
+            Some(self.j)
+        } else if self.j == node {
+            Some(self.i)
+        } else {
+            None
+        }
+    }
 }
 impl std::fmt::Display for BiEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -89,6 +101,7 @@ fn seek_path(edges: Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
 
     println!("seek_path edges: {:?}, from {} to {}", edges, from, to);
     // the issue is the to/from here. I took care of the "connects" down below but it's making the trip harder than needed because of the indirectionality
+    // yeah the "edge.connects(from)" is making us miss the edge
     for &edge in &edges {
         if edge.connects(from) {
             return if edge.connects(to) {

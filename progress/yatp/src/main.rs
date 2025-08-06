@@ -206,9 +206,51 @@ fn main() {
 }
 const SELECTED_SOLVER: fn(Vec<u64>, Vec<BiEdge>) -> u64 = brute_solve;
 
+
+/// Converts a set of n nodes with penalties into additional synthetic weighted edges [n to 2n-1]
+/// The edges are moved into the return vector
+fn convert_penalties_to_edges(nodes: &Vec<u64>, edges: Vec<BiEdge>) -> Vec<BiEdge> {
+    let mut out = edges;
+    let mut synths = nodes.iter().enumerate().map(|(i, x)| {
+        let node = (i + 1) as u64;
+        let synth = nodes.len() as u64 + node;
+        let weight = *x;
+        BiEdge::new(node, synth, weight)
+    }).collect();
+    out.append(&mut synths);
+    out
+}
+
 #[cfg(test)]
 mod yatp_tests {
     use super::*;
+
+    #[test]
+    fn test_convert_penalties_to_edges() {
+        let edge_weights: Vec<BiEdge> = vec![
+            BiEdge::new(1, 2, 8),
+            BiEdge::new(2, 3, 2),
+            BiEdge::new(3, 4, 10),
+            BiEdge::new(4, 5, 10),
+        ];
+        let nodes: Vec<u64> = vec![10, 20, 30, 40, 50];
+
+        let synths = convert_penalties_to_edges(&nodes, edge_weights);
+
+        assert_eq!(synths, vec![
+            BiEdge::new(1, 2, 8),
+            BiEdge::new(2, 3, 2),
+            BiEdge::new(3, 4, 10),
+            BiEdge::new(4, 5, 10),
+            // append old nodes with connections to synths
+            BiEdge::new(1, 5 + 1, 10),
+            BiEdge::new(2, 5 + 2, 10),
+            BiEdge::new(3, 5 + 3, 10),
+            BiEdge::new(4, 5 + 4, 10),
+            BiEdge::new(5, 5 + 5, 10),
+            // append reflexive edges (TODO: are these necessary if the n=1 -> n+1 mapping has the weight already?)
+        ]);
+    }
 
     #[test]
     fn test_edge_new() {

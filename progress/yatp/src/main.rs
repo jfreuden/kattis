@@ -55,7 +55,7 @@ struct BiEdge {
 
 impl BiEdge {
     fn new(i: u64, j: u64, weight: u64) -> BiEdge {
-        if i == 0 || j == 0 || weight == 0 {
+        if i == 0 || j == 0 /*|| weight == 0*/ {
             panic!("Invalid edge: ({}) - {} -> ({})", i, weight, j);
         }
         Self { i, j, weight }
@@ -65,7 +65,6 @@ impl BiEdge {
         self.i == node || self.j == node
     }
 
-    // TODO: INTEGRATE THIS
     fn connected_to(self, node: u64) -> Option<u64> {
         if self.i == node {
             Some(self.j)
@@ -151,45 +150,52 @@ fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
         .sum()
 }
 
+/// Returns the minimum ending path above cutoff.
+fn bfs_short_circuit(edges: Vec<BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
+    edges.iter().map(|edge| {
+        if let Some(attached) = edge.connected_to(start_node) {
+            if edge.weight >= cutoff {
+                cutoff
+            } else if edge.i > node_count || edge.j > node_count {
+                edge.weight // This edge is a synth under cutoff. Take it. (checks if min in the iter)
+            } else {
+                let next_edges = edges
+                    .iter()
+                    .filter(|&candidate| candidate != edge)
+                    .cloned()
+                    .collect::<Vec<BiEdge>>();
+                edge.weight + bfs_short_circuit(next_edges, attached, node_count, cutoff - edge.weight)
+            }
+        } else {
+            cutoff
+        }
+    }).min().unwrap()
+}
+
 #[allow(dead_code)]
 fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
-    drop(nodes);
-    drop(edges);
-    // compare cost of minimum other nodes against the cost of minimum edges
+    // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
+    let node_count = nodes.len() as u64;
+    let template_synths: Vec<BiEdge> = nodes.iter().enumerate().map(|(i, penalty)| {
+        let node = (i + 1) as u64;
 
-    // if self * self is greater than self * n for all n != self, then go nowhere
-
-    // otherwise, find cheapest edge+nodes. (but wait, this would fail if we had a long cheap path, right?)
-
-    // for each node, add costs with and without the node penalty?
-    //
-
-    // optimization, save the best route for one node to both nodes in a hashmap or such
-
-    /*
-    Is it possible to digest the tree into a graph with the all the costs to each node?
-    Wouldn't that just be exactly the same work as before? The difference is the pathfinding! (or lack thereof)
-    I think no matter what, I need to convert the node penalties into a minimum spanning tree of some kind.
-    Or at least convert the penalties out into edge costs.
-
-    Is there some way I can quickly find the correct cheapest path with the wrong answer,
-    then plug this path in to the calculate_cost
+        // later the weights will be
+        //  weight = (weight - 1) * penalty
+        // so I may as well subtract one in this step
+        BiEdge::new(node, node_count + node, *penalty - 1)
+    }).collect();
 
 
-    make an adjacency weight matrix? If that worked then I'd be adding each edge to all the applicable slots
-    problem is the 200k nodes.
-
-    Remember this is an unbalanced binary tree. That means each node can have at most 3 connections
-    with sometimes as few as 1.
-    
-    I made the seek_path handle reflexive edges.
-    Can take Node "1"'s penalty and now pretend that it's the weight cost of traveling to
-    node $n+1$, do the same for all other nodes, then do the "sum the mins" on the nodes
-    from $n+1 \to 2n$. The nodes $n+1 \to 2n$ won't be connected to each other, but they will be
-    connected through the rest of the edge graph.
-
-     */
-    todo!()
+    nodes.iter().enumerate().map(|(i, penalty)| {
+        let node = (i + 1) as u64;
+        let synths = template_synths.iter().cloned().map(|mut x| {
+            x.weight *= penalty;
+            x
+        }).chain(edges.clone()).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
+        let bfs_cost = bfs_short_circuit(synths, node, node_count, penalty * penalty - penalty);
+        let out = penalty + bfs_cost;
+        out
+    }).sum()
 }
 
 fn main() {
@@ -204,7 +210,7 @@ fn main() {
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<u64>, Vec<BiEdge>) -> u64 = brute_solve;
+const SELECTED_SOLVER: fn(Vec<u64>, Vec<BiEdge>) -> u64 = solve;
 
 
 /// Converts a set of n nodes with penalties into additional synthetic weighted edges [n to 2n-1]
@@ -244,10 +250,10 @@ mod yatp_tests {
             BiEdge::new(4, 5, 10),
             // append old nodes with connections to synths
             BiEdge::new(1, 5 + 1, 10),
-            BiEdge::new(2, 5 + 2, 10),
-            BiEdge::new(3, 5 + 3, 10),
-            BiEdge::new(4, 5 + 4, 10),
-            BiEdge::new(5, 5 + 5, 10),
+            BiEdge::new(2, 5 + 2, 20),
+            BiEdge::new(3, 5 + 3, 30),
+            BiEdge::new(4, 5 + 4, 40),
+            BiEdge::new(5, 5 + 5, 50),
             // append reflexive edges (TODO: are these necessary if the n=1 -> n+1 mapping has the weight already?)
         ]);
     }
@@ -362,27 +368,27 @@ mod yatp_tests {
 
     #[test]
     fn test_solve_100_nodes() {
-        let node_penalties = (0..100).collect::<Vec<u64>>();
+        let node_penalties = (1..101).collect::<Vec<u64>>();
         let edge_weights: Vec<BiEdge> = (0..99)
             .map(|i| {
-                let j = (i + 1) % 100;
-                [i as u64 + 1, j as u64 + 2, 1].into()
+                let j = i % 100;
+                [i + 1, j + 2, 1].into()
             })
             .collect();
-        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 1225);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 10000);
     }
 
     #[test]
     fn test_solve_200_nodes() {
-        let mut node_penalties = (0..200).collect::<Vec<u64>>();
+        let mut node_penalties = (1..201).collect::<Vec<u64>>();
         node_penalties.rotate_left(23);
         let edge_weights: Vec<BiEdge> = (0..199)
             .map(|i| {
-                let j = (i + 1) % 200;
+                let j = i % 200;
                 [i + 1, j + 2, (i + j) % 17 + 1].into()
             })
             .collect();
-        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 8200);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 149656);
     }
 
     #[test]

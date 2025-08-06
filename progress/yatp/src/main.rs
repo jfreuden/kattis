@@ -182,7 +182,11 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     Remember this is an unbalanced binary tree. That means each node can have at most 3 connections
     with sometimes as few as 1.
     
-
+    I made the seek_path handle reflexive edges.
+    Can take Node "1"'s penalty and now pretend that it's the weight cost of traveling to
+    node $n+1$, do the same for all other nodes, then do the "sum the mins" on the nodes
+    from $n+1 \to 2n$. The nodes $n+1 \to 2n$ won't be connected to each other, but they will be
+    connected through the rest of the edge graph.
 
      */
     todo!()

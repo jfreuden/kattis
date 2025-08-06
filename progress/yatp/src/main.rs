@@ -55,6 +55,9 @@ struct BiEdge {
 
 impl BiEdge {
     fn new(i: u64, j: u64, weight: u64) -> BiEdge {
+        if i == 0 || j == 0 || weight == 0 {
+            panic!("Invalid edge: ({}) - {} -> ({})", i, weight, j);
+        }
         Self { i, j, weight }
     }
 
@@ -125,10 +128,11 @@ fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
 }
 
 fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> u64 {
-    let start_node_penalty = nodes[from as usize ];
+    let start_node_penalty = nodes[from as usize];
     let end_node_penalty = nodes[to as usize];
     let path = seek_path(&edges, from + 1, to + 1);
-    let cost = path.iter().fold(0, |acc, edge| acc + edge.weight) + start_node_penalty * end_node_penalty;
+    let cost =
+        path.iter().fold(0, |acc, edge| acc + edge.weight) + start_node_penalty * end_node_penalty;
     cost
 }
 
@@ -136,14 +140,15 @@ fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> 
 /// (even memoization or caching would improve this implementation)
 fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     let nodecount = nodes.len();
-    (0..nodecount).into_iter()
+    (0..nodecount)
+        .into_iter()
         .map(|i| {
-            let costs_for_i = (0..nodecount).into_iter()
+            let costs_for_i = (0..nodecount)
+                .into_iter()
                 .map(|j| calculate_cost(&nodes, &edges, i as u64, j as u64));
             costs_for_i.min().unwrap()
         })
         .sum()
-
 }
 
 #[allow(dead_code)]
@@ -283,12 +288,12 @@ mod yatp_tests {
     fn test_solve_100_nodes() {
         let node_penalties = (0..100).collect::<Vec<u64>>();
         let edge_weights: Vec<BiEdge> = (0..99)
-        .map(|i| {
-            let j = (i + 1) % 100;
-            [i as u64, j as u64, 1].into()
-        })
-        .collect();
-        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 4851);
+            .map(|i| {
+                let j = (i + 1) % 100;
+                [i as u64 + 1, j as u64 + 2, 1].into()
+            })
+            .collect();
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 1225);
     }
 
     #[test]
@@ -298,9 +303,58 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..199)
             .map(|i| {
                 let j = (i + 1) % 200;
-                [i as u64, j as u64, (i + j) % 17].into()
+                [i + 1, j + 2, (i + j) % 17 + 1].into()
             })
             .collect();
-        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 115086);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 8200);
+    }
+
+    #[test]
+    fn test_expensive_path() {
+        let node_penalties = std::iter::once(2)
+            .chain(std::iter::repeat_n(70, 40))
+            .chain(std::iter::once(2))
+            .collect::<Vec<u64>>();
+
+        let edge_weights: Vec<BiEdge> = (0..41).map(|i| [i + 1, i + 2, 100000].into()).collect();
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 196008)
+    }
+
+    #[test]
+    fn test_long_cheap_path() {
+        let node_penalties = std::iter::once(2)
+            .chain(std::iter::repeat_n(70, 40))
+            .chain(std::iter::once(2))
+            .collect::<Vec<u64>>();
+
+        let edge_weights: Vec<BiEdge> = (0..41).map(|i| [i + 1, i + 2, 1].into()).collect();
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 6028)
+    }
+
+    #[test]
+    fn test_seekpath_malformed_edgelist_orphaned() {
+        // The node is present in the edgelist, but it's orphaned from the other side of the route
+        let edge_weights: Vec<BiEdge> = vec![
+            [1, 2, 8].into(),
+            [3, 2, 10].into(),
+            [4, 3, 10].into(),
+            [5, 6, 2].into(),
+        ]; // 1 can get to 4, but no further. (not sure if I should use len or not)
+        assert_eq!(seek_path(&edge_weights, 1, 6), Vec::<BiEdge>::new());
+        assert_eq!(seek_path(&edge_weights, 6, 1), Vec::<BiEdge>::new());
+    }
+
+    #[test]
+    fn test_seekpath_malformed_node_missing() {
+        // The node doesn't appear in the edgelist whatsoever
+
+        let edge_weights: Vec<BiEdge> = vec![
+            [3, 2, 8].into(),
+            [6, 2, 10].into(),
+            [4, 3, 10].into(),
+            [2, 1, 2].into(),
+        ]; // Node 5 totally missing, but node 6 is present. (not sure if I should use len or not)
+        assert_eq!(seek_path(&edge_weights, 1, 5), Vec::<BiEdge>::new());
+        assert_eq!(seek_path(&edge_weights, 5, 1), Vec::<BiEdge>::new());
     }
 }

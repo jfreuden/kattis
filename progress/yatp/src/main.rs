@@ -103,7 +103,7 @@ impl PartialEq<&BiEdge> for BiEdge {
 
 fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
     if from == to {
-        return vec![]; // No path needed to get to the destination
+        return edges.iter().find(|&edge| edge.connected_to(from) == Some(to)).copied().into_iter().collect::<Vec<BiEdge>>(); // No path needed to get to the destination
     }
     for edge in edges {
         if let Some(attached) = edge.connected_to(from) {
@@ -155,7 +155,37 @@ fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
 fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     drop(nodes);
     drop(edges);
-    todo!() // TODO: Build data structures to solve this problem
+    // compare cost of minimum other nodes against the cost of minimum edges
+
+    // if self * self is greater than self * n for all n != self, then go nowhere
+
+    // otherwise, find cheapest edge+nodes. (but wait, this would fail if we had a long cheap path, right?)
+
+    // for each node, add costs with and without the node penalty?
+    //
+
+    // optimization, save the best route for one node to both nodes in a hashmap or such
+
+    /*
+    Is it possible to digest the tree into a graph with the all the costs to each node?
+    Wouldn't that just be exactly the same work as before? The difference is the pathfinding! (or lack thereof)
+    I think no matter what, I need to convert the node penalties into a minimum spanning tree of some kind.
+    Or at least convert the penalties out into edge costs.
+
+    Is there some way I can quickly find the correct cheapest path with the wrong answer,
+    then plug this path in to the calculate_cost
+
+
+    make an adjacency weight matrix? If that worked then I'd be adding each edge to all the applicable slots
+    problem is the 200k nodes.
+
+    Remember this is an unbalanced binary tree. That means each node can have at most 3 connections
+    with sometimes as few as 1.
+    
+
+
+     */
+    todo!()
 }
 
 fn main() {

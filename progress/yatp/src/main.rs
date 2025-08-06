@@ -1,11 +1,3 @@
-fn read_str() -> String {
-    let mut response = String::new();
-    std::io::stdin()
-        .read_line(&mut response)
-        .expect("Failed to get input");
-    response.trim_end().to_string()
-}
-
 fn read_one<T: std::str::FromStr>() -> T
 where
     T::Err: std::fmt::Debug,
@@ -81,6 +73,13 @@ impl BiEdge {
         }
     }
 }
+
+impl From<[u64; 3]> for BiEdge {
+    fn from(arr: [u64; 3]) -> Self {
+        Self::new(arr[0], arr[1], arr[2])
+    }
+}
+
 impl std::fmt::Display for BiEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Edge({} -> {}, weight: {})", self.i, self.j, self.weight)
@@ -99,27 +98,25 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
-fn seek_path(edges: Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
+fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
     if from == to {
         return vec![]; // No path needed to get to the destination
     }
-    for &edge in &edges {
+    for edge in edges {
         if let Some(attached) = edge.connected_to(from) {
             return if attached == to {
-                std::iter::once(edge).collect()
+                std::iter::once(*edge).collect()
             } else {
                 let next_edges = edges
                     .iter()
-                    .filter(|&&candidate| {
-                        candidate != edge
-                    })
-                    .copied()
-                    .collect();
-                let path = seek_path(next_edges, attached, to);
+                    .filter(|&candidate| candidate != edge)
+                    .cloned()
+                    .collect::<Vec<BiEdge>>();
+                let path = seek_path(&next_edges, attached, to);
                 if path.is_empty() {
-                    continue // this branch was a dud, check the other edges
+                    continue; // this branch was a dud, check the other edges
                 } else {
-                    std::iter::once(edge).chain(path).collect()
+                    std::iter::once(*edge).chain(path).collect()
                 }
             };
         }
@@ -127,61 +124,48 @@ fn seek_path(edges: Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
     vec![] // No path to get to the destination
 }
 
-fn calculate_cost(nodes: Vec<u64>, edges: Vec<[u64; 3]>, from: u64, to: u64) -> u64 {
-    let selected_node_penalty = nodes[from as usize];
-    let cheapest_path_cost = selected_node_penalty * selected_node_penalty;
-    let current_node = Some(from);
-    while current_node.is_some() {
-        let next_nodes = edges.iter().fold(vec![], |mut connections, edge| {
-            let &[a, b, _weight] = edge.try_into().unwrap();
-            if a == current_node.unwrap() {
-                connections.push(b)
-            } else if b == current_node.unwrap() {
-                connections.push(a)
-            }
-            connections
-        });
-
-        // BFS towards the target, once found, unwind the relevant edges (rework the below)
-
-        let relevant_edges = edges.iter().filter(|&edge| {
-            let &[a, b, _weight] = edge.try_into().unwrap();
-            a == current_node.unwrap() || b == current_node.unwrap()
-        });
-    }
-
-    todo!()
+fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> u64 {
+    let start_node_penalty = nodes[from as usize ];
+    let end_node_penalty = nodes[to as usize];
+    let path = seek_path(&edges, from + 1, to + 1);
+    let cost = path.iter().fold(0, |acc, edge| acc + edge.weight) + start_node_penalty * end_node_penalty;
+    cost
 }
 
 /// Eschew fancy data structures and do a bad-performance computation for test verification
 /// (even memoization or caching would improve this implementation)
-fn brute_solve(nodes: Vec<u64>, edges: Vec<[u64; 3]>) -> u64 {
-    // for node in nodes {
-    //     let mut cost = node * node;
-    //     for edge in edges {
-    //         let this_cost = node + edge;
-    //     }
-    // }
-    todo!()
+fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
+    let nodecount = nodes.len();
+    (0..nodecount).into_iter()
+        .map(|i| {
+            let costs_for_i = (0..nodecount).into_iter()
+                .map(|j| calculate_cost(&nodes, &edges, i as u64, j as u64));
+            costs_for_i.min().unwrap()
+        })
+        .sum()
+
 }
 
-fn solve(nodes: Vec<u64>, edges: Vec<[u64; 3]>) -> u64 {
-    todo!()
+#[allow(dead_code)]
+fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
+    drop(nodes);
+    drop(edges);
+    todo!() // TODO: Build data structures to solve this problem
 }
 
 fn main() {
     let number_nodes: usize = read_one();
     let node_penalties = read_vec::<u64>();
-    let edge_weights: Vec<[u64; 3]> = {
+    let edge_weights: Vec<BiEdge> = {
         let mut out = Vec::new();
         for _ in 0..number_nodes - 1 {
-            out.push(read_array());
+            out.push(BiEdge::from(read_array()));
         }
         out
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<u64>, Vec<[u64; 3]>) -> u64 = solve;
+const SELECTED_SOLVER: fn(Vec<u64>, Vec<BiEdge>) -> u64 = brute_solve;
 
 #[cfg(test)]
 mod yatp_tests {
@@ -234,36 +218,30 @@ mod yatp_tests {
     #[test]
     fn test_seek_path_empty() {
         let edge_weights: Vec<BiEdge> = vec![];
-        assert_eq!(seek_path(edge_weights.clone(), 1, 2), Vec::<BiEdge>::new());
+        assert_eq!(seek_path(&edge_weights, 1, 2), Vec::<BiEdge>::new());
     }
 
     #[test]
     fn test_seek_path_single() {
         let edge_weights: Vec<BiEdge> = vec![BiEdge::new(3, 2, 8)];
-        assert_eq!(
-            seek_path(edge_weights.clone(), 3, 2),
-            vec![BiEdge::new(3, 2, 8)]
-        );
+        assert_eq!(seek_path(&edge_weights, 3, 2), vec![BiEdge::new(3, 2, 8)]);
     }
 
     #[test]
     fn test_seek_path_straight() {
         let edge_weights: Vec<BiEdge> = vec![
-            BiEdge::new(1, 2, 8), 
+            BiEdge::new(1, 2, 8),
             BiEdge::new(2, 3, 2),
             BiEdge::new(3, 4, 10),
             BiEdge::new(4, 5, 10),
         ];
+        assert_eq!(seek_path(&edge_weights, 1, 5), edge_weights.clone());
         assert_eq!(
-            seek_path(edge_weights.clone(), 1, 5),
-            edge_weights.clone()
-        );
-        assert_eq!(
-            seek_path(edge_weights.clone(), 5, 1),
+            seek_path(&edge_weights, 5, 1),
             edge_weights.iter().rev().collect::<Vec<_>>()
         )
     }
-    
+
     #[test]
     fn test_seek_path_a() {
         let edge_weights: Vec<BiEdge> = vec![
@@ -273,10 +251,7 @@ mod yatp_tests {
             BiEdge::new(2, 1, 2),
         ];
 
-        assert_eq!(
-            seek_path(edge_weights.clone(), 1, 2),
-            vec![BiEdge::new(2, 1, 2)]
-        );
+        assert_eq!(seek_path(&edge_weights, 1, 2), vec![BiEdge::new(2, 1, 2)]);
     }
 
     #[test]
@@ -288,37 +263,44 @@ mod yatp_tests {
             BiEdge::new(2, 1, 2),
         ];
 
-        assert_eq!(
-            seek_path(edge_weights.clone(), 2, 1),
-            vec![BiEdge::new(2, 1, 2)]
-        );
-    }
-
-    #[test]
-    fn test_cost_stay_at_home() {
-        todo!();
-
-        {
-            let cheapnode = ();
-            let pricynode_a = ();
-            let pricynode_b = ();
-            let cheapedges = ();
-            // todo: assert that cost of travelling to other pricy node is too high.
-        }
-        {
-            let cheapnode = ();
-            let othercheap_a = ();
-            let othercheap_b = ();
-            let pricyedges = ();
-            // todo: assert that the cost of travelling the pricy edges is too high.
-        }
+        assert_eq!(seek_path(&edge_weights, 2, 1), vec![BiEdge::new(2, 1, 2)]);
     }
 
     #[test]
     fn kattis_testcase() {
         let node_penalties = vec![9, 7, 1, 1, 9];
-        let edge_weights = vec![[3, 2, 8], [5, 2, 10], [4, 3, 10], [2, 1, 2]];
+        let edge_weights: Vec<BiEdge> = vec![
+            [3, 2, 8].into(),
+            [5, 2, 10].into(),
+            [4, 3, 10].into(),
+            [2, 1, 2].into(),
+        ];
 
         assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 63);
+    }
+
+    #[test]
+    fn test_solve_100_nodes() {
+        let node_penalties = (0..100).collect::<Vec<u64>>();
+        let edge_weights: Vec<BiEdge> = (0..99)
+        .map(|i| {
+            let j = (i + 1) % 100;
+            [i as u64, j as u64, 1].into()
+        })
+        .collect();
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 4851);
+    }
+
+    #[test]
+    fn test_solve_200_nodes() {
+        let mut node_penalties = (0..200).collect::<Vec<u64>>();
+        node_penalties.rotate_left(23);
+        let edge_weights: Vec<BiEdge> = (0..199)
+            .map(|i| {
+                let j = (i + 1) % 200;
+                [i as u64, j as u64, (i + j) % 17].into()
+            })
+            .collect();
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 115086);
     }
 }

@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 fn read_one<T: std::str::FromStr>() -> T
 where
     T::Err: std::fmt::Debug,
@@ -104,16 +106,39 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
+#[derive(Debug, Clone)]
+struct EdgeCache<'a> {
+    edges: HashMap<u64, Vec<&'a BiEdge>>,
+}
+impl<'a> EdgeCache<'a> {
+    fn new(edgelist: Vec<&'a BiEdge>) -> Self{
+        let mut edges = HashMap::with_capacity(edgelist.len() + 1);
+        for edge in edgelist {
+            edges.entry(edge.i).or_insert_with(Vec::new).push(edge);
+            edges.entry(edge.j).or_insert_with(Vec::new).push(edge);
+        }
+        EdgeCache { edges }
+    }
+
+    /// Returns the entire entry of all edges in a bucket, removing it from the cache
+    /// optionally, remove the corresponding doubled edge from their buckets
+    fn pluck(&mut self, node: u64) -> Vec<&'a BiEdge> {
+        let out = self.edges.remove(&node).unwrap_or_default();
+        for &edge in &out {
+            if let Some(attached) = edge.connected_to(node) {
+                self.edges.entry(attached).and_modify(|edge_bucket| {
+                    edge_bucket.retain(|&candidate| !candidate.connects(node))
+                });
+            }
+        }
+        out
+    }
+}
+
 #[inline]
 fn in_place_partition_split<'a, 'b>(working_edges: &'a mut Vec<&'b BiEdge>, pointer: u64) -> (&'a [&'b BiEdge], &'a [&'b BiEdge]) {
-    let mut next_slot = 0;
-    for i in 0..working_edges.len() {
-        if working_edges.get_mut(i).unwrap().connects(pointer) {
-            working_edges.swap(i, next_slot);
-            next_slot += 1;
-        }
-    }
-    working_edges.split_at(next_slot)
+    let partition_point = in_place_partition(working_edges, pointer);
+    working_edges.split_at(partition_point)
 }
 
 #[inline]
@@ -131,15 +156,14 @@ fn in_place_partition<'a, 'b>(working_edges: &'a mut Vec<&'b BiEdge>, pointer: u
 
 
 /// Returns the minimum ending path above cutoff.
-fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
-    let mut working_edges = edges.clone();
+fn bfs_short_circuit(edge_cache: &mut EdgeCache, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
     let mut pointer = start_node;
     let mut queue: std::collections::VecDeque<(u64, u64)> = std::collections::VecDeque::new();
     let mut current_cutoff = cutoff;
     let mut current_cost = 0;
+
     loop {
-        let partition_point = in_place_partition(&mut working_edges, pointer);
-        let (adjacents, next_edges) = working_edges.split_at(partition_point);
+        let adjacents = edge_cache.pluck(pointer);
 
         for edge in adjacents {
             let path_cost = current_cost + edge.weight;
@@ -147,7 +171,7 @@ fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cuto
                 continue
             } else if edge.i > node_count || edge.j > node_count {
                 current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
-            } else if !next_edges.is_empty() {
+            } else if !edge_cache.edges.is_empty() {
                 // add to queue
                 queue.push_back((edge.connected_to(pointer).unwrap(), path_cost));
             }
@@ -156,7 +180,6 @@ fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cuto
         if let Some((ptr, ptr_miniumum)) = queue.pop_front() {
             pointer = ptr;
             current_cost = ptr_miniumum;
-            working_edges = working_edges[partition_point..].to_vec();
         } else {
             break
         }
@@ -178,15 +201,21 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
         BiEdge::new(node, node_count + node, *penalty - 1)
     }).collect();
 
+    let edge_cache = EdgeCache::new(edges.iter().collect());
 
     nodes.iter().enumerate().map(|(i, penalty)| {
         let node = (i + 1) as u64;
         let mut prepped_synths = template_synths.clone();
-        let synths = prepped_synths.iter_mut().map(|x| {
+        let synths: Vec<&BiEdge> = prepped_synths.iter_mut().map(|x| {
             x.weight *= penalty;
             x as &BiEdge
-        }).chain(edges.iter()).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
-        let bfs_cost = bfs_short_circuit(synths, node, node_count, penalty * penalty - penalty);
+        }).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
+        let mut this_edge_cache = edge_cache.clone();
+        for synth in synths {
+            this_edge_cache.edges.entry(synth.i).or_insert_with(Vec::new).push(synth);
+            this_edge_cache.edges.entry(synth.j).or_insert_with(Vec::new).push(synth);
+        }
+        let bfs_cost = bfs_short_circuit(&mut this_edge_cache, node, node_count, penalty * penalty - penalty);
         let out = penalty + bfs_cost;
         out
     }).sum()
@@ -520,7 +549,7 @@ mod yatp_tests {
         assert_eq!(solve(node_penalties, edge_weights), 548823761);
     }
 
-    // #[test]
+    #[test]
     fn test_optsolve_10000_nodes() {
         let node_count = 10000;
         let node_start = 1;
@@ -532,7 +561,7 @@ mod yatp_tests {
                 [i + node_start, j + node_start + 1, (i + j) % 4117 + node_start].into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 0);
+        assert_eq!(solve(node_penalties, edge_weights), 52691143621);
     }
 
     // #[test]
@@ -641,5 +670,24 @@ mod yatp_tests {
         ]; // Node 5 totally missing, but node 6 is present. (not sure if I should use len or not)
         assert_eq!(seek_path(&edge_weights, 1, 5), Vec::<BiEdge>::new());
         assert_eq!(seek_path(&edge_weights, 5, 1), Vec::<BiEdge>::new());
+    }
+
+    #[test]
+    fn test_edge_cache() {
+        let edge_weights: Vec<BiEdge> = vec![
+            BiEdge::new(3, 2, 8),
+            BiEdge::new(5, 2, 10),
+            BiEdge::new(4, 3, 10),
+            BiEdge::new(2, 1, 2),
+        ];
+
+        let mut cache = EdgeCache::new(edge_weights.iter().collect());
+
+        assert_eq!(cache.pluck(1), vec![&BiEdge::new(2, 1, 2)]);
+        assert_eq!(cache.pluck(2), vec![
+            &BiEdge::new(3, 2, 8),
+            &BiEdge::new(5, 2, 10),
+        ]);
+
     }
 }

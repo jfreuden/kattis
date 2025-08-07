@@ -100,56 +100,6 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
-fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
-    if from == to {
-        return edges.iter().find(|&edge| edge.connected_to(from) == Some(to)).copied().into_iter().collect::<Vec<BiEdge>>(); // No path needed to get to the destination
-    }
-    for edge in edges {
-        if let Some(attached) = edge.connected_to(from) {
-            return if attached == to {
-                std::iter::once(*edge).collect()
-            } else {
-                let next_edges = edges
-                    .iter()
-                    .filter(|&candidate| candidate != edge)
-                    .cloned()
-                    .collect::<Vec<BiEdge>>();
-                let path = seek_path(&next_edges, attached, to);
-                if path.is_empty() {
-                    continue; // this branch was a dud, check the other edges
-                } else {
-                    std::iter::once(*edge).chain(path).collect()
-                }
-            };
-        }
-    }
-    vec![] // No path to get to the destination
-}
-
-fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> u64 {
-    let start_node_penalty = nodes[from as usize];
-    let end_node_penalty = nodes[to as usize];
-    let path = seek_path(&edges, from + 1, to + 1);
-    let cost =
-        path.iter().fold(0, |acc, edge| acc + edge.weight) + start_node_penalty * end_node_penalty;
-    cost
-}
-
-/// Eschew fancy data structures and do a bad-performance computation for test verification
-/// (even memoization or caching would improve this implementation)
-fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
-    let nodecount = nodes.len();
-    (0..nodecount)
-        .into_iter()
-        .map(|i| {
-            let costs_for_i = (0..nodecount)
-                .into_iter()
-                .map(|j| calculate_cost(&nodes, &edges, i as u64, j as u64));
-            costs_for_i.min().unwrap()
-        })
-        .sum()
-}
-
 /// Returns the minimum ending path above cutoff.
 fn bfs_short_circuit(edges: Vec<BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
     edges.iter().map(|edge| {
@@ -225,6 +175,57 @@ fn convert_penalties_to_edges(nodes: &Vec<u64>, edges: Vec<BiEdge>) -> Vec<BiEdg
     }).collect();
     out.append(&mut synths);
     out
+}
+
+
+fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
+    if from == to {
+        return edges.iter().find(|&edge| edge.connected_to(from) == Some(to)).copied().into_iter().collect::<Vec<BiEdge>>(); // No path needed to get to the destination
+    }
+    for edge in edges {
+        if let Some(attached) = edge.connected_to(from) {
+            return if attached == to {
+                std::iter::once(*edge).collect()
+            } else {
+                let next_edges = edges
+                    .iter()
+                    .filter(|&candidate| candidate != edge)
+                    .cloned()
+                    .collect::<Vec<BiEdge>>();
+                let path = seek_path(&next_edges, attached, to);
+                if path.is_empty() {
+                    continue; // this branch was a dud, check the other edges
+                } else {
+                    std::iter::once(*edge).chain(path).collect()
+                }
+            };
+        }
+    }
+    vec![] // No path to get to the destination
+}
+
+fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> u64 {
+    let start_node_penalty = nodes[from as usize];
+    let end_node_penalty = nodes[to as usize];
+    let path = seek_path(&edges, from + 1, to + 1);
+    let cost =
+        path.iter().fold(0, |acc, edge| acc + edge.weight) + start_node_penalty * end_node_penalty;
+    cost
+}
+
+/// Eschew fancy data structures and do a bad-performance computation for test verification
+/// (even memoization or caching would improve this implementation)
+fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
+    let nodecount = nodes.len();
+    (0..nodecount)
+        .into_iter()
+        .map(|i| {
+            let costs_for_i = (0..nodecount)
+                .into_iter()
+                .map(|j| calculate_cost(&nodes, &edges, i as u64, j as u64));
+            costs_for_i.min().unwrap()
+        })
+        .sum()
 }
 
 #[cfg(test)]
@@ -376,6 +377,21 @@ mod yatp_tests {
             })
             .collect();
         assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 10000);
+    }
+
+    #[test]
+    fn test_optsolve_200000_nodes() {
+        let node_count = 200000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(23789);
+        let edge_weights: Vec<BiEdge> = (node_start..node_start + node_count)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 17 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 149656);
     }
 
     #[test]

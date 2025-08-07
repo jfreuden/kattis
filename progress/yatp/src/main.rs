@@ -100,30 +100,36 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
-// Returns the minimum ending path above cutoff
-fn dfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
-    // println!("({})-[{}]-> {:?}", start_node, cutoff, edges);
-    bfs_short_circuit(edges, start_node, node_count, cutoff)
-}
-
 /// Returns the minimum ending path above cutoff.
 fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
-    // println!("({})-[{}]-> {:?}", start_node, cutoff, edges);
+    let mut working_edges = edges.clone();
+    let mut pointer = start_node;
+    let mut queue: std::collections::VecDeque<(u64, u64)> = std::collections::VecDeque::new();
+    let mut current_cutoff = cutoff;
+    let mut current_cost = 0;
+    while let (adjacents, next_edges) = working_edges.iter().partition::<Vec<&BiEdge>, _>(|&edge| edge.connects(pointer)) {
+        for edge in adjacents {
+            let path_cost = current_cost + edge.weight;
+            if path_cost > current_cutoff {
+                continue
+            } else if edge.i > node_count || edge.j > node_count {
+                current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
+            } else if !next_edges.is_empty(){
+                // add to queue
+                queue.push_front((edge.connected_to(pointer).unwrap(), path_cost));
+            }
+        }
 
-    let (adjacents, next_edges) = edges.iter().partition::<Vec<&BiEdge>, _>(|&edge| edge.connects(start_node));
-
-    adjacents.iter().fold(cutoff, |current_cutoff, edge| {
-        let taken_cost = if edge.i > node_count || edge.j > node_count {
-            edge.weight // This edge is a synth under cutoff. Take it. (checks if min in the iter)
-        } else if edge.weight >= current_cutoff || next_edges.is_empty(){
-            current_cutoff // this edge is too big or there isn't anything left to BFS on
+        if let Some((ptr, ptr_miniumum)) = queue.pop_front() {
+            pointer = ptr;
+            current_cost = ptr_miniumum;
+            working_edges = next_edges;
         } else {
-            let attached = edge.connected_to(start_node).unwrap();
-            let new_cutoff = current_cutoff - edge.weight;
-             edge.weight + bfs_short_circuit(next_edges.clone(), attached, node_count, new_cutoff)
-        };
-        std::cmp::min(current_cutoff, taken_cost)
-    })
+            break
+        }
+    }
+
+    current_cutoff
 }
 
 #[allow(dead_code)]
@@ -444,6 +450,21 @@ mod yatp_tests {
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 58466345);
+    }
+
+    #[test]
+    fn test_optsolve_2000_nodes() {
+        let node_count = 2000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(939);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 1217 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 548823761);
     }
 
     #[test]

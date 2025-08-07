@@ -100,8 +100,15 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
+// Returns the minimum ending path above cutoff
+fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
+    println!("({})-[{}]-> {:?}", start_node, cutoff, edges);
+    dfs_short_circuit(edges, start_node, node_count, cutoff)
+}
+
 /// Returns the minimum ending path above cutoff.
-fn bfs_short_circuit(edges: Vec<BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
+fn dfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
+    println!("({})-[{}]-> {:?}", start_node, cutoff, edges);
     edges.iter().map(|edge| {
         if let Some(attached) = edge.connected_to(start_node) {
             if edge.weight >= cutoff {
@@ -110,10 +117,11 @@ fn bfs_short_circuit(edges: Vec<BiEdge>, start_node: u64, node_count: u64, cutof
                 edge.weight // This edge is a synth under cutoff. Take it. (checks if min in the iter)
             } else {
                 let next_edges = edges
-                    .iter()
+                    .iter().copied()
                     .filter(|&candidate| candidate != edge)
-                    .cloned()
-                    .collect::<Vec<BiEdge>>();
+                    // .cloned()
+                    // .copied()
+                    .collect::<Vec<&BiEdge>>();
                 edge.weight + bfs_short_circuit(next_edges, attached, node_count, cutoff - edge.weight)
             }
         } else {
@@ -138,10 +146,11 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
 
     nodes.iter().enumerate().map(|(i, penalty)| {
         let node = (i + 1) as u64;
-        let synths = template_synths.iter().cloned().map(|mut x| {
+        let mut prepped_synths = template_synths.clone();
+        let synths = prepped_synths.iter_mut().map(|x| {
             x.weight *= penalty;
-            x
-        }).chain(edges.clone()).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
+            x as &BiEdge
+        }).chain(edges.iter()).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
         let bfs_cost = bfs_short_circuit(synths, node, node_count, penalty * penalty - penalty);
         let out = penalty + bfs_cost;
         out
@@ -423,7 +432,7 @@ mod yatp_tests {
                 [i + node_start, j + node_start + 1, (i + j) % 217 + node_start].into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 0);
+        assert_eq!(solve(node_penalties, edge_weights), 7296625);
     }
 
     #[test]
@@ -438,7 +447,7 @@ mod yatp_tests {
                 [i + node_start, j + node_start + 1, (i + j) % 517 + node_start].into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 45663700);
+        assert_eq!(solve(node_penalties, edge_weights), 58466345);
     }
 
     #[test]

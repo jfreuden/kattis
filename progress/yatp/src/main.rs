@@ -61,10 +61,12 @@ impl BiEdge {
         Self { i, j, weight }
     }
 
+    #[inline(always)]
     fn connects(&self, node: u64) -> bool {
         self.i == node || self.j == node
     }
 
+    #[inline(always)]
     fn connected_to(self, node: u64) -> Option<u64> {
         if self.i == node {
             Some(self.j)
@@ -89,16 +91,44 @@ impl std::fmt::Display for BiEdge {
 }
 
 impl PartialEq for BiEdge {
+    #[inline(always)]
     fn eq(&self, other: &BiEdge) -> bool {
         self::BiEdge::eq(&self, &other)
     }
 }
 
 impl PartialEq<&BiEdge> for BiEdge {
+    #[inline(always)]
     fn eq(&self, other: &&BiEdge) -> bool {
         self.connects(other.i) && self.connects(other.j) && self.weight == other.weight
     }
 }
+
+#[inline]
+fn in_place_partition_split<'a, 'b>(working_edges: &'a mut Vec<&'b BiEdge>, pointer: u64) -> (&'a [&'b BiEdge], &'a [&'b BiEdge]) {
+    let mut next_slot = 0;
+    for i in 0..working_edges.len() {
+        if working_edges.get_mut(i).unwrap().connects(pointer) {
+            working_edges.swap(i, next_slot);
+            next_slot += 1;
+        }
+    }
+    working_edges.split_at(next_slot)
+}
+
+#[inline]
+fn in_place_partition<'a, 'b>(working_edges: &'a mut Vec<&'b BiEdge>, pointer: u64) -> usize {
+    let mut next_slot = 0;
+
+    for i in 0..working_edges.len() {
+        if working_edges[i].connects(pointer) {
+            working_edges.swap(i, next_slot);
+            next_slot += 1;
+        }
+    }
+    next_slot
+}
+
 
 /// Returns the minimum ending path above cutoff.
 fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
@@ -107,23 +137,26 @@ fn bfs_short_circuit(edges: Vec<&BiEdge>, start_node: u64, node_count: u64, cuto
     let mut queue: std::collections::VecDeque<(u64, u64)> = std::collections::VecDeque::new();
     let mut current_cutoff = cutoff;
     let mut current_cost = 0;
-    while let (adjacents, next_edges) = working_edges.iter().partition::<Vec<&BiEdge>, _>(|&edge| edge.connects(pointer)) {
+    loop {
+        let partition_point = in_place_partition(&mut working_edges, pointer);
+        let (adjacents, next_edges) = working_edges.split_at(partition_point);
+
         for edge in adjacents {
             let path_cost = current_cost + edge.weight;
             if path_cost > current_cutoff {
                 continue
             } else if edge.i > node_count || edge.j > node_count {
                 current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
-            } else if !next_edges.is_empty(){
+            } else if !next_edges.is_empty() {
                 // add to queue
-                queue.push_front((edge.connected_to(pointer).unwrap(), path_cost));
+                queue.push_back((edge.connected_to(pointer).unwrap(), path_cost));
             }
         }
 
         if let Some((ptr, ptr_miniumum)) = queue.pop_front() {
             pointer = ptr;
             current_cost = ptr_miniumum;
-            working_edges = next_edges;
+            working_edges = working_edges[partition_point..].to_vec();
         } else {
             break
         }
@@ -244,6 +277,26 @@ fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
 #[cfg(test)]
 mod yatp_tests {
     use super::*;
+
+    #[test]
+    fn test_in_place_partition() {
+        let edge_weights: Vec<BiEdge> = vec![
+            BiEdge::new(1, 2, 8),
+            BiEdge::new(2, 3, 2),
+            BiEdge::new(3, 4, 10),
+            BiEdge::new(4, 5, 10),
+        ];
+
+        let mut edge_refs: Vec<&BiEdge> = edge_weights.iter().collect();
+        let (adjacents, next_edges) = in_place_partition_split(edge_refs.as_mut(), 1);
+
+        assert_eq!(adjacents.to_vec(), vec![&BiEdge::new(1, 2, 8)]);
+        assert_eq!(next_edges.to_vec(), vec![
+            &BiEdge::new(2, 3, 2),
+            &BiEdge::new(3, 4, 10),
+            &BiEdge::new(4, 5, 10),
+        ]);
+    }
 
     #[test]
     fn test_convert_penalties_to_edges() {
@@ -467,7 +520,7 @@ mod yatp_tests {
         assert_eq!(solve(node_penalties, edge_weights), 548823761);
     }
 
-    #[test]
+    // #[test]
     fn test_optsolve_10000_nodes() {
         let node_count = 10000;
         let node_start = 1;

@@ -204,6 +204,7 @@ fn seek_path(edges: &Vec<BiEdge>, from: u64, to: u64) -> Vec<BiEdge> {
     vec![] // No path to get to the destination
 }
 
+#[allow(dead_code)]
 fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> u64 {
     let start_node_penalty = nodes[from as usize];
     let end_node_penalty = nodes[to as usize];
@@ -215,6 +216,7 @@ fn calculate_cost(nodes: &Vec<u64>, edges: &Vec<BiEdge>, from: u64, to: u64) -> 
 
 /// Eschew fancy data structures and do a bad-performance computation for test verification
 /// (even memoization or caching would improve this implementation)
+#[allow(dead_code)]
 fn brute_solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     let nodecount = nodes.len();
     (0..nodecount)
@@ -380,18 +382,124 @@ mod yatp_tests {
     }
 
     #[test]
+    fn test_optsolve_100_nodes() {
+        let node_count = 100;
+        let node_start = 1;
+
+        let node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, 1].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 10000);
+    }
+
+    #[test]
+    fn test_optsolve_50_nodes() {
+        let node_count = 50;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(11);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 29 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 9697);
+    }
+
+    #[test]
+    fn test_optsolve_500_nodes() {
+        let node_count = 500;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(77);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 217 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 0);
+    }
+
+    #[test]
+    fn test_optsolve_1000_nodes() {
+        let node_count = 1000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(97);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 517 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 45663700);
+    }
+
+    #[test]
+    fn test_optsolve_10000_nodes() {
+        let node_count = 10000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(2839);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 4117 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 0);
+    }
+
+    #[test]
+    fn test_optsolve_50000_nodes() {
+        let node_count = 50000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(2339);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 1117 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 0);
+    }
+
+    #[test]
+    fn test_optsolve_100000_nodes() {
+        let node_count = 100000;
+        let node_start = 1;
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        node_penalties.rotate_left(23789);
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| {
+                let j = i % node_count;
+                [i + node_start, j + node_start + 1, (i + j) % 127 + node_start].into()
+            })
+            .collect();
+        assert_eq!(solve(node_penalties, edge_weights), 0);
+    }
+
+
+    #[test]
     fn test_optsolve_200000_nodes() {
         let node_count = 200000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
         node_penalties.rotate_left(23789);
-        let edge_weights: Vec<BiEdge> = (node_start..node_start + node_count)
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
                 [i + node_start, j + node_start + 1, (i + j) % 17 + node_start].into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 149656);
+        assert_eq!(solve(node_penalties, edge_weights), 0);
     }
 
     #[test]

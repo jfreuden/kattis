@@ -209,11 +209,6 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
                     .entry(synth.i)
                     .or_insert_with(Vec::new)
                     .push(synth);
-                this_edge_cache
-                    .edges
-                    .entry(synth.j)
-                    .or_insert_with(Vec::new)
-                    .push(synth);
             }
             let bfs_cost = bfs_short_circuit(
                 &mut this_edge_cache,

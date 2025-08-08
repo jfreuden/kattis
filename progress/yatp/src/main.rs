@@ -111,14 +111,15 @@ impl PartialEq<&BiEdge> for BiEdge {
 }
 
 #[derive(Debug, Clone)]
-struct EdgeCache<'a> {
+struct EdgeCache {
     edges: std::collections::HashMap<u32, Vec<BiEdge>>,
     plucked: std::collections::HashSet<u32>,
     template_synths: Vec<BiEdge>,
-    nodes: &'a Vec<u64>,
+    nodes: Vec<u64>,
 }
-impl<'a> EdgeCache<'a> {
-    fn new(edgelist: Vec<&'a BiEdge>, nodes: &'a Vec<u64>) -> Self {
+impl EdgeCache {
+    fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<u64>) -> Self {
+        let nodes = static_nodes.clone();
         let mut edges = std::collections::HashMap::with_capacity(2 * edgelist.len());
         let plucked = std::collections::HashSet::with_capacity(2 * edgelist.len());
         for edge in edgelist {
@@ -136,28 +137,40 @@ impl<'a> EdgeCache<'a> {
             })
             .collect();
 
+        let penalty = nodes[0];
+        for synth in &mut template_synths {
+            synth.weight = (nodes[(synth.i - 1) as usize]) * penalty - penalty;
+            let vector = edges
+                .entry(synth.i)
+                .or_default();
+            vector
+                .push(*synth);
+        }
+
 
         EdgeCache { edges, plucked, template_synths, nodes }
     }
 
     fn reset_for(&mut self, node: u32) {
         self.plucked.clear();
-        let penalty = self.nodes[node as usize];
+        let penalty = self.nodes[node as usize - 1];
         for synth in &mut self.template_synths {
             synth.weight = (self.nodes[(synth.i - 1) as usize]) * penalty - penalty;
-            self
+            let vector = self
                 .edges
                 .entry(synth.i)
-                .or_default()
+                .or_default();
+            vector.pop();
+            vector
                 .push(*synth);
         }
     }
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
     #[inline(always)]
-    fn pluck(&mut self, node: u32) -> Vec<& BiEdge> {
+    fn pluck(&mut self, node: u32) -> Vec<BiEdge> {
         if (self.plucked.insert(node)) {
-            self.edges.get(&node).unwrap().iter().collect()
+            self.edges.get(&node).unwrap().clone()
         } else {
             Vec::new()
         }
@@ -212,18 +225,19 @@ fn bfs_short_circuit(
 fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as u64;
-    let edge_cache = EdgeCache::new(edges.iter().collect(), &nodes);
+    let mut edge_cache = EdgeCache::new(edges.iter().collect(), &nodes);
 
     nodes
         .iter()
         .enumerate()
         .map(|(i, penalty)| {
-            let node = (i + 1) as u64;
-            let mut this_edge_cache = edge_cache.clone();
+            let node = (i + 1) as u32;
+            edge_cache.reset_for(node);
+            // let mut this_edge_cache = edge_cache.clone();
 
             let bfs_cost = bfs_short_circuit(
-                &mut this_edge_cache,
-                node,
+                &mut edge_cache,
+                node as u64,
                 node_count as u32,
                 penalty * penalty - penalty,
             );

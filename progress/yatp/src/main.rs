@@ -55,7 +55,9 @@ struct BiEdge {
 
 impl BiEdge {
     fn new(i: u64, j: u64, weight: u64) -> BiEdge {
-        if i == 0 || j == 0 /*|| weight == 0*/ {
+        if i == 0 || j == 0
+        /*|| weight == 0*/
+        {
             panic!("Invalid edge: ({}) - {} -> ({})", i, weight, j);
         }
         Self { i, j, weight }
@@ -109,7 +111,7 @@ struct EdgeCache<'a> {
     edges: std::collections::HashMap<u64, Vec<&'a BiEdge>>,
 }
 impl<'a> EdgeCache<'a> {
-    fn new(edgelist: Vec<&'a BiEdge>) -> Self{
+    fn new(edgelist: Vec<&'a BiEdge>) -> Self {
         let mut edges = std::collections::HashMap::with_capacity(edgelist.len() + 1);
         for edge in edgelist {
             edges.entry(edge.i).or_insert_with(Vec::new).push(edge);
@@ -134,7 +136,12 @@ impl<'a> EdgeCache<'a> {
 }
 
 /// Returns the minimum ending path above cutoff.
-fn bfs_short_circuit(edge_cache: &mut EdgeCache, start_node: u64, node_count: u64, cutoff: u64) -> u64 {
+fn bfs_short_circuit(
+    edge_cache: &mut EdgeCache,
+    start_node: u64,
+    node_count: u64,
+    cutoff: u64,
+) -> u64 {
     let mut pointer = start_node;
     let mut queue: std::collections::VecDeque<(u64, u64)> = std::collections::VecDeque::new();
     let mut current_cutoff = cutoff;
@@ -146,7 +153,7 @@ fn bfs_short_circuit(edge_cache: &mut EdgeCache, start_node: u64, node_count: u6
         for edge in adjacents {
             let path_cost = current_cost + edge.weight;
             if path_cost > current_cutoff {
-                continue
+                continue;
             } else if edge.i > node_count || edge.j > node_count {
                 current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
             } else if !edge_cache.edges.is_empty() {
@@ -159,7 +166,7 @@ fn bfs_short_circuit(edge_cache: &mut EdgeCache, start_node: u64, node_count: u6
             pointer = ptr;
             current_cost = ptr_miniumum;
         } else {
-            break
+            break;
         }
     }
 
@@ -170,33 +177,57 @@ fn bfs_short_circuit(edge_cache: &mut EdgeCache, start_node: u64, node_count: u6
 fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as u64;
-    let template_synths: Vec<BiEdge> = nodes.iter().enumerate().map(|(i, penalty)| {
-        let node = (i + 1) as u64;
+    let template_synths: Vec<BiEdge> = nodes
+        .iter()
+        .enumerate()
+        .map(|(i, penalty)| {
+            let node = (i + 1) as u64;
 
-        // later the weights will be
-        //  weight = (weight - 1) * penalty
-        // so I may as well subtract one in this step
-        BiEdge::new(node, node_count + node, *penalty - 1)
-    }).collect();
+            // later the weights will be
+            //  weight = (weight - 1) * penalty
+            // so I may as well subtract one in this step
+            BiEdge::new(node, node_count + node, *penalty - 1)
+        })
+        .collect();
 
     let edge_cache = EdgeCache::new(edges.iter().collect());
 
-    nodes.iter().enumerate().map(|(i, penalty)| {
-        let node = (i + 1) as u64;
-        let mut prepped_synths = template_synths.clone();
-        let synths: Vec<&BiEdge> = prepped_synths.iter_mut().map(|x| {
-            x.weight *= penalty;
-            x as &BiEdge
-        }).collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
-        let mut this_edge_cache = edge_cache.clone();
-        for synth in synths {
-            this_edge_cache.edges.entry(synth.i).or_insert_with(Vec::new).push(synth);
-            this_edge_cache.edges.entry(synth.j).or_insert_with(Vec::new).push(synth);
-        }
-        let bfs_cost = bfs_short_circuit(&mut this_edge_cache, node, node_count, penalty * penalty - penalty);
-        let out = penalty + bfs_cost;
-        out
-    }).sum()
+    nodes
+        .iter()
+        .enumerate()
+        .map(|(i, penalty)| {
+            let node = (i + 1) as u64;
+            let mut prepped_synths = template_synths.clone();
+            let synths: Vec<&BiEdge> = prepped_synths
+                .iter_mut()
+                .map(|x| {
+                    x.weight *= penalty;
+                    x as &BiEdge
+                })
+                .collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
+            let mut this_edge_cache = edge_cache.clone();
+            for synth in synths {
+                this_edge_cache
+                    .edges
+                    .entry(synth.i)
+                    .or_insert_with(Vec::new)
+                    .push(synth);
+                this_edge_cache
+                    .edges
+                    .entry(synth.j)
+                    .or_insert_with(Vec::new)
+                    .push(synth);
+            }
+            let bfs_cost = bfs_short_circuit(
+                &mut this_edge_cache,
+                node,
+                node_count,
+                penalty * penalty - penalty,
+            );
+            let out = penalty + bfs_cost;
+            out
+        })
+        .sum()
 }
 
 fn main() {
@@ -310,7 +341,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 29 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 29 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 9697);
@@ -325,7 +361,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 217 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 217 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 7296625);
@@ -340,7 +381,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 517 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 517 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 58466345);
@@ -355,7 +401,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 1217 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 1217 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 548823761);
@@ -370,7 +421,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 4117 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 4117 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 52691143621);
@@ -385,7 +441,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 1117 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 1117 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 0);
@@ -400,12 +461,16 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 127 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 127 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 0);
     }
-
 
     // #[test]
     fn test_optsolve_200000_nodes() {
@@ -416,7 +481,12 @@ mod yatp_tests {
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
-                [i + node_start, j + node_start + 1, (i + j) % 17 + node_start].into()
+                [
+                    i + node_start,
+                    j + node_start + 1,
+                    (i + j) % 17 + node_start,
+                ]
+                .into()
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 0);
@@ -469,10 +539,9 @@ mod yatp_tests {
         let mut cache = EdgeCache::new(edge_weights.iter().collect());
 
         assert_eq!(cache.pluck(1), vec![&BiEdge::new(2, 1, 2)]);
-        assert_eq!(cache.pluck(2), vec![
-            &BiEdge::new(3, 2, 8),
-            &BiEdge::new(5, 2, 10),
-        ]);
-
+        assert_eq!(
+            cache.pluck(2),
+            vec![&BiEdge::new(3, 2, 8), &BiEdge::new(5, 2, 10),]
+        );
     }
 }

@@ -176,7 +176,7 @@ impl EdgeCache {
 
     #[inline(always)]
     fn contains(&self, node: u32) -> bool {
-        self.edges.contains_key(&node) && !self.plucked.contains(&node)
+        !self.plucked.contains(&node)
     }
 }
 

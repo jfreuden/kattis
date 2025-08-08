@@ -113,23 +113,30 @@ impl PartialEq<&BiEdge> for BiEdge {
 #[derive(Debug, Clone)]
 struct EdgeCache<'a> {
     edges: std::collections::HashMap<u32, Vec<&'a BiEdge>>,
+    plucked: std::collections::HashSet<u32>,
 }
 impl<'a> EdgeCache<'a> {
     fn new(edgelist: Vec<&'a BiEdge>) -> Self {
         let mut edges = std::collections::HashMap::with_capacity(2 * edgelist.len());
+        let plucked = std::collections::HashSet::with_capacity(2 * edgelist.len());
         for edge in edgelist {
             edges.entry(edge.i).or_insert_with(Vec::new).push(edge);
             edges.entry(edge.j).or_insert_with(Vec::new).push(edge);
         }
-        EdgeCache { edges }
+        EdgeCache { edges, plucked }
     }
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
-    /// optionally, remove the corresponding doubled edge from their buckets
     #[inline(always)]
     fn pluck(&mut self, node: u32) -> Vec<&'a BiEdge> {
+        self.plucked.insert(node);
         let out = self.edges.remove(&node).unwrap_or_default();
         out
+    }
+
+    #[inline(always)]
+    fn contains(&self, node: u32) -> bool {
+        self.edges.contains_key(&node)
     }
 }
 
@@ -154,9 +161,11 @@ fn bfs_short_circuit(
                 continue;
             } else if edge.i > node_count || edge.j > node_count {
                 current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
-            } else if !edge_cache.edges.is_empty() {
+            } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
-                queue.push_back((edge.connected_to(pointer).unwrap(), path_cost));
+                if edge_cache.contains(attached) {
+                    queue.push_back((attached, path_cost));
+                }
             }
         }
 
@@ -174,15 +183,11 @@ fn bfs_short_circuit(
 fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as u64;
-    let template_synths: Vec<BiEdge> = nodes
+    let mut template_synths: Vec<BiEdge> = nodes
         .iter()
         .enumerate()
         .map(|(i, penalty)| {
             let node = (i + 1) as u64;
-
-            // later the weights will be
-            //  weight = (weight - 1) * penalty
-            // so I may as well subtract one in this step
             BiEdge::new(node, node_count + node, *penalty - 1)
         })
         .collect();
@@ -194,16 +199,9 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
         .enumerate()
         .map(|(i, penalty)| {
             let node = (i + 1) as u64;
-            let mut prepped_synths = template_synths.clone();
-            let synths: Vec<&BiEdge> = prepped_synths
-                .iter_mut()
-                .map(|x| {
-                    x.weight *= penalty;
-                    x as &BiEdge
-                })
-                .collect(); // could just refrain from adding a synth if it's cost would go above the cutoff anyway
             let mut this_edge_cache = edge_cache.clone();
-            for synth in synths {
+            for synth in &mut template_synths {
+                synth.weight = (nodes[(synth.i - 1) as usize]) * penalty - penalty;
                 this_edge_cache
                     .edges
                     .entry(synth.i)

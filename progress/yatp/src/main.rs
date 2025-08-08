@@ -146,8 +146,6 @@ impl EdgeCache {
             vector
                 .push(*synth);
         }
-
-
         EdgeCache { edges, plucked, template_synths, nodes }
     }
 
@@ -178,7 +176,7 @@ impl EdgeCache {
 
     #[inline(always)]
     fn contains(&self, node: u32) -> bool {
-        self.edges.contains_key(&node)
+        self.edges.contains_key(&node) && !self.plucked.contains(&node)
     }
 }
 
@@ -466,7 +464,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 0);
+        assert_eq!(solve(node_penalties, edge_weights), 571803609907);
     }
 
     // #[test]

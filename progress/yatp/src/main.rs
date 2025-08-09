@@ -145,13 +145,11 @@ impl EdgeCache {
     }
 
     fn reset_for(&mut self, node: NodeType) {
-        self.plucked.fill(false);
+        self.plucked = vec![false; self.plucked.len()];
         let penalty = self.nodes[(node - 1) as usize];
-        for (j, edgelist) in self.node_edges.iter_mut().enumerate() {
-            if let Some(mut edit_me) = edgelist.pop() {
-                edit_me.weight = self.nodes[j] * penalty - penalty;
-                edgelist.push(edit_me);
-            }
+        let node_count = self.nodes.len();
+        for edit_me in self.node_edges.iter_mut().take(node_count).map(|x| x.last_mut().unwrap()) {
+            edit_me.weight = self.nodes[(edit_me.i - 1) as usize] * penalty - penalty;
         }
     }
 
@@ -160,8 +158,7 @@ impl EdgeCache {
     fn pluck(&mut self, node: NodeType) -> (&Vec<BiEdge>, &Self) {
         let index = (node - 1) as usize;
         if !self.plucked[index] {
-            let a = &mut self.plucked[index];
-            *a = true;
+            *(&mut self.plucked[index]) = true;
             (&self.node_edges[index], self)
         } else {
             (&self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
@@ -183,7 +180,7 @@ fn bfs_short_circuit(
     cutoff: WeightType,
 ) -> WeightType {
     let mut pointer: NodeType = start_node as NodeType;
-    let mut queue: std::collections::VecDeque<(NodeType, WeightType)> = std::collections::VecDeque::new();
+    let mut queue: std::collections::VecDeque<(NodeType, WeightType)> = std::collections::VecDeque::with_capacity(node_count as usize);
     let mut current_cutoff: WeightType = cutoff;
     let mut current_cost: WeightType = 0;
 
@@ -441,7 +438,7 @@ mod yatp_tests {
         assert_eq!(solve(node_penalties, edge_weights), 52691143621);
     }
 
-    // #[test]
+    #[test]
     fn test_optsolve_50000_nodes() {
         let node_count = 50000;
         let node_start = 1;

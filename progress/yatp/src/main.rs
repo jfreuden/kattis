@@ -544,18 +544,39 @@ mod yatp_tests {
         assert_eq!(out, 100000000000000);
     }
 
-    // #[test]
-    // fn test_edge_cache() {
-    //     let edge_weights: Vec<BiEdge> = vec![
-    //         BiEdge::new(3, 2, 8),
-    //         BiEdge::new(5, 2, 10),
-    //         BiEdge::new(4, 3, 10),
-    //         BiEdge::new(2, 1, 2),
-    //     ];
-    //
-    //     let mut cache = EdgeCache::new(edge_weights.iter().collect());
-    //
-    //     assert_eq!(cache.pluck(1), vec![&BiEdge::new(2, 1, 2)]);
-    //     assert_eq!(cache.pluck(2).contains(&&BiEdge::new(3, 2, 8)), true);
-    // }
+    #[test]
+    fn test_treestruct() {
+        struct Tredges<'a> {
+            reference: &'a Tree<'a>,
+            weight: WeightType,
+        }
+        struct Tree<'a> {
+            friends: Vec<Tredges<'a>>,
+            node: NodeType,
+        }
+        impl<'a> Tree<'a> {
+            fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
+                let nodes = penalties.clone();
+
+                Tree { friends: Vec::new() }
+            }
+
+            fn reset_for(&mut self, node: NodeType) {
+                todo!()
+            }
+
+            #[inline(always)]
+            fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
+                todo!()
+            }
+
+            #[inline(always)]
+            fn contains(&self, node: NodeType) -> bool {
+                todo!()
+            }
+
+        }
+
+
+    }
 }

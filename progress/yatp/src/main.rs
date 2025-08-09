@@ -115,49 +115,53 @@ impl PartialEq<&BiEdge> for BiEdge {
 
 #[derive(Debug)]
 struct EdgeCache {
-    edges: std::collections::HashMap<NodeType, Vec<BiEdge>>,
-    plucked: std::collections::HashSet<NodeType>,
+    node_edges: Vec<Vec<BiEdge>>,
+    plucked: Vec<bool>,
     nodes: Vec<WeightType>,
 }
 impl EdgeCache {
     fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
         let nodes = static_nodes.clone();
         let node_count = nodes.len();
-        let mut edges = std::collections::HashMap::with_capacity(2 * node_count);
-        let plucked = std::collections::HashSet::with_capacity(2 * node_count);
+        let mut node_edges = vec![Vec::<BiEdge>::new(); node_count * 2];
+
+        let plucked = vec![false; 2 * node_count];
         for edge in edgelist {
-            edges.entry(edge.i).or_insert_with(Vec::new).push(*edge);
-            edges.entry(edge.j).or_insert_with(Vec::new).push(*edge);
+            node_edges[(edge.i - 1) as usize].push(*edge);
+            node_edges[(edge.j - 1) as usize].push(*edge);
         }
 
         let penalty = nodes[0];
-        for (&j, edgelist) in edges.iter_mut() {
+        for (j, edgelist) in node_edges.iter_mut().take(node_count).enumerate() {
             edgelist.push(
                 BiEdge::new(
-                    j,
-                    j + node_count as NodeType,
-                    (nodes[(j - 1) as usize]) * penalty - penalty)
+                    (j + 1) as NodeType,
+                    (j + node_count + 1) as NodeType,
+                    (nodes[j]) * penalty - penalty)
             );
         }
 
-        EdgeCache { edges, plucked, nodes }
+        EdgeCache { node_edges, plucked, nodes }
     }
 
     fn reset_for(&mut self, node: NodeType) {
-        self.plucked.clear();
+        self.plucked.fill(false);
         let penalty = self.nodes[(node - 1) as usize];
-        for (j, edgelist) in self.edges.iter_mut() {
-            let mut edit_me = edgelist.pop().unwrap();
-            edit_me.weight = self.nodes[(j - 1) as usize] * penalty - penalty;
-            edgelist.push(edit_me);
+        for (j, edgelist) in self.node_edges.iter_mut().enumerate() {
+            if let Some(mut edit_me) = edgelist.pop() {
+                edit_me.weight = self.nodes[j] * penalty - penalty;
+                edgelist.push(edit_me);
+            }
         }
     }
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
     #[inline(always)]
     fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
-        if (self.plucked.insert(node)) {
-            self.edges.get(&node).unwrap().clone()
+        let index = (node - 1) as usize;
+        if !self.plucked[index] {
+            self.plucked[index] = true;
+            self.node_edges[index].clone()
         } else {
             Vec::new()
         }
@@ -165,7 +169,8 @@ impl EdgeCache {
 
     #[inline(always)]
     fn contains(&self, node: NodeType) -> bool {
-        !self.plucked.contains(&node)
+        let index = (node - 1) as usize;
+        !self.plucked[index]
     }
 }
 

@@ -157,13 +157,14 @@ impl EdgeCache {
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
     #[inline(always)]
-    fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
+    fn pluck(&mut self, node: NodeType) -> (&Vec<BiEdge>, &Self) {
         let index = (node - 1) as usize;
         if !self.plucked[index] {
-            self.plucked[index] = true;
-            self.node_edges[index].clone()
+            let a = &mut self.plucked[index];
+            *a = true;
+            (&self.node_edges[index], self)
         } else {
-            Vec::new()
+            (&self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
         }
     }
 
@@ -187,7 +188,7 @@ fn bfs_short_circuit(
     let mut current_cost: WeightType = 0;
 
     loop {
-        let adjacents = edge_cache.pluck(pointer);
+        let (adjacents, edge_cache) = edge_cache.pluck(pointer);
 
         for edge in adjacents {
             let path_cost = current_cost + edge.weight;

@@ -127,12 +127,11 @@ impl EdgeCache {
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
 
-        let penalty = nodes[0];
         for (j, edgelist) in node_edges.iter_mut().take(node_count).enumerate() {
             edgelist.push(BiEdge::new(
                 (j + 1) as NodeType,
                 (j + node_count + 1) as NodeType,
-                (nodes[j]) * penalty - penalty,
+                0,
             ));
         }
 
@@ -143,18 +142,8 @@ impl EdgeCache {
         }
     }
 
-    fn reset_for(&mut self, node: NodeType) {
+    fn reset_for(&mut self, _node: NodeType) {
         self.plucked = vec![false; self.plucked.len()];
-        let penalty = self.nodes[(node - 1) as usize];
-        let node_count = self.nodes.len();
-        for edit_me in self
-            .node_edges
-            .iter_mut()
-            .take(node_count)
-            .map(|x| x.last_mut().unwrap())
-        {
-            edit_me.weight = self.nodes[(edit_me.i - 1) as usize] * penalty - penalty;
-        }
     }
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
@@ -182,11 +171,12 @@ fn bfs_short_circuit(
     edge_cache: &mut EdgeCache,
     start_node: NodeType,
     node_count: NodeType,
-    cutoff: WeightType,
+    start_penalty: WeightType,
 ) -> WeightType {
     let mut pointer: NodeType = start_node as NodeType;
     let mut queue: std::collections::VecDeque<(NodeType, WeightType)> =
         std::collections::VecDeque::with_capacity(node_count as usize);
+    let cutoff = start_penalty * start_penalty;
     let mut current_cutoff: WeightType = cutoff;
     let mut current_cost: WeightType = 0;
 
@@ -197,8 +187,12 @@ fn bfs_short_circuit(
             let path_cost = current_cost + edge.weight;
             if path_cost > current_cutoff {
                 continue;
-            } else if edge.i > node_count || edge.j > node_count {
-                current_cutoff = std::cmp::min(current_cutoff, path_cost) // This edge is a synth under cutoff. Take it if its path is the min cost
+            } else if edge.j > node_count {
+                current_cutoff = std::cmp::min(
+                    current_cutoff,
+                    path_cost
+                        + start_penalty * edge_cache.nodes.get((edge.i - 1) as usize).unwrap(),
+                ); // This edge is a synth under cutoff. Take it if its path is the min cost
             } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
                 if edge_cache.contains(attached) {
@@ -226,18 +220,12 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
     nodes
         .iter()
         .enumerate()
-        .map(|(i, penalty)| {
+        .map(|(i, &penalty)| {
             let node = (i + 1) as NodeType;
             edge_cache.reset_for(node);
 
-            let bfs_cost = bfs_short_circuit(
-                &mut edge_cache,
-                node,
-                node_count,
-                penalty * penalty - penalty,
-            );
-            let out = penalty + bfs_cost;
-            out
+            let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, penalty);
+            bfs_cost
         })
         .sum()
 }
@@ -552,129 +540,5 @@ mod yatp_tests {
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 100000000000000);
-    }
-
-    #[test]
-    fn test_treestruct() {
-        struct Tredge {
-            i: std::rc::Weak<Node>,
-            j: std::rc::Weak<Node>,
-            weight: WeightType,
-        }
-        struct Node {
-            friends: Vec<std::rc::Weak<Tredge>>,
-            node: NodeType,
-            penalty: WeightType,
-        }
-
-        struct Treeholder {
-            // plucked: std::collections::HashSet<NodeType>,
-            // nodes: Vec<WeightType>,
-            // Vector / array with references directly to each synth edge (for optimal starts)
-            // references_to_whatever: Vec<&'a Tree<'a>>,
-            // TODO: this doesn't need to be a hashmap if I do the simple offset math
-            // ingresses: std::collections::HashMap<NodeType, std::rc::Weak<Tredge>>
-            trodes: Vec<std::rc::Weak<Node>>,
-            tredges: Vec<std::rc::Weak<Tredge>>,
-        }
-        impl Treeholder {
-            fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
-                let node_count = edge_weights.len() + 1;
-                let nodes = penalties.clone();
-
-                let mut trodes = Vec::<std::rc::Weak<Node>>::with_capacity(2 * node_count);
-                let mut tredges = Vec::<std::rc::Weak<Tredge>>::with_capacity(2 * node_count - 1);
-
-                for i in 0..2 * node_count {
-                    let node = i + 1;
-                    let rc = std::rc::Rc::new(Node {
-                        node: node as NodeType,
-                        friends: Vec::new(),
-                        penalty: *penalties.get(i).unwrap_or(&WeightType::default()),
-                    });
-                    let weak = std::rc::Rc::downgrade(&rc);
-                    trodes.push(weak);
-                }
-
-                for edge in edge_weights {
-                    // Create Tredge with references to buds
-                    let rc = std::rc::Rc::new(Tredge {
-                        i: trodes[(edge.i - 1) as usize].clone(),
-                        j: trodes[(edge.j - 1) as usize].clone(),
-                        weight: edge.weight,
-                    });
-                    let weak = std::rc::Rc::downgrade(&rc);
-                    tredges.push(weak.clone());
-
-                    // Add tredge reference to Node/trode
-                    let rc_i = &mut trodes[(edge.i - 1) as usize].upgrade().unwrap();
-                    let rc_j = &mut trodes[(edge.j - 1) as usize].upgrade().unwrap();
-                    let neighbor_i = std::rc::Rc::get_mut(rc_i).unwrap();
-                    let neighbor_j = std::rc::Rc::get_mut(rc_j).unwrap();
-                    neighbor_i.friends.push(weak.clone());
-                    neighbor_j.friends.push(weak);
-                }
-
-                // After inserting, do the synth edges (other implementations could choose to put penalty on Node)
-                let penalty = nodes[0];
-                for i in 0..node_count {
-                    let node_i = i + 1;
-                    let node_j = node_i + node_count;
-
-                    let rc = std::rc::Rc::new(Tredge {
-                        i: trodes[node_i - 1].clone(),
-                        j: trodes[node_j - 1].clone(),
-                        weight: nodes[i] * penalty - penalty,
-                    });
-                    let weak = std::rc::Rc::downgrade(&rc);
-                    tredges.push(weak.clone());
-
-                    let rc_i = &mut trodes[node_i - 1].upgrade().unwrap();
-                    let neighbor_i = std::rc::Rc::get_mut(rc_i).unwrap();
-                    neighbor_i.friends.push(weak.clone());
-                }
-
-                Treeholder { trodes, tredges }
-            }
-
-            fn reset_for(&mut self, node: NodeType) {
-                // self.plucked.clear();
-                let start_penalty = self.trodes[(node - 1) as usize].upgrade().unwrap().penalty;
-                let (real_nodes, fake_nodes) = self.trodes.split_at(self.trodes.len() / 2);
-                for (weak_i, weak_j) in real_nodes.iter().zip(fake_nodes) {
-                    let rc_node_i = weak_i.upgrade().unwrap();
-                    let rc_node_j = weak_j.upgrade().unwrap();
-                    let synth_tredge_weak = rc_node_i.friends.last().unwrap();
-                    let mut synth_tredge_rc = synth_tredge_weak.upgrade().unwrap();
-                    let synth_mut = std::rc::Rc::get_mut(&mut synth_tredge_rc).unwrap();
-                    synth_mut.weight = rc_node_i.penalty * start_penalty - start_penalty;
-                }
-            }
-
-            #[inline(always)]
-            fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
-                // TODO: Add a "visited" or "plucked" data structure
-                self.trodes[(node - 1) as usize]
-                    .upgrade()
-                    .unwrap()
-                    .friends
-                    .iter()
-                    .map(|tredge_weak| {
-                        let rc = tredge_weak.upgrade().unwrap();
-                        BiEdge {
-                            i: rc.i.upgrade().unwrap().node,
-                            j: rc.j.upgrade().unwrap().node,
-                            weight: rc.weight,
-                        }
-                    })
-                    .collect()
-            }
-
-            #[inline(always)]
-            fn contains(&self, node: NodeType) -> bool {
-                // TODO: Add a "visited" or "plucked" data structure
-                true
-            }
-        }
     }
 }

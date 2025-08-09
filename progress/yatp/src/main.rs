@@ -63,11 +63,7 @@ impl BiEdge {
         {
             panic!("Invalid edge: ({}) - {} -> ({})", i, weight, j);
         }
-        Self {
-            i,
-            j,
-            weight,
-        }
+        Self { i, j, weight }
     }
 
     #[inline(always)]
@@ -133,22 +129,30 @@ impl EdgeCache {
 
         let penalty = nodes[0];
         for (j, edgelist) in node_edges.iter_mut().take(node_count).enumerate() {
-            edgelist.push(
-                BiEdge::new(
-                    (j + 1) as NodeType,
-                    (j + node_count + 1) as NodeType,
-                    (nodes[j]) * penalty - penalty)
-            );
+            edgelist.push(BiEdge::new(
+                (j + 1) as NodeType,
+                (j + node_count + 1) as NodeType,
+                (nodes[j]) * penalty - penalty,
+            ));
         }
 
-        EdgeCache { node_edges, plucked, nodes }
+        EdgeCache {
+            node_edges,
+            plucked,
+            nodes,
+        }
     }
 
     fn reset_for(&mut self, node: NodeType) {
         self.plucked = vec![false; self.plucked.len()];
         let penalty = self.nodes[(node - 1) as usize];
         let node_count = self.nodes.len();
-        for edit_me in self.node_edges.iter_mut().take(node_count).map(|x| x.last_mut().unwrap()) {
+        for edit_me in self
+            .node_edges
+            .iter_mut()
+            .take(node_count)
+            .map(|x| x.last_mut().unwrap())
+        {
             edit_me.weight = self.nodes[(edit_me.i - 1) as usize] * penalty - penalty;
         }
     }
@@ -157,9 +161,10 @@ impl EdgeCache {
     #[inline(always)]
     fn pluck(&mut self, node: NodeType) -> (&Vec<BiEdge>, &Self) {
         let index = (node - 1) as usize;
-        if !self.plucked[index] {
-            *(&mut self.plucked[index]) = true;
-            (&self.node_edges[index], self)
+        let plucked_entry = self.plucked.get_mut(index).unwrap();
+        if !*plucked_entry {
+            *plucked_entry = true;
+            (self.node_edges.get(index).unwrap(), self)
         } else {
             (&self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
         }
@@ -180,7 +185,8 @@ fn bfs_short_circuit(
     cutoff: WeightType,
 ) -> WeightType {
     let mut pointer: NodeType = start_node as NodeType;
-    let mut queue: std::collections::VecDeque<(NodeType, WeightType)> = std::collections::VecDeque::with_capacity(node_count as usize);
+    let mut queue: std::collections::VecDeque<(NodeType, WeightType)> =
+        std::collections::VecDeque::with_capacity(node_count as usize);
     let mut current_cutoff: WeightType = cutoff;
     let mut current_cost: WeightType = 0;
 
@@ -538,7 +544,8 @@ mod yatp_tests {
         let node_count: WeightType = 10000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
-        let node_penalties = std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
+        let node_penalties =
+            std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| [1, i + 2, edgeweights].into())
             .collect();
@@ -567,7 +574,6 @@ mod yatp_tests {
             // references_to_whatever: Vec<&'a Tree<'a>>,
             // TODO: this doesn't need to be a hashmap if I do the simple offset math
             // ingresses: std::collections::HashMap<NodeType, std::rc::Weak<Tredge>>
-
             trodes: Vec<std::rc::Weak<Node>>,
             tredges: Vec<std::rc::Weak<Tredge>>,
         }
@@ -626,7 +632,6 @@ mod yatp_tests {
                     let rc_i = &mut trodes[node_i - 1].upgrade().unwrap();
                     let neighbor_i = std::rc::Rc::get_mut(rc_i).unwrap();
                     neighbor_i.friends.push(weak.clone());
-
                 }
 
                 Treeholder { trodes, tredges }
@@ -649,14 +654,20 @@ mod yatp_tests {
             #[inline(always)]
             fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
                 // TODO: Add a "visited" or "plucked" data structure
-                self.trodes[(node - 1) as usize].upgrade().unwrap().friends.iter().map(|tredge_weak| {
-                    let rc = tredge_weak.upgrade().unwrap();
-                    BiEdge {
-                        i: rc.i.upgrade().unwrap().node,
-                        j: rc.j.upgrade().unwrap().node,
-                        weight: rc.weight
-                    }
-                }).collect()
+                self.trodes[(node - 1) as usize]
+                    .upgrade()
+                    .unwrap()
+                    .friends
+                    .iter()
+                    .map(|tredge_weak| {
+                        let rc = tredge_weak.upgrade().unwrap();
+                        BiEdge {
+                            i: rc.i.upgrade().unwrap().node,
+                            j: rc.j.upgrade().unwrap().node,
+                            weight: rc.weight,
+                        }
+                    })
+                    .collect()
             }
 
             #[inline(always)]
@@ -664,7 +675,6 @@ mod yatp_tests {
                 // TODO: Add a "visited" or "plucked" data structure
                 true
             }
-
         }
     }
 }

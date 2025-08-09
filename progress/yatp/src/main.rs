@@ -120,8 +120,9 @@ struct EdgeCache {
 impl EdgeCache {
     fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<u64>) -> Self {
         let nodes = static_nodes.clone();
-        let mut edges = std::collections::HashMap::with_capacity(2 * edgelist.len());
-        let plucked = std::collections::HashSet::with_capacity(2 * edgelist.len());
+        let node_count = edgelist.len();
+        let mut edges = std::collections::HashMap::with_capacity(2 * node_count);
+        let plucked = std::collections::HashSet::with_capacity(2 * node_count);
         for edge in edgelist {
             edges.entry(edge.i).or_insert_with(Vec::new).push(*edge);
             edges.entry(edge.j).or_insert_with(Vec::new).push(*edge);
@@ -140,10 +141,9 @@ impl EdgeCache {
         let penalty = nodes[0];
         for synth in &mut template_synths {
             synth.weight = (nodes[(synth.i - 1) as usize]) * penalty - penalty;
-            let vector = edges
+            edges
                 .entry(synth.i)
-                .or_default();
-            vector
+                .or_default()
                 .push(*synth);
         }
         EdgeCache { edges, plucked, template_synths, nodes }
@@ -151,16 +151,11 @@ impl EdgeCache {
 
     fn reset_for(&mut self, node: u32) {
         self.plucked.clear();
-        let penalty = self.nodes[node as usize - 1];
-        for synth in &mut self.template_synths {
-            synth.weight = (self.nodes[(synth.i - 1) as usize]) * penalty - penalty;
-            let vector = self
-                .edges
-                .entry(synth.i)
-                .or_default();
-            vector.pop();
-            vector
-                .push(*synth);
+        let penalty = self.nodes[(node - 1) as usize];
+        for (j, edgelist) in self.edges.iter_mut() {
+            let mut edit_me = edgelist.pop().unwrap();
+            edit_me.weight = self.nodes[(j - 1) as usize] * penalty - penalty;
+            edgelist.push(edit_me);
         }
     }
 

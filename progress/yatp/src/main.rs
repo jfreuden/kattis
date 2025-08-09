@@ -607,28 +607,61 @@ mod yatp_tests {
                 }
 
                 // After inserting, do the synth edges (other implementations could choose to put penalty on Node)
+                let penalty = nodes[0];
                 for i in 0..node_count {
-                    // TODO: pick up from here
+                    let node_i = i + 1;
+                    let node_j = node_i + node_count;
+
+                    let rc = std::rc::Rc::new(Tredge {
+                        i: trodes[node_i - 1].clone(),
+                        j: trodes[node_j - 1].clone(),
+                        weight: nodes[i] * penalty - penalty,
+                    });
+                    let weak = std::rc::Rc::downgrade(&rc);
+                    tredges.push(weak.clone());
+
+                    let rc_i = &mut trodes[node_i - 1].upgrade().unwrap();
+                    let neighbor_i = std::rc::Rc::get_mut(rc_i).unwrap();
+                    neighbor_i.friends.push(weak.clone());
+
                 }
 
                 Treeholder { trodes, tredges }
             }
 
             fn reset_for(&mut self, node: NodeType) {
-                todo!()
+                // self.plucked.clear();
+                let start_penalty = self.trodes[(node - 1) as usize].upgrade().unwrap().penalty;
+                let (real_nodes, fake_nodes) = self.trodes.split_at(self.trodes.len() / 2);
+                for (weak_i, weak_j) in real_nodes.iter().zip(fake_nodes) {
+                    let rc_node_i = weak_i.upgrade().unwrap();
+                    let rc_node_j = weak_j.upgrade().unwrap();
+                    let synth_tredge_weak = rc_node_i.friends.last().unwrap();
+                    let mut synth_tredge_rc = synth_tredge_weak.upgrade().unwrap();
+                    let synth_mut = std::rc::Rc::get_mut(&mut synth_tredge_rc).unwrap();
+                    synth_mut.weight = rc_node_i.penalty * start_penalty - start_penalty;
+                }
             }
 
             #[inline(always)]
             fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
-                todo!()
+                // TODO: Add a "visited" or "plucked" data structure
+                self.trodes[(node - 1) as usize].upgrade().unwrap().friends.iter().map(|tredge_weak| {
+                    let rc = tredge_weak.upgrade().unwrap();
+                    BiEdge {
+                        i: rc.i.upgrade().unwrap().node,
+                        j: rc.j.upgrade().unwrap().node,
+                        weight: rc.weight
+                    }
+                }).collect()
             }
 
             #[inline(always)]
             fn contains(&self, node: NodeType) -> bool {
-                todo!()
+                // TODO: Add a "visited" or "plucked" data structure
+                true
             }
 
         }
-
     }
 }

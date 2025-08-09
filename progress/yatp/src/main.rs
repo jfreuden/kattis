@@ -110,43 +110,34 @@ impl PartialEq<&BiEdge> for BiEdge {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct EdgeCache {
     edges: std::collections::HashMap<u32, Vec<BiEdge>>,
     plucked: std::collections::HashSet<u32>,
-    template_synths: Vec<BiEdge>,
     nodes: Vec<u64>,
 }
 impl EdgeCache {
     fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<u64>) -> Self {
         let nodes = static_nodes.clone();
-        let node_count = edgelist.len();
-        let mut edges = std::collections::HashMap::with_capacity(2 * node_count);
-        let plucked = std::collections::HashSet::with_capacity(2 * node_count);
+        let node_count = nodes.len() as u64;
+        let mut edges = std::collections::HashMap::with_capacity((2 * node_count) as usize);
+        let plucked = std::collections::HashSet::with_capacity((2 * node_count) as usize);
         for edge in edgelist {
             edges.entry(edge.i).or_insert_with(Vec::new).push(*edge);
             edges.entry(edge.j).or_insert_with(Vec::new).push(*edge);
         }
 
-        let node_count = nodes.len() as u64;
-        let mut template_synths: Vec<BiEdge> = nodes
-            .iter()
-            .enumerate()
-            .map(|(i, penalty)| {
-                let node = (i + 1) as u64;
-                BiEdge::new(node, node_count + node, *penalty - 1)
-            })
-            .collect();
-
         let penalty = nodes[0];
-        for synth in &mut template_synths {
-            synth.weight = (nodes[(synth.i - 1) as usize]) * penalty - penalty;
-            edges
-                .entry(synth.i)
-                .or_default()
-                .push(*synth);
+        for (&j, edgelist) in edges.iter_mut() {
+            edgelist.push(
+                BiEdge::new(
+                    j as u64,
+                    node_count + j as u64,
+                    (nodes[(j - 1) as usize]) * penalty - penalty)
+            );
         }
-        EdgeCache { edges, plucked, template_synths, nodes }
+
+        EdgeCache { edges, plucked, nodes }
     }
 
     fn reset_for(&mut self, node: u32) {
@@ -226,7 +217,6 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
         .map(|(i, penalty)| {
             let node = (i + 1) as u32;
             edge_cache.reset_for(node);
-            // let mut this_edge_cache = edge_cache.clone();
 
             let bfs_cost = bfs_short_circuit(
                 &mut edge_cache,

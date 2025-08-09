@@ -432,7 +432,7 @@ mod yatp_tests {
         assert_eq!(solve(node_penalties, edge_weights), 52691143621);
     }
 
-    // #[test]
+    #[test]
     fn test_optsolve_50000_nodes() {
         let node_count = 50000;
         let node_start = 1;

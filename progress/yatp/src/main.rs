@@ -546,19 +546,72 @@ mod yatp_tests {
 
     #[test]
     fn test_treestruct() {
-        struct Tredges<'a> {
-            reference: &'a Tree<'a>,
+        struct Tredge {
+            i: std::rc::Weak<Node>,
+            j: std::rc::Weak<Node>,
             weight: WeightType,
         }
-        struct Tree<'a> {
-            friends: Vec<Tredges<'a>>,
+        struct Node {
+            friends: Vec<std::rc::Weak<Tredge>>,
             node: NodeType,
+            penalty: WeightType,
         }
-        impl<'a> Tree<'a> {
+
+        struct Treeholder {
+            // plucked: std::collections::HashSet<NodeType>,
+            // nodes: Vec<WeightType>,
+            // Vector / array with references directly to each synth edge (for optimal starts)
+            // references_to_whatever: Vec<&'a Tree<'a>>,
+            // TODO: this doesn't need to be a hashmap if I do the simple offset math
+            // ingresses: std::collections::HashMap<NodeType, std::rc::Weak<Tredge>>
+
+            trodes: Vec<std::rc::Weak<Node>>,
+            tredges: Vec<std::rc::Weak<Tredge>>,
+        }
+        impl Treeholder {
             fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
+                let node_count = edge_weights.len() + 1;
                 let nodes = penalties.clone();
 
-                Tree { friends: Vec::new() }
+                let mut trodes = Vec::<std::rc::Weak<Node>>::with_capacity(2 * node_count);
+                let mut tredges = Vec::<std::rc::Weak<Tredge>>::with_capacity(2 * node_count - 1);
+
+                for i in 0..2 * node_count {
+                    let node = i + 1;
+                    let rc = std::rc::Rc::new(Node {
+                        node: node as NodeType,
+                        friends: Vec::new(),
+                        penalty: *penalties.get(i).unwrap_or(&WeightType::default()),
+                    });
+                    let weak = std::rc::Rc::downgrade(&rc);
+                    trodes.push(weak);
+                }
+
+                for edge in edge_weights {
+                    // Create Tredge with references to buds
+                    let rc = std::rc::Rc::new(Tredge {
+                        i: trodes[(edge.i - 1) as usize].clone(),
+                        j: trodes[(edge.j - 1) as usize].clone(),
+                        weight: edge.weight,
+                    });
+                    let weak = std::rc::Rc::downgrade(&rc);
+                    tredges.push(weak.clone());
+
+                    // Add tredge reference to Node/trode
+                    let rc_i = &mut trodes[(edge.i - 1) as usize].upgrade().unwrap();
+                    let rc_j = &mut trodes[(edge.j - 1) as usize].upgrade().unwrap();
+                    let neighbor_i = std::rc::Rc::get_mut(rc_i).unwrap();
+                    let neighbor_j = std::rc::Rc::get_mut(rc_j).unwrap();
+                    neighbor_i.friends.push(weak.clone());
+                    neighbor_j.friends.push(weak);
+                }
+
+                // After inserting, do the synth edges (other implementations could choose to put penalty on Node)
+                for i in 0..node_count {
+                    // TODO: pick up from here
+                }
+
+                Treeholder { trodes, tredges }
             }
 
             fn reset_for(&mut self, node: NodeType) {
@@ -576,7 +629,6 @@ mod yatp_tests {
             }
 
         }
-
 
     }
 }

@@ -546,19 +546,26 @@ mod yatp_tests {
 
     #[test]
     fn test_treestruct() {
-        struct Tredges<'a> {
-            reference: &'a Tree<'a>,
+        struct Tredge {
+            node_i: std::rc::Weak<Node>,
+            node_j: std::rc::Weak<Node>,
             weight: WeightType,
         }
-        struct Tree<'a> {
-            friends: Vec<Tredges<'a>>,
+        struct Node {
+            friends: Vec<std::rc::Weak<Tredge>>,
             node: NodeType,
+            penalty: WeightType,
         }
-        impl<'a> Tree<'a> {
-            fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
-                let nodes = penalties.clone();
-
-                Tree { friends: Vec::new() }
+        struct Hoop {
+            nodes: Vec<Node>,
+            tredges: Vec<Tredge>,
+        }
+        impl Hoop {
+            fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
+                let node_count = static_nodes.len();
+                let nodes = Vec::with_capacity(2 * node_count);
+                let tredges = Vec::with_capacity(2 * node_count - 1);
+                Hoop { nodes, tredges }
             }
 
             fn reset_for(&mut self, node: NodeType) {
@@ -574,7 +581,6 @@ mod yatp_tests {
             fn contains(&self, node: NodeType) -> bool {
                 todo!()
             }
-
         }
 
 

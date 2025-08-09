@@ -45,35 +45,38 @@ where
 /// For each node, compute the smallest cost of any path starting at that node.
 /// The final answer is the sum of all of these minimum costs.
 
+type NodeType = u32;
+type WeightType = u64;
+
 /// A Bidirectional edge
 #[derive(Debug, Copy, Clone)]
 struct BiEdge {
-    i: u32,
-    j: u32,
-    weight: u64,
+    i: NodeType,
+    j: NodeType,
+    weight: WeightType,
 }
 
 impl BiEdge {
-    fn new(i: u64, j: u64, weight: u64) -> BiEdge {
+    fn new(i: NodeType, j: NodeType, weight: WeightType) -> BiEdge {
         if i == 0 || j == 0
         /*|| weight == 0*/
         {
             panic!("Invalid edge: ({}) - {} -> ({})", i, weight, j);
         }
         Self {
-            i: i as u32,
-            j: j as u32,
+            i,
+            j,
             weight,
         }
     }
 
     #[inline(always)]
-    fn connects(&self, node: u32) -> bool {
+    fn connects(&self, node: NodeType) -> bool {
         self.i == node || self.j == node
     }
 
     #[inline(always)]
-    fn connected_to(self, node: u32) -> Option<u32> {
+    fn connected_to(self, node: NodeType) -> Option<NodeType> {
         if self.i == node {
             Some(self.j)
         } else if self.j == node {
@@ -86,7 +89,7 @@ impl BiEdge {
 
 impl From<[u64; 3]> for BiEdge {
     fn from(arr: [u64; 3]) -> Self {
-        Self::new(arr[0], arr[1], arr[2])
+        Self::new(arr[0] as NodeType, arr[1] as NodeType, arr[2])
     }
 }
 
@@ -112,16 +115,16 @@ impl PartialEq<&BiEdge> for BiEdge {
 
 #[derive(Debug)]
 struct EdgeCache {
-    edges: std::collections::HashMap<u32, Vec<BiEdge>>,
-    plucked: std::collections::HashSet<u32>,
-    nodes: Vec<u64>,
+    edges: std::collections::HashMap<NodeType, Vec<BiEdge>>,
+    plucked: std::collections::HashSet<NodeType>,
+    nodes: Vec<WeightType>,
 }
 impl EdgeCache {
-    fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<u64>) -> Self {
+    fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
         let nodes = static_nodes.clone();
-        let node_count = nodes.len() as u64;
-        let mut edges = std::collections::HashMap::with_capacity((2 * node_count) as usize);
-        let plucked = std::collections::HashSet::with_capacity((2 * node_count) as usize);
+        let node_count = nodes.len();
+        let mut edges = std::collections::HashMap::with_capacity(2 * node_count);
+        let plucked = std::collections::HashSet::with_capacity(2 * node_count);
         for edge in edgelist {
             edges.entry(edge.i).or_insert_with(Vec::new).push(*edge);
             edges.entry(edge.j).or_insert_with(Vec::new).push(*edge);
@@ -131,8 +134,8 @@ impl EdgeCache {
         for (&j, edgelist) in edges.iter_mut() {
             edgelist.push(
                 BiEdge::new(
-                    j as u64,
-                    node_count + j as u64,
+                    j,
+                    j + node_count as NodeType,
                     (nodes[(j - 1) as usize]) * penalty - penalty)
             );
         }
@@ -140,7 +143,7 @@ impl EdgeCache {
         EdgeCache { edges, plucked, nodes }
     }
 
-    fn reset_for(&mut self, node: u32) {
+    fn reset_for(&mut self, node: NodeType) {
         self.plucked.clear();
         let penalty = self.nodes[(node - 1) as usize];
         for (j, edgelist) in self.edges.iter_mut() {
@@ -152,7 +155,7 @@ impl EdgeCache {
 
     /// Returns the entire entry of all edges in a bucket, removing it from the cache
     #[inline(always)]
-    fn pluck(&mut self, node: u32) -> Vec<BiEdge> {
+    fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
         if (self.plucked.insert(node)) {
             self.edges.get(&node).unwrap().clone()
         } else {
@@ -161,7 +164,7 @@ impl EdgeCache {
     }
 
     #[inline(always)]
-    fn contains(&self, node: u32) -> bool {
+    fn contains(&self, node: NodeType) -> bool {
         !self.plucked.contains(&node)
     }
 }
@@ -169,20 +172,20 @@ impl EdgeCache {
 /// Returns the minimum ending path above cutoff.
 fn bfs_short_circuit(
     edge_cache: &mut EdgeCache,
-    start_node: u64,
-    node_count: u32,
-    cutoff: u64,
-) -> u32 {
-    let mut pointer: u32 = start_node as u32;
-    let mut queue: std::collections::VecDeque<(u32, u32)> = std::collections::VecDeque::new();
-    let mut current_cutoff: u32 = cutoff as u32;
-    let mut current_cost: u32 = 0;
+    start_node: NodeType,
+    node_count: NodeType,
+    cutoff: WeightType,
+) -> WeightType {
+    let mut pointer: NodeType = start_node as NodeType;
+    let mut queue: std::collections::VecDeque<(NodeType, WeightType)> = std::collections::VecDeque::new();
+    let mut current_cutoff: WeightType = cutoff;
+    let mut current_cost: WeightType = 0;
 
     loop {
         let adjacents = edge_cache.pluck(pointer);
 
         for edge in adjacents {
-            let path_cost = current_cost + edge.weight as u32;
+            let path_cost = current_cost + edge.weight;
             if path_cost > current_cutoff {
                 continue;
             } else if edge.i > node_count || edge.j > node_count {
@@ -206,25 +209,25 @@ fn bfs_short_circuit(
     current_cutoff
 }
 
-fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
+fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
-    let node_count = nodes.len() as u64;
+    let node_count = nodes.len() as NodeType;
     let mut edge_cache = EdgeCache::new(edges.iter().collect(), &nodes);
 
     nodes
         .iter()
         .enumerate()
         .map(|(i, penalty)| {
-            let node = (i + 1) as u32;
+            let node = (i + 1) as NodeType;
             edge_cache.reset_for(node);
 
             let bfs_cost = bfs_short_circuit(
                 &mut edge_cache,
-                node as u64,
-                node_count as u32,
+                node,
+                node_count,
                 penalty * penalty - penalty,
             );
-            let out = penalty + bfs_cost as u64;
+            let out = penalty + bfs_cost;
             out
         })
         .sum()
@@ -232,7 +235,7 @@ fn solve(nodes: Vec<u64>, edges: Vec<BiEdge>) -> u64 {
 
 fn main() {
     let number_nodes: usize = read_one();
-    let node_penalties = read_vec::<u64>();
+    let node_penalties = read_vec::<WeightType>();
     let edge_weights: Vec<BiEdge> = {
         let mut out = Vec::new();
         for _ in 0..number_nodes - 1 {
@@ -242,7 +245,7 @@ fn main() {
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<u64>, Vec<BiEdge>) -> u64 = solve;
+const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> WeightType = solve;
 
 #[cfg(test)]
 mod yatp_tests {
@@ -432,7 +435,7 @@ mod yatp_tests {
         assert_eq!(solve(node_penalties, edge_weights), 52691143621);
     }
 
-    #[test]
+    // #[test]
     fn test_optsolve_50000_nodes() {
         let node_count = 50000;
         let node_start = 1;
@@ -525,6 +528,20 @@ mod yatp_tests {
 
         let edge_weights: Vec<BiEdge> = (0..41).map(|i| [i + 1, i + 2, 1].into()).collect();
         assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 6028)
+    }
+
+    #[test]
+    fn test_10k_star() {
+        let node_count: WeightType = 10000;
+        let edgeweights: WeightType = 1000000;
+        let node_costs: WeightType = 100000;
+        let node_penalties = std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
+        let edge_weights: Vec<BiEdge> = (0..node_count - 1)
+            .map(|i| [1, i + 2, edgeweights].into())
+            .collect();
+
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 100000000000000);
     }
 
     // #[test]

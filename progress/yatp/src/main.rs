@@ -49,7 +49,7 @@ type NodeType = u32;
 type WeightType = u64;
 
 /// A Bidirectional edge
-#[derive(Debug, Copy, Clone, Eq, Hash)]
+#[derive(Debug, Copy, Clone, Eq)]
 struct BiEdge {
     i: NodeType,
     j: NodeType,
@@ -164,54 +164,6 @@ impl EdgeCache {
         let index = (node - 1) as usize;
         !self.plucked[index]
     }
-
-    fn make_shortcuts(&mut self) {
-        let step = 95;
-        let node_count = self.nodes.len();
-        if node_count < step {
-            return;
-        }
-        for i in (0..node_count).step_by(step) {
-        // let i = 1;
-            let node_i = i + 1;
-            let node_j = (i + step) % node_count + 1;
-            self.reset_for(node_i as NodeType);
-
-            // Calculate the cost of taking this shortcut
-            let mut pointer = node_i as NodeType;
-            let mut queue = std::collections::VecDeque::<(NodeType, WeightType)>::with_capacity(node_count);
-            let mut current_cost: WeightType = 0;
-
-            current_cost = loop {
-                let (adjacents, edge_cache) = self.pluck(pointer);
-                for edge in adjacents {
-                    let path_cost = current_cost + edge.weight;
-                    let attached = edge.connected_to(pointer).unwrap();
-                    if edge_cache.contains(attached) && attached <= node_count as NodeType {
-                        queue.push_back((attached, path_cost));
-                    }
-                }
-                if let Some((ptr, path_so_far)) = queue.pop_front() {
-                    pointer = ptr;
-                    current_cost = path_so_far;
-                    if ptr == node_j as NodeType {
-                        break current_cost;
-                    }
-                } else {
-                    // break;
-                    panic!("No path found for node {} to node {}", node_i, node_j);
-                }
-            };
-            let sledge = BiEdge::new(
-                node_i as NodeType,
-                node_j as NodeType,
-                current_cost,
-            );
-            self.node_edges[node_i - 1].push(sledge);
-            self.node_edges[node_j - 1].push(sledge);
-        }
-        // assert!(false);
-    }
 }
 
 /// Returns the minimum ending path above cutoff.
@@ -264,9 +216,6 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
     let mut edge_cache = EdgeCache::new(edges.iter().collect(), &nodes);
-    // edge_cache.reset_for(1);
-    edge_cache.make_shortcuts();
-    edge_cache.reset_for(1);
     nodes
         .iter()
         .enumerate()
@@ -503,6 +452,7 @@ mod yatp_tests {
     }
 
     // #[test]
+    #[allow(dead_code)]
     fn test_optsolve_100000_nodes() {
         let node_count = 100000;
         let node_start = 1;
@@ -523,6 +473,7 @@ mod yatp_tests {
     }
 
     // #[test]
+    #[allow(dead_code)]
     fn test_optsolve_200000_nodes() {
         let node_count = 200000;
         let node_start = 1;

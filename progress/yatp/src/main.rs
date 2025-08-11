@@ -229,6 +229,39 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
         .sum()
 }
 
+/// Returns list of edges based on how far each is from being a leaf-edge.
+/// Note: This is not the same as "how far from a leaf", but rather how far away from being a leaf
+/// itself. It is a measure of the centrality of a given node.
+fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
+    let node_count: usize = edge_weights.len() + 1;
+    let mut working_edges = edge_weights.clone();
+    let mut layers = Vec::<Vec<BiEdge>>::new();
+    let counts = working_edges
+        .iter()
+        .fold(vec![0; node_count], |mut acc_vec, edge| {
+            let index_i = (edge.i - 1) as usize;
+            let index_j = (edge.j - 1) as usize;
+            acc_vec[index_i] += 1;
+            acc_vec[index_j] += 1;
+            acc_vec
+        });
+
+    let mut now_serving = 0;
+    while !working_edges.is_empty() {
+        now_serving += 1;
+
+        let leaves: Vec<BiEdge> = working_edges
+            .extract_if(.., |edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                counts[index_i].le(&now_serving) || counts[index_j].le(&now_serving)
+            })
+            .collect();
+        layers.push(leaves);
+    }
+    layers
+}
+
 fn main() {
     let number_nodes: usize = read_one();
     let node_penalties = read_vec::<WeightType>();
@@ -541,5 +574,202 @@ mod yatp_tests {
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 100000000000000);
+    }
+
+    #[test]
+    fn test_get_edge_hierarchy() {
+        let mut edge_weights: Vec<BiEdge> = vec![
+            [3, 2, 8].into(),
+            [5, 2, 10].into(),
+            [4, 3, 10].into(),
+            [2, 1, 2].into(),
+        ];
+        let node_count = edge_weights.len() + 1;
+        /*       1
+            |
+            2
+           / \
+          3   5
+         /
+        4           */
+
+        for j in 0..node_count {
+            edge_weights.push(BiEdge::new(
+                (j + 1) as NodeType,
+                (j + node_count + 1) as NodeType,
+                0,
+            ));
+        }
+
+        let layers = get_edge_hierarchy(&edge_weights);
+        assert_eq!(
+            layers,
+            vec![
+                vec![
+                    BiEdge::new(5, 2, 10),
+                    BiEdge::new(4, 3, 10),
+                    BiEdge::new(2, 1, 2),
+                ],
+                vec![BiEdge::new(3, 2, 8)],
+            ]
+        );
+    }
+
+    #[test]
+    fn test_treestruct() {
+        struct Tredge {
+            i: std::rc::Weak<Node>,
+            j: std::rc::Weak<Node>,
+            weight: WeightType,
+        }
+        struct Node {
+            friends: Vec<std::rc::Weak<Tredge>>,
+            node: NodeType,
+            penalty: WeightType,
+        }
+
+        struct Treeholder {
+            plucked: Vec<bool>,
+            // nodes: Vec<WeightType>,
+            // Vector / array with references directly to each synth edge (for optimal starts)
+            // references_to_whatever: Vec<&'a Tree<'a>>,
+            trodes: Vec<std::rc::Rc<Node>>,
+            tredges: Vec<std::rc::Rc<Tredge>>,
+        }
+
+        impl Treeholder {
+            fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
+                let node_count = edge_weights.len() + 1;
+                let mut nodes = penalties.clone();
+                let plucked = vec![false; node_count];
+
+                // UGH. Curious, can I make a tree with just regular borrows if I promise to be careful?
+
+                let layers = get_edge_hierarchy(&edge_weights);
+
+                let mut trodes = Vec::<std::rc::Rc<Node>>::with_capacity(2 * node_count);
+                let mut tredges = Vec::<std::rc::Rc<Tredge>>::with_capacity(2 * node_count - 1);
+
+                for i in 0..2 * node_count {
+                    let node = i + 1;
+                    let rc = std::rc::Rc::new(Node {
+                        node: node as NodeType,
+                        friends: Vec::new(),
+                        penalty: *penalties.get(i).unwrap_or(&WeightType::default()),
+                    });
+                    trodes.push(rc);
+                }
+
+                // Make all the nodes first, and instead of making Tredges yet, make BiEdges and use
+                // them as Tredge orders, then load all the Tredge references in later
+                // oh shit that can't work. I need a weak reference to the Node in order to make the
+                // Tredge, but I won't be able to edit the friends vector on the nodes if I do that.
+                // even with this new way it won't work. I can't edit the vector and also have weak references into the node.
+
+                for edge in edge_weights {
+                    let index_i = (edge.i - 1) as usize;
+                    let index_j = (edge.j - 1) as usize;
+
+                    // Create Tredge with references to buds
+                    let rc = std::rc::Rc::new_cyclic(|future_weak| {
+                        let rc_i = &mut trodes[index_i];
+                        std::rc::Rc::get_mut(rc_i)
+                            .unwrap()
+                            .friends
+                            .push(future_weak.clone());
+
+                        let mut out = Tredge {
+                            i: std::rc::Rc::downgrade(rc_i),
+                            j: std::rc::Weak::new(),
+                            weight: edge.weight,
+                        };
+
+                        let rc_j = &mut trodes[index_j];
+                        std::rc::Rc::get_mut(rc_j)
+                            .unwrap()
+                            .friends
+                            .push(future_weak.clone());
+                        out.j = std::rc::Rc::downgrade(rc_j);
+
+                        out
+                    });
+
+                    let rc = std::rc::Rc::new(Tredge {
+                        i: std::rc::Rc::downgrade(&trodes[(edge.i - 1) as usize]),
+                        j: std::rc::Rc::downgrade(&trodes[(edge.j - 1) as usize]),
+                        weight: edge.weight,
+                    });
+                    let weak = std::rc::Rc::downgrade(&rc);
+                    tredges.push(rc);
+
+                    // Add tredge reference to Node/trode
+                }
+
+                // After inserting, do the synth edges (other implementations could choose to put penalty on Node)
+                let penalty = nodes[0];
+                for i in 0..node_count {
+                    let node_i = i + 1;
+                    let node_j = node_i + node_count;
+
+                    let rc = std::rc::Rc::new(Tredge {
+                        i: std::rc::Rc::downgrade(&trodes[node_i - 1]),
+                        j: std::rc::Rc::downgrade(&trodes[node_j - 1]),
+                        weight: nodes[i] * penalty - penalty,
+                    });
+                    let weak = std::rc::Rc::downgrade(&rc);
+                    tredges.push(rc);
+
+                    std::rc::Rc::get_mut(&mut trodes[node_i - 1])
+                        .unwrap()
+                        .friends
+                        .push(weak.clone());
+                }
+
+                Treeholder {
+                    plucked,
+                    trodes,
+                    tredges,
+                }
+            }
+
+            fn reset_for(&mut self, node: NodeType) {
+                self.plucked = vec![false; self.plucked.len()];
+            }
+
+            #[inline(always)]
+            fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
+                // TODO: Add a "visited" or "plucked" data structure
+                self.trodes[(node - 1) as usize]
+                    .friends
+                    .iter()
+                    .map(|tredge_weak| {
+                        let rc = tredge_weak.upgrade().unwrap();
+                        BiEdge {
+                            i: rc.i.upgrade().unwrap().node,
+                            j: rc.j.upgrade().unwrap().node,
+                            weight: rc.weight,
+                        }
+                    })
+                    .collect()
+            }
+
+            #[inline(always)]
+            fn contains(&self, node: NodeType) -> bool {
+                self.plucked[node as usize - 1].not()
+            }
+        }
+
+        let node_penalties = vec![9, 7, 1, 1, 9];
+        let edge_weights: Vec<BiEdge> = vec![
+            [3, 2, 8].into(),
+            [5, 2, 10].into(),
+            [4, 3, 10].into(),
+            [2, 1, 2].into(),
+        ];
+
+        let beholder = Treeholder::new(edge_weights, &node_penalties);
+
+        let answer = 0;
+        assert_eq!(answer, 63);
     }
 }

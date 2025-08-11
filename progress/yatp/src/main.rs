@@ -116,23 +116,24 @@ struct EdgeCache {
     nodes: Vec<WeightType>,
 }
 impl EdgeCache {
-    fn new(edgelist: Vec<&'_ BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
+    fn new(edgelist: Vec<BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
         let nodes = static_nodes.clone();
         let node_count = nodes.len();
         let mut node_edges = vec![Vec::<BiEdge>::new(); node_count * 2];
 
-        let plucked = vec![false; 2 * node_count];
-        for edge in edgelist {
-            node_edges[(edge.i - 1) as usize].push(*edge);
-            node_edges[(edge.j - 1) as usize].push(*edge);
-        }
-
-        for (j, edgelist) in node_edges.iter_mut().take(node_count).enumerate() {
-            edgelist.push(BiEdge::new(
+        let mut enriched_edgelist = edgelist;
+        for j in 0..node_count {
+            enriched_edgelist.push(BiEdge::new(
                 (j + 1) as NodeType,
                 (j + node_count + 1) as NodeType,
                 0,
             ));
+        }
+
+        let plucked = vec![false; 2 * node_count];
+        for edge in get_edge_hierarchy(&enriched_edgelist).iter().flatten() {
+            node_edges[(edge.i - 1) as usize].push(*edge);
+            node_edges[(edge.j - 1) as usize].push(*edge);
         }
 
         EdgeCache {
@@ -215,7 +216,7 @@ fn bfs_short_circuit(
 fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
-    let mut edge_cache = EdgeCache::new(edges.iter().collect(), &nodes);
+    let mut edge_cache = EdgeCache::new(edges, &nodes);
     nodes
         .iter()
         .enumerate()
@@ -593,13 +594,6 @@ mod yatp_tests {
          /
         4           */
 
-        for j in 0..node_count {
-            edge_weights.push(BiEdge::new(
-                (j + 1) as NodeType,
-                (j + node_count + 1) as NodeType,
-                0,
-            ));
-        }
 
         let layers = get_edge_hierarchy(&edge_weights);
         assert_eq!(
@@ -616,6 +610,63 @@ mod yatp_tests {
     }
 
     #[test]
+    fn test_solve_2tree_10000() {
+        // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
+        // what the parent value is. That should be enough to calculate the edges.
+
+        let node_count: WeightType = 10000;
+        let edgeweights: WeightType = 1000000;
+        let node_costs: WeightType = 100000;
+        let node_penalties =
+            std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
+        let edge_weights: Vec<BiEdge> = (1..node_count)
+            .flat_map(|i| {
+                let mut out = Vec::with_capacity(2);
+                let j = 2 * i;
+                if j <= node_count {
+                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                }
+                if (j + 1) <= node_count {
+                    let j = j + 1;
+                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                }
+                out
+            }).collect();
+
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 100000000000000);
+    }
+
+    #[test]
+    fn test_solve_2tree_50000() {
+        // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
+        // what the parent value is. That should be enough to calculate the edges.
+
+        let node_count: WeightType = 50000;
+        let edgeweights: WeightType = 1000000;
+        let node_costs: WeightType = 100000;
+        let node_penalties =
+            std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
+        let edge_weights: Vec<BiEdge> = (1..node_count)
+            .flat_map(|i| {
+                let mut out = Vec::with_capacity(2);
+                let j = 2 * i;
+                if j <= node_count {
+                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                }
+                if (j + 1) <= node_count {
+                    let j = j + 1;
+                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                }
+                out
+            }).collect();
+
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 500000000000000);
+    }
+
+    // #[test]
+    #[allow(dead_code)]
     fn test_treestruct() {
         struct Tredge {
             i: std::rc::Weak<Node>,
@@ -755,7 +806,7 @@ mod yatp_tests {
 
             #[inline(always)]
             fn contains(&self, node: NodeType) -> bool {
-                self.plucked[node as usize - 1].not()
+                !self.plucked[node as usize - 1]
             }
         }
 

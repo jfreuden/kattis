@@ -144,11 +144,11 @@ impl EdgeCache {
 
         let plucked = vec![false; 2 * node_count];
         for edge in &enriched_edgelist {
-        // for edge in get_edge_hierarchy(&enriched_edgelist)
-        //     .iter()
-        //     .rev()
-        //     .flatten()
-        // {
+            // for edge in get_edge_hierarchy(&enriched_edgelist)
+            //     .iter()
+            //     .rev()
+            //     .flatten()
+            // {
             node_edges[(edge.i - 1) as usize].push(*edge);
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
@@ -189,7 +189,7 @@ fn bfs_short_circuit(
     edge_cache: &mut EdgeCache,
     start_node: NodeType,
     node_count: NodeType,
-    cost_caps: &mut [WeightType]
+    cost_caps: &mut [WeightType],
 ) -> WeightType {
     let start_index = (start_node - 1) as usize;
     let start_penalty = edge_cache.nodes[start_index];
@@ -204,11 +204,8 @@ fn bfs_short_circuit(
         for &edge in adjacents {
             let path_cost = current_cost + edge.weight;
             if edge.j > node_count {
-                let index_i = (edge.i - 1) as usize;
-                let end_penalty = edge_cache.nodes[index_i];
-                let full_path_cost =
-                    path_cost + start_penalty * end_penalty;
-                current_cutoff = std::cmp::min(current_cutoff, full_path_cost);
+                current_cutoff =
+                    compute_new_cutoff(start_penalty, current_cutoff, edge_cache, edge, path_cost);
                 // cost_caps[index_i] = std::cmp::min(cost_caps[index_i], full_path_cost);
             } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
@@ -230,6 +227,21 @@ fn bfs_short_circuit(
             return current_cutoff;
         }
     }
+}
+
+#[inline(always)]
+fn compute_new_cutoff(
+    start_penalty: WeightType,
+    current_cutoff: WeightType,
+    edge_cache: &EdgeCache,
+    edge: BiEdge,
+    path_cost: WeightType,
+) -> WeightType {
+    let index_i = (edge.i - 1) as usize;
+    let end_penalty = edge_cache.nodes[index_i];
+    let full_path_cost = path_cost + start_penalty * end_penalty;
+    let out = std::cmp::min(current_cutoff, full_path_cost);
+    out
 }
 
 fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
@@ -267,16 +279,14 @@ fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
     let mut enumerated_counts: Vec<(NodeType, NodeType)> = counts
         .iter()
         .enumerate()
-        .map(|(x, &y)|(x as NodeType, y as NodeType))
+        .map(|(x, &y)| (x as NodeType, y as NodeType))
         .collect();
-    enumerated_counts.sort_by(|(_, a), (_, b)| {
-        a.cmp(b)
-    });
+    enumerated_counts.sort_by(|(_, a), (_, b)| a.cmp(b));
     enumerated_counts.iter().map(|&(a, _)| a + 1).collect()
 }
 
 /// Returns list of edges based on how far each is from being a leaf-edge.
-/// Note: This is not the same as "how far from a leaf", but rather how far away from being a leaf
+/// Note: This is different from "how far from a leaf", but rather how far away from being a leaf
 /// itself. It is a measure of the centrality of a given node.
 fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
     let node_count: usize = edge_weights.len() + 1;
@@ -420,9 +430,7 @@ mod yatp_tests {
         ];
         let nodelist = get_nodes_in_hierarchy_order(&edge_weights);
         assert_eq!(nodelist.len(), edge_weights.len() + 1);
-        assert_eq!(nodelist, vec![
-            1, 4, 5, 3, 2
-        ])
+        assert_eq!(nodelist, vec![1, 4, 5, 3, 2])
     }
 
     #[test]

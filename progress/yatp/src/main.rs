@@ -144,7 +144,11 @@ impl EdgeCache {
 
         let plucked = vec![false; 2 * node_count];
         // for edge in &enriched_edgelist {
-        for edge in get_edge_hierarchy(&enriched_edgelist).iter().rev().flatten() {
+        for edge in get_edge_hierarchy(&enriched_edgelist)
+            .iter()
+            .rev()
+            .flatten()
+        {
             node_edges[(edge.i - 1) as usize].push(*edge);
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
@@ -169,7 +173,7 @@ impl EdgeCache {
             *plucked_entry = true;
             (&self.node_edges[index], self)
         } else {
-            (&self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
+            (self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
         }
     }
 
@@ -185,13 +189,14 @@ fn bfs_short_circuit(
     edge_cache: &mut EdgeCache,
     start_node: NodeType,
     node_count: NodeType,
-    start_penalty: WeightType,
+    cost_caps: &mut [WeightType]
 ) -> WeightType {
+    let start_index = (start_node - 1) as usize;
+    let start_penalty = edge_cache.nodes[start_index];
     let mut pointer: NodeType = start_node as NodeType;
     let mut queue: std::collections::VecDeque<(NodeType, WeightType)> =
         std::collections::VecDeque::with_capacity(node_count as usize);
-    let cutoff = start_penalty * start_penalty;
-    let mut current_cutoff: WeightType = cutoff;
+    let mut current_cutoff: WeightType = cost_caps[start_index];
     let mut current_cost: WeightType = 0;
 
     loop {
@@ -199,11 +204,12 @@ fn bfs_short_circuit(
         for &edge in adjacents {
             let path_cost = current_cost + edge.weight;
             if edge.j > node_count {
-                current_cutoff = std::cmp::min(
-                    current_cutoff,
-                    path_cost
-                        + start_penalty * edge_cache.nodes[(edge.i - 1) as usize],
-                ); // This edge is a synth under cutoff. Take it if its path is the min cost
+                let index_i = (edge.i - 1) as usize;
+                let end_penalty = edge_cache.nodes[index_i];
+                let full_path_cost =
+                    path_cost + start_penalty * end_penalty;
+                current_cutoff = std::cmp::min(current_cutoff, full_path_cost);
+                cost_caps[index_i] = std::cmp::min(cost_caps[index_i], full_path_cost);
             } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
                 if edge_cache.contains(attached) {
@@ -218,7 +224,7 @@ fn bfs_short_circuit(
                 if current_cost >= current_cutoff {
                     continue;
                 } else {
-                    break
+                    break;
                 }
             }
             return current_cutoff;
@@ -229,15 +235,14 @@ fn bfs_short_circuit(
 fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
+    let mut cost_caps: Vec<WeightType> = nodes.iter().map(|&x| x * x).collect();
     let mut edge_cache = EdgeCache::new(edges, &nodes);
-    nodes
-        .iter()
-        .enumerate()
-        .map(|(i, &penalty)| {
+    (0..cost_caps.len())
+        .map(|i| {
             let node = (i + 1) as NodeType;
             edge_cache.reset_for(node);
 
-            let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, penalty);
+            let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, &mut cost_caps);
             bfs_cost as u64
         })
         .sum()
@@ -606,7 +611,6 @@ mod yatp_tests {
          /
         4           */
 
-
         let layers = get_edge_hierarchy(&edge_weights);
         assert_eq!(
             layers,
@@ -636,14 +640,23 @@ mod yatp_tests {
                 let mut out = Vec::with_capacity(2);
                 let j = 2 * i;
                 if j <= node_count {
-                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                    out.push(BiEdge::new(
+                        i as NodeType,
+                        j as NodeType,
+                        (j * j * j + i) % edgeweights + 1,
+                    ))
                 }
                 if (j + 1) <= node_count {
                     let j = j + 1;
-                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                    out.push(BiEdge::new(
+                        i as NodeType,
+                        j as NodeType,
+                        (j * j * j + i) % edgeweights + 1,
+                    ))
                 }
                 out
-            }).collect();
+            })
+            .collect();
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 100000000000000);
@@ -664,14 +677,23 @@ mod yatp_tests {
                 let mut out = Vec::with_capacity(2);
                 let j = 2 * i;
                 if j <= node_count {
-                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                    out.push(BiEdge::new(
+                        i as NodeType,
+                        j as NodeType,
+                        (j * j * j + i) % edgeweights + 1,
+                    ))
                 }
                 if (j + 1) <= node_count {
                     let j = j + 1;
-                    out.push(BiEdge::new(i as NodeType, j as NodeType, (j * j * j + i) % edgeweights + 1))
+                    out.push(BiEdge::new(
+                        i as NodeType,
+                        j as NodeType,
+                        (j * j * j + i) % edgeweights + 1,
+                    ))
                 }
                 out
-            }).collect();
+            })
+            .collect();
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 500000000000000);

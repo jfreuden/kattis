@@ -5,3 +5,6 @@ members = [
     "completed/medium/*",
     "progress/*"
 ]
+
+[profile.release]
+debug = true

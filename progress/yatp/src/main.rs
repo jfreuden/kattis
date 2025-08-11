@@ -196,13 +196,13 @@ fn bfs_short_circuit(
 
     loop {
         let (adjacents, edge_cache) = edge_cache.pluck(pointer);
-        for edge in adjacents {
+        for &edge in adjacents {
             let path_cost = current_cost + edge.weight;
             if edge.j > node_count {
                 current_cutoff = std::cmp::min(
                     current_cutoff,
                     path_cost
-                        + start_penalty * edge_cache.nodes.get((edge.i - 1) as usize).unwrap(),
+                        + start_penalty * edge_cache.nodes[(edge.i - 1) as usize],
                 ); // This edge is a synth under cutoff. Take it if its path is the min cost
             } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
@@ -592,13 +592,12 @@ mod yatp_tests {
 
     #[test]
     fn test_get_edge_hierarchy() {
-        let mut edge_weights: Vec<BiEdge> = vec![
+        let edge_weights: Vec<BiEdge> = vec![
             [3, 2, 8].into(),
             [5, 2, 10].into(),
             [4, 3, 10].into(),
             [2, 1, 2].into(),
         ];
-        let node_count = edge_weights.len() + 1;
         /*       1
             |
             2
@@ -704,12 +703,12 @@ mod yatp_tests {
         impl Treeholder {
             fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
                 let node_count = edge_weights.len() + 1;
-                let mut nodes = penalties.clone();
+                let nodes = penalties.clone();
                 let plucked = vec![false; node_count];
 
                 // UGH. Curious, can I make a tree with just regular borrows if I promise to be careful?
 
-                let layers = get_edge_hierarchy(&edge_weights);
+                let _layers = get_edge_hierarchy(&edge_weights);
 
                 let mut trodes = Vec::<std::rc::Rc<Node>>::with_capacity(2 * node_count);
                 let mut tredges = Vec::<std::rc::Rc<Tredge>>::with_capacity(2 * node_count - 1);
@@ -735,7 +734,7 @@ mod yatp_tests {
                     let index_j = (edge.j - 1) as usize;
 
                     // Create Tredge with references to buds
-                    let rc = std::rc::Rc::new_cyclic(|future_weak| {
+                    let _rc = std::rc::Rc::new_cyclic(|future_weak| {
                         let rc_i = &mut trodes[index_i];
                         std::rc::Rc::get_mut(rc_i)
                             .unwrap()
@@ -763,7 +762,7 @@ mod yatp_tests {
                         j: std::rc::Rc::downgrade(&trodes[(edge.j - 1) as usize]),
                         weight: edge.weight,
                     });
-                    let weak = std::rc::Rc::downgrade(&rc);
+                    let _weak = std::rc::Rc::downgrade(&rc);
                     tredges.push(rc);
 
                     // Add tredge reference to Node/trode
@@ -796,7 +795,7 @@ mod yatp_tests {
                 }
             }
 
-            fn reset_for(&mut self, node: NodeType) {
+            fn reset_for(&mut self, _node: NodeType) {
                 self.plucked = vec![false; self.plucked.len()];
             }
 
@@ -831,7 +830,7 @@ mod yatp_tests {
             [2, 1, 2].into(),
         ];
 
-        let beholder = Treeholder::new(edge_weights, &node_penalties);
+        let _beholder = Treeholder::new(edge_weights, &node_penalties);
 
         let answer = 0;
         assert_eq!(answer, 63);

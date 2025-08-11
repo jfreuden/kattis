@@ -143,12 +143,12 @@ impl EdgeCache {
         }
 
         let plucked = vec![false; 2 * node_count];
-        // for edge in &enriched_edgelist {
-        for edge in get_edge_hierarchy(&enriched_edgelist)
-            .iter()
-            .rev()
-            .flatten()
-        {
+        for edge in &enriched_edgelist {
+        // for edge in get_edge_hierarchy(&enriched_edgelist)
+        //     .iter()
+        //     .rev()
+        //     .flatten()
+        // {
             node_edges[(edge.i - 1) as usize].push(*edge);
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
@@ -209,7 +209,7 @@ fn bfs_short_circuit(
                 let full_path_cost =
                     path_cost + start_penalty * end_penalty;
                 current_cutoff = std::cmp::min(current_cutoff, full_path_cost);
-                cost_caps[index_i] = std::cmp::min(cost_caps[index_i], full_path_cost);
+                // cost_caps[index_i] = std::cmp::min(cost_caps[index_i], full_path_cost);
             } else if let Some(attached) = edge.connected_to(pointer) {
                 // add to queue
                 if edge_cache.contains(attached) {
@@ -236,6 +236,9 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
     let mut cost_caps: Vec<WeightType> = nodes.iter().map(|&x| x * x).collect();
+
+    // let mut nodelist = get_nodes_in_hierarchy_order(&edges);
+    // nodelist.reverse();
     let mut edge_cache = EdgeCache::new(edges, &nodes);
     (0..cost_caps.len())
         .map(|i| {
@@ -243,9 +246,33 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
             edge_cache.reset_for(node);
 
             let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, &mut cost_caps);
+            // println!("cost_caps sum: {}", cost_caps.iter().sum::<WeightType>());
             bfs_cost as u64
         })
         .sum()
+}
+
+fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
+    let node_count: usize = edge_weights.len() + 1;
+    let mut working_edges = edge_weights.clone();
+    let counts = working_edges
+        .iter()
+        .fold(vec![0 as NodeType; node_count], |mut acc_vec, edge| {
+            let index_i = (edge.i - 1) as usize;
+            let index_j = (edge.j - 1) as usize;
+            acc_vec[index_i] += 1;
+            acc_vec[index_j] += 1;
+            acc_vec
+        });
+    let mut enumerated_counts: Vec<(NodeType, NodeType)> = counts
+        .iter()
+        .enumerate()
+        .map(|(x, &y)|(x as NodeType, y as NodeType))
+        .collect();
+    enumerated_counts.sort_by(|(_, a), (_, b)| {
+        a.cmp(b)
+    });
+    enumerated_counts.iter().map(|&(a, _)| a + 1).collect()
 }
 
 /// Returns list of edges based on how far each is from being a leaf-edge.
@@ -381,6 +408,21 @@ mod yatp_tests {
             })
             .collect();
         assert_eq!(solve(node_penalties, edge_weights), 10000);
+    }
+
+    #[test]
+    fn test_get_nodes_in_hierarchy_order() {
+        let edge_weights: Vec<BiEdge> = vec![
+            [3, 2, 8].into(),
+            [5, 2, 10].into(),
+            [4, 3, 10].into(),
+            [2, 1, 2].into(),
+        ];
+        let nodelist = get_nodes_in_hierarchy_order(&edge_weights);
+        assert_eq!(nodelist.len(), edge_weights.len() + 1);
+        assert_eq!(nodelist, vec![
+            1, 4, 5, 3, 2
+        ])
     }
 
     #[test]
@@ -603,7 +645,7 @@ mod yatp_tests {
             [4, 3, 10].into(),
             [2, 1, 2].into(),
         ];
-        /*       1
+        /*  1
             |
             2
            / \

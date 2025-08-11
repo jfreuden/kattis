@@ -85,7 +85,19 @@ impl BiEdge {
 
 impl From<[u64; 3]> for BiEdge {
     fn from(arr: [u64; 3]) -> Self {
-        Self::new(arr[0] as NodeType, arr[1] as NodeType, arr[2])
+        Self::new(arr[0] as NodeType, arr[1] as NodeType, arr[2] as WeightType)
+    }
+}
+
+impl From<[u32; 3]> for BiEdge {
+    fn from(arr: [u32; 3]) -> Self {
+        Self::new(arr[0] as NodeType, arr[1] as NodeType, arr[2] as WeightType)
+    }
+}
+
+impl From<[i32; 3]> for BiEdge {
+    fn from(arr: [i32; 3]) -> Self {
+        Self::new(arr[0] as NodeType, arr[1] as NodeType, arr[2] as WeightType)
     }
 }
 
@@ -116,7 +128,7 @@ struct EdgeCache {
     nodes: Vec<WeightType>,
 }
 impl EdgeCache {
-    fn new(edgelist: Vec<BiEdge>, static_nodes: &'_ Vec<WeightType>) -> Self {
+    fn new(edgelist: Vec<BiEdge>, static_nodes: &Vec<WeightType>) -> Self {
         let nodes = static_nodes.clone();
         let node_count = nodes.len();
         let mut node_edges = vec![Vec::<BiEdge>::new(); node_count * 2];
@@ -131,7 +143,8 @@ impl EdgeCache {
         }
 
         let plucked = vec![false; 2 * node_count];
-        for edge in get_edge_hierarchy(&enriched_edgelist).iter().flatten() {
+        // for edge in &enriched_edgelist {
+        for edge in get_edge_hierarchy(&enriched_edgelist).iter().rev().flatten() {
             node_edges[(edge.i - 1) as usize].push(*edge);
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
@@ -151,10 +164,10 @@ impl EdgeCache {
     #[inline(always)]
     fn pluck(&mut self, node: NodeType) -> (&Vec<BiEdge>, &Self) {
         let index = (node - 1) as usize;
-        let plucked_entry = self.plucked.get_mut(index).unwrap();
+        let plucked_entry = &mut self.plucked[index];
         if !*plucked_entry {
             *plucked_entry = true;
-            (self.node_edges.get(index).unwrap(), self)
+            (&self.node_edges[index], self)
         } else {
             (&self.node_edges.last().unwrap(), self) // HACK: have to return an empty list, don't have one.
         }
@@ -183,12 +196,9 @@ fn bfs_short_circuit(
 
     loop {
         let (adjacents, edge_cache) = edge_cache.pluck(pointer);
-
         for edge in adjacents {
             let path_cost = current_cost + edge.weight;
-            if path_cost > current_cutoff {
-                continue;
-            } else if edge.j > node_count {
+            if edge.j > node_count {
                 current_cutoff = std::cmp::min(
                     current_cutoff,
                     path_cost
@@ -202,18 +212,21 @@ fn bfs_short_circuit(
             }
         }
 
-        if let Some((ptr, ptr_minimum)) = queue.pop_front() {
-            pointer = ptr;
-            current_cost = ptr_minimum
-        } else {
-            break;
+        loop {
+            if let Some(next_please) = queue.pop_front() {
+                (pointer, current_cost) = next_please;
+                if current_cost >= current_cutoff {
+                    continue;
+                } else {
+                    break
+                }
+            }
+            return current_cutoff;
         }
     }
-
-    current_cutoff
 }
 
-fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
+fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
     let mut edge_cache = EdgeCache::new(edges, &nodes);
@@ -225,7 +238,7 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> WeightType {
             edge_cache.reset_for(node);
 
             let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, penalty);
-            bfs_cost
+            bfs_cost as u64
         })
         .sum()
 }
@@ -267,15 +280,15 @@ fn main() {
     let number_nodes: usize = read_one();
     let node_penalties = read_vec::<WeightType>();
     let edge_weights: Vec<BiEdge> = {
-        let mut out = Vec::new();
+        let mut out = Vec::with_capacity(2 * number_nodes - 1);
         for _ in 0..number_nodes - 1 {
-            out.push(BiEdge::from(read_array()));
+            out.push(BiEdge::from(read_array::<WeightType, 3, _>()));
         }
         out
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> WeightType = solve;
+const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = solve;
 
 #[cfg(test)]
 mod yatp_tests {
@@ -340,7 +353,7 @@ mod yatp_tests {
 
     #[test]
     fn test_solve_100_nodes() {
-        let node_penalties = (1..101).collect::<Vec<u64>>();
+        let node_penalties = (1..101).collect::<Vec<WeightType>>();
         let edge_weights: Vec<BiEdge> = (0..99)
             .map(|i| {
                 let j = i % 100;
@@ -355,7 +368,7 @@ mod yatp_tests {
         let node_count = 100;
         let node_start = 1;
 
-        let node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
                 let j = i % node_count;
@@ -369,7 +382,7 @@ mod yatp_tests {
     fn test_optsolve_50_nodes() {
         let node_count = 50;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(11);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -389,7 +402,7 @@ mod yatp_tests {
     fn test_optsolve_500_nodes() {
         let node_count = 500;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(77);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -409,7 +422,7 @@ mod yatp_tests {
     fn test_optsolve_1000_nodes() {
         let node_count = 1000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(97);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -429,7 +442,7 @@ mod yatp_tests {
     fn test_optsolve_2000_nodes() {
         let node_count = 2000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(939);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -449,7 +462,7 @@ mod yatp_tests {
     fn test_optsolve_10000_nodes() {
         let node_count = 10000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(2839);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -469,7 +482,7 @@ mod yatp_tests {
     fn test_optsolve_50000_nodes() {
         let node_count = 50000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(2339);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -490,7 +503,7 @@ mod yatp_tests {
     fn test_optsolve_100000_nodes() {
         let node_count = 100000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(23789);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -511,7 +524,7 @@ mod yatp_tests {
     fn test_optsolve_200000_nodes() {
         let node_count = 200000;
         let node_start = 1;
-        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<u64>>();
+        let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(23789);
         let edge_weights: Vec<BiEdge> = (0..node_count - 1)
             .map(|i| {
@@ -529,7 +542,7 @@ mod yatp_tests {
 
     #[test]
     fn test_solve_200_nodes() {
-        let mut node_penalties = (1..201).collect::<Vec<u64>>();
+        let mut node_penalties = (1..201).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(23);
         let edge_weights: Vec<BiEdge> = (0..199)
             .map(|i| {
@@ -545,7 +558,7 @@ mod yatp_tests {
         let node_penalties = std::iter::once(2)
             .chain(std::iter::repeat_n(70, 40))
             .chain(std::iter::once(2))
-            .collect::<Vec<u64>>();
+            .collect::<Vec<WeightType>>();
 
         let edge_weights: Vec<BiEdge> = (0..41).map(|i| [i + 1, i + 2, 100000].into()).collect();
         assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 196008)
@@ -556,7 +569,7 @@ mod yatp_tests {
         let node_penalties = std::iter::once(2)
             .chain(std::iter::repeat_n(70, 40))
             .chain(std::iter::once(2))
-            .collect::<Vec<u64>>();
+            .collect::<Vec<WeightType>>();
 
         let edge_weights: Vec<BiEdge> = (0..41).map(|i| [i + 1, i + 2, 1].into()).collect();
         assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 6028)

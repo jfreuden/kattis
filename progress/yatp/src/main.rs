@@ -266,8 +266,7 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
 
 fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
     let node_count: usize = edge_weights.len() + 1;
-    let mut working_edges = edge_weights.clone();
-    let counts = working_edges
+    let counts = edge_weights
         .iter()
         .fold(vec![0 as NodeType; node_count], |mut acc_vec, edge| {
             let index_i = (edge.i - 1) as usize;

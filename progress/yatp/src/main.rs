@@ -775,7 +775,7 @@ mod yatp_tests {
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
-        let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
+        let _layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 0);
@@ -792,7 +792,7 @@ mod yatp_tests {
         let node_count: WeightType = 31;
         let edgeweights: WeightType = 2;
         let node_costs: WeightType = 2;
-        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
+        let (_node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
 
         let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 

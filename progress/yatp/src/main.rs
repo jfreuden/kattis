@@ -266,16 +266,9 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
 
 fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
     let node_count: usize = edge_weights.len() + 1;
-    let counts = edge_weights
-        .iter()
-        .fold(vec![0 as NodeType; node_count], |mut acc_vec, edge| {
-            let index_i = (edge.i - 1) as usize;
-            let index_j = (edge.j - 1) as usize;
-            acc_vec[index_i] += 1;
-            acc_vec[index_j] += 1;
-            acc_vec
-        });
-    let mut enumerated_counts: Vec<(NodeType, NodeType)> = counts
+    let path_counts = get_node_pathcounts(edge_weights, node_count);
+
+    let mut enumerated_counts: Vec<(NodeType, NodeType)> = path_counts
         .iter()
         .enumerate()
         .map(|(x, &y)| (x as NodeType, y as NodeType))
@@ -289,18 +282,10 @@ fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
 /// itself. It is a measure of the centrality of a given node.
 fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
     let node_count: usize = edge_weights.len() + 1;
+    let path_counts = get_node_pathcounts(edge_weights, node_count);
+
     let mut working_edges = edge_weights.clone();
     let mut layers = Vec::<Vec<BiEdge>>::new();
-    let counts = working_edges
-        .iter()
-        .fold(vec![0; node_count], |mut acc_vec, edge| {
-            let index_i = (edge.i - 1) as usize;
-            let index_j = (edge.j - 1) as usize;
-            acc_vec[index_i] += 1;
-            acc_vec[index_j] += 1;
-            acc_vec
-        });
-
     let mut now_serving = 0;
     while !working_edges.is_empty() {
         now_serving += 1;
@@ -309,12 +294,45 @@ fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
             .extract_if(.., |edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-                counts[index_i].le(&now_serving) || counts[index_j].le(&now_serving)
+                path_counts[index_i].le(&now_serving) || path_counts[index_j].le(&now_serving)
             })
             .collect();
+        if leaves.is_empty() {
+            continue;
+        }
         layers.push(leaves);
     }
     layers
+}
+
+fn get_node_pathcounts(edge_weights: &Vec<BiEdge>, node_count: usize) -> Vec<NodeType> {
+    let mut working_edges = edge_weights.clone();
+    let mut path_counts = vec![0 as NodeType; node_count];
+    while !working_edges.is_empty() {
+        let mut step_counts = vec![0 as NodeType; node_count];
+        (path_counts, step_counts) = working_edges.iter().fold(
+            (path_counts, step_counts),
+            |(mut acc_vec, mut step_vec), edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                acc_vec[index_i] += 1;
+                acc_vec[index_j] += 1;
+                step_vec[index_i] += 1;
+                step_vec[index_j] += 1;
+                (acc_vec, step_vec)
+            },
+        );
+        let not_leaves: Vec<BiEdge> = working_edges
+            .extract_if(.., |edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                step_counts[index_i].gt(&1) && step_counts[index_j].gt(&1)
+            })
+            .collect();
+
+        working_edges = not_leaves;
+    }
+    path_counts
 }
 
 fn main() {
@@ -645,7 +663,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_get_edge_hierarchy() {
+    fn test_get_edge_hierarchy_kattis_testcase() {
         let edge_weights: Vec<BiEdge> = vec![
             [3, 2, 8].into(),
             [5, 2, 10].into(),
@@ -682,30 +700,7 @@ mod yatp_tests {
         let node_count: WeightType = 10000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
-        let node_penalties =
-            std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
-        let edge_weights: Vec<BiEdge> = (1..node_count)
-            .flat_map(|i| {
-                let mut out = Vec::with_capacity(2);
-                let j = 2 * i;
-                if j <= node_count {
-                    out.push(BiEdge::new(
-                        i as NodeType,
-                        j as NodeType,
-                        (j * j * j + i) % edgeweights + 1,
-                    ))
-                }
-                if (j + 1) <= node_count {
-                    let j = j + 1;
-                    out.push(BiEdge::new(
-                        i as NodeType,
-                        j as NodeType,
-                        (j * j * j + i) % edgeweights + 1,
-                    ))
-                }
-                out
-            })
-            .collect();
+        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 100000000000000);
@@ -719,6 +714,17 @@ mod yatp_tests {
         let node_count: WeightType = 50000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
+        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
+
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 500000000000000);
+    }
+
+    fn make_test_2tree(
+        node_count: WeightType,
+        edgeweights: WeightType,
+        node_costs: WeightType,
+    ) -> (Vec<WeightType>, Vec<BiEdge>) {
         let node_penalties =
             std::iter::repeat_n(node_costs, node_count as usize).collect::<Vec<WeightType>>();
         let edge_weights: Vec<BiEdge> = (1..node_count)
@@ -743,167 +749,64 @@ mod yatp_tests {
                 out
             })
             .collect();
-
-        let out = SELECTED_SOLVER(node_penalties, edge_weights);
-        assert_eq!(out, 500000000000000);
+        (node_penalties, edge_weights)
     }
 
     // #[test]
     #[allow(dead_code)]
-    fn test_treestruct() {
-        struct Tredge {
-            i: std::rc::Weak<Node>,
-            j: std::rc::Weak<Node>,
-            weight: WeightType,
-        }
-        struct Node {
-            friends: Vec<std::rc::Weak<Tredge>>,
-            node: NodeType,
-            penalty: WeightType,
-        }
+    fn test_solve_2tree_100000() {
+        // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
+        // what the parent value is. That should be enough to calculate the edges.
+        let node_count: WeightType = 100000;
+        let edgeweights: WeightType = 1000000;
+        let node_costs: WeightType = 100000;
+        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
 
-        struct Treeholder {
-            plucked: Vec<bool>,
-            // nodes: Vec<WeightType>,
-            // Vector / array with references directly to each synth edge (for optimal starts)
-            // references_to_whatever: Vec<&'a Tree<'a>>,
-            trodes: Vec<std::rc::Rc<Node>>,
-            tredges: Vec<std::rc::Rc<Tredge>>,
-        }
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 0);
+    }
 
-        impl Treeholder {
-            fn new(edge_weights: Vec<BiEdge>, penalties: &'_ Vec<WeightType>) -> Self {
-                let node_count = edge_weights.len() + 1;
-                let nodes = penalties.clone();
-                let plucked = vec![false; node_count];
+    // #[test]
+    #[allow(dead_code)]
+    fn test_solve_2tree_200000() {
+        // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
+        // what the parent value is. That should be enough to calculate the edges.
+        let node_count: WeightType = 200000;
+        let edgeweights: WeightType = 1000000;
+        let node_costs: WeightType = 100000;
+        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
+        let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
-                // UGH. Curious, can I make a tree with just regular borrows if I promise to be careful?
+        let out = SELECTED_SOLVER(node_penalties, edge_weights);
+        assert_eq!(out, 0);
+    }
 
-                let _layers = get_edge_hierarchy(&edge_weights);
+    #[test]
+    fn test_get_edge_hierarchy_2tree_4layer() {
+        // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
+        //                        1
+        //            2                      3
+        //      4           5            6           7
+        //  8     9     10    11     12    13    14    15
+        //16 17 18 19  20 21 22 23 24 25  26 27 28 29 30 31
+        let node_count: WeightType = 31;
+        let edgeweights: WeightType = 2;
+        let node_costs: WeightType = 2;
+        let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
 
-                let mut trodes = Vec::<std::rc::Rc<Node>>::with_capacity(2 * node_count);
-                let mut tredges = Vec::<std::rc::Rc<Tredge>>::with_capacity(2 * node_count - 1);
+        let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
-                for i in 0..2 * node_count {
-                    let node = i + 1;
-                    let rc = std::rc::Rc::new(Node {
-                        node: node as NodeType,
-                        friends: Vec::new(),
-                        penalty: *penalties.get(i).unwrap_or(&WeightType::default()),
-                    });
-                    trodes.push(rc);
-                }
-
-                // Make all the nodes first, and instead of making Tredges yet, make BiEdges and use
-                // them as Tredge orders, then load all the Tredge references in later
-                // oh shit that can't work. I need a weak reference to the Node in order to make the
-                // Tredge, but I won't be able to edit the friends vector on the nodes if I do that.
-                // even with this new way it won't work. I can't edit the vector and also have weak references into the node.
-
-                for edge in edge_weights {
-                    let index_i = (edge.i - 1) as usize;
-                    let index_j = (edge.j - 1) as usize;
-
-                    // Create Tredge with references to buds
-                    let _rc = std::rc::Rc::new_cyclic(|future_weak| {
-                        let rc_i = &mut trodes[index_i];
-                        std::rc::Rc::get_mut(rc_i)
-                            .unwrap()
-                            .friends
-                            .push(future_weak.clone());
-
-                        let mut out = Tredge {
-                            i: std::rc::Rc::downgrade(rc_i),
-                            j: std::rc::Weak::new(),
-                            weight: edge.weight,
-                        };
-
-                        let rc_j = &mut trodes[index_j];
-                        std::rc::Rc::get_mut(rc_j)
-                            .unwrap()
-                            .friends
-                            .push(future_weak.clone());
-                        out.j = std::rc::Rc::downgrade(rc_j);
-
-                        out
-                    });
-
-                    let rc = std::rc::Rc::new(Tredge {
-                        i: std::rc::Rc::downgrade(&trodes[(edge.i - 1) as usize]),
-                        j: std::rc::Rc::downgrade(&trodes[(edge.j - 1) as usize]),
-                        weight: edge.weight,
-                    });
-                    let _weak = std::rc::Rc::downgrade(&rc);
-                    tredges.push(rc);
-
-                    // Add tredge reference to Node/trode
-                }
-
-                // After inserting, do the synth edges (other implementations could choose to put penalty on Node)
-                let penalty = nodes[0];
-                for i in 0..node_count {
-                    let node_i = i + 1;
-                    let node_j = node_i + node_count;
-
-                    let rc = std::rc::Rc::new(Tredge {
-                        i: std::rc::Rc::downgrade(&trodes[node_i - 1]),
-                        j: std::rc::Rc::downgrade(&trodes[node_j - 1]),
-                        weight: nodes[i] * penalty - penalty,
-                    });
-                    let weak = std::rc::Rc::downgrade(&rc);
-                    tredges.push(rc);
-
-                    std::rc::Rc::get_mut(&mut trodes[node_i - 1])
-                        .unwrap()
-                        .friends
-                        .push(weak.clone());
-                }
-
-                Treeholder {
-                    plucked,
-                    trodes,
-                    tredges,
-                }
-            }
-
-            fn reset_for(&mut self, _node: NodeType) {
-                self.plucked = vec![false; self.plucked.len()];
-            }
-
-            #[inline(always)]
-            fn pluck(&mut self, node: NodeType) -> Vec<BiEdge> {
-                // TODO: Add a "visited" or "plucked" data structure
-                self.trodes[(node - 1) as usize]
-                    .friends
-                    .iter()
-                    .map(|tredge_weak| {
-                        let rc = tredge_weak.upgrade().unwrap();
-                        BiEdge {
-                            i: rc.i.upgrade().unwrap().node,
-                            j: rc.j.upgrade().unwrap().node,
-                            weight: rc.weight,
-                        }
-                    })
-                    .collect()
-            }
-
-            #[inline(always)]
-            fn contains(&self, node: NodeType) -> bool {
-                !self.plucked[node as usize - 1]
-            }
-        }
-
-        let node_penalties = vec![9, 7, 1, 1, 9];
-        let edge_weights: Vec<BiEdge> = vec![
-            [3, 2, 8].into(),
-            [5, 2, 10].into(),
-            [4, 3, 10].into(),
-            [2, 1, 2].into(),
-        ];
-
-        let _beholder = Treeholder::new(edge_weights, &node_penalties);
-
-        let answer = 0;
-        assert_eq!(answer, 63);
+        assert_eq!(layers.len(), 4); // There should be 4 layers
+        let mut layer = layers.iter();
+        assert_eq!(
+            *layer.next().unwrap(),
+            edge_weights[16 - 2..=31 - 2].to_vec()
+        );
+        assert_eq!(
+            *layer.next().unwrap(),
+            edge_weights[8 - 2..=15 - 2].to_vec()
+        );
+        assert_eq!(*layer.next().unwrap(), edge_weights[4 - 2..=7 - 2].to_vec());
+        assert_eq!(*layer.next().unwrap(), edge_weights[2 - 2..=3 - 2].to_vec());
     }
 }

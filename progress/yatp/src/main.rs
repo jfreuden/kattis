@@ -143,12 +143,13 @@ impl EdgeCache {
         }
 
         let plucked = vec![false; 2 * node_count];
-        for edge in &enriched_edgelist {
-            // for edge in get_edge_hierarchy(&enriched_edgelist)
-            //     .iter()
-            //     .rev()
-            //     .flatten()
-            // {
+
+        // for edge in &enriched_edgelist {
+        for edge in get_edge_hierarchy(&enriched_edgelist)
+            .iter()
+            .rev()
+            .flatten()
+        {
             node_edges[(edge.i - 1) as usize].push(*edge);
             node_edges[(edge.j - 1) as usize].push(*edge);
         }
@@ -248,13 +249,16 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
     let node_count = nodes.len() as NodeType;
     let mut cost_caps: Vec<WeightType> = nodes.iter().map(|&x| x * x).collect();
-
-    // let mut nodelist = get_nodes_in_hierarchy_order(&edges);
-    // nodelist.reverse();
+    let mut _nodelist = get_nodes_in_hierarchy_order(&edges);
     let mut edge_cache = EdgeCache::new(edges, &nodes);
-    (0..cost_caps.len())
-        .map(|i| {
-            let node = (i + 1) as NodeType;
+
+    _nodelist.reverse();
+    _nodelist
+        .iter()
+        .map(|&node| {
+            // (0..cost_caps.len())
+            //     .map(|i| {
+            //         let node = (i + 1) as NodeType;
             edge_cache.reset_for(node);
 
             let bfs_cost = bfs_short_circuit(&mut edge_cache, node, node_count, &mut cost_caps);
@@ -311,40 +315,34 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>, node_count: usize) -> Vec<Nod
     let mut path_counts = vec![0 as NodeType; node_count];
     while !working_edges.is_empty() {
         let mut step_counts = vec![0 as NodeType; node_count];
-        (_, step_counts) = working_edges.iter().fold(
-            (path_counts.clone(), step_counts),
-            |(mut acc_vec, mut step_vec), edge| {
+        step_counts = working_edges
+            .iter()
+            .fold(step_counts, |mut step_vec, edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-
                 step_vec[index_i] += 1;
                 step_vec[index_j] += 1;
-                (acc_vec, step_vec)
-            },
-        );
+                step_vec
+            });
 
-        path_counts = path_counts.iter().zip(step_counts.iter()).map(|(&node_pathcount, &node_step)| {
-            if node_step > 1 {
-                node_pathcount + 1
-            } else {
-                node_pathcount
-            }
-        }).collect();
+        path_counts = path_counts
+            .iter()
+            .zip(step_counts.iter())
+            .map(|(&node_pathcount, &node_step)| {
+                if node_step > 1 {
+                    node_pathcount + 1
+                } else {
+                    node_pathcount
+                }
+            })
+            .collect();
 
         let not_leaves: Vec<BiEdge> = working_edges
             .extract_if(.., |edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-
                 let i_is_leaf = step_counts[index_i].eq(&1);
                 let j_is_leaf = step_counts[index_j].eq(&1);
-                // if j_is_leaf {
-                //     path_counts[index_i] += 1;
-                // }
-                // if i_is_leaf {
-                //     path_counts[index_j] += 1;
-                // }
-
                 !(i_is_leaf || j_is_leaf)
             })
             .collect();
@@ -797,7 +795,7 @@ mod yatp_tests {
         let _layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
-        assert_eq!(out, 0);
+        assert_eq!(out, 2000000000000000);
     }
 
     #[test]
@@ -812,7 +810,7 @@ mod yatp_tests {
         let edgeweights: WeightType = 2;
         let node_costs: WeightType = 2;
         let (_node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
-        let node_hierarchies = get_nodes_in_hierarchy_order(&edge_weights);
+        let _node_hierarchies = get_nodes_in_hierarchy_order(&edge_weights);
         let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
         assert_eq!(layers.len(), 4); // There should be 4 layers

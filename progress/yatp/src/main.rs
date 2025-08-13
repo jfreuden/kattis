@@ -288,19 +288,20 @@ fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
     let mut layers = Vec::<Vec<BiEdge>>::new();
     let mut now_serving = 0;
     while !working_edges.is_empty() {
-        now_serving += 1;
-
         let leaves: Vec<BiEdge> = working_edges
             .extract_if(.., |edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-                path_counts[index_i].le(&now_serving) || path_counts[index_j].le(&now_serving)
+                let i_is_leaf = path_counts[index_i].le(&now_serving);
+                let j_is_leaf = path_counts[index_j].le(&now_serving);
+                i_is_leaf || j_is_leaf
             })
             .collect();
         if leaves.is_empty() {
             continue;
         }
         layers.push(leaves);
+        now_serving += 1;
     }
     layers
 }
@@ -310,23 +311,41 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>, node_count: usize) -> Vec<Nod
     let mut path_counts = vec![0 as NodeType; node_count];
     while !working_edges.is_empty() {
         let mut step_counts = vec![0 as NodeType; node_count];
-        (path_counts, step_counts) = working_edges.iter().fold(
-            (path_counts, step_counts),
+        (_, step_counts) = working_edges.iter().fold(
+            (path_counts.clone(), step_counts),
             |(mut acc_vec, mut step_vec), edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-                acc_vec[index_i] += 1;
-                acc_vec[index_j] += 1;
+
                 step_vec[index_i] += 1;
                 step_vec[index_j] += 1;
                 (acc_vec, step_vec)
             },
         );
+
+        path_counts = path_counts.iter().zip(step_counts.iter()).map(|(&node_pathcount, &node_step)| {
+            if node_step > 1 {
+                node_pathcount + 1
+            } else {
+                node_pathcount
+            }
+        }).collect();
+
         let not_leaves: Vec<BiEdge> = working_edges
             .extract_if(.., |edge| {
                 let index_i = (edge.i - 1) as usize;
                 let index_j = (edge.j - 1) as usize;
-                step_counts[index_i].gt(&1) && step_counts[index_j].gt(&1)
+
+                let i_is_leaf = step_counts[index_i].eq(&1);
+                let j_is_leaf = step_counts[index_j].eq(&1);
+                // if j_is_leaf {
+                //     path_counts[index_i] += 1;
+                // }
+                // if i_is_leaf {
+                //     path_counts[index_j] += 1;
+                // }
+
+                !(i_is_leaf || j_is_leaf)
             })
             .collect();
 
@@ -447,7 +466,7 @@ mod yatp_tests {
         ];
         let nodelist = get_nodes_in_hierarchy_order(&edge_weights);
         assert_eq!(nodelist.len(), edge_weights.len() + 1);
-        assert_eq!(nodelist, vec![1, 4, 5, 3, 2])
+        assert_eq!(nodelist, vec![1, 4, 5, 2, 3])
     }
 
     #[test]
@@ -766,7 +785,7 @@ mod yatp_tests {
         assert_eq!(out, 0);
     }
 
-    // #[test]
+    #[test]
     #[allow(dead_code)]
     fn test_solve_2tree_200000() {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
@@ -793,7 +812,7 @@ mod yatp_tests {
         let edgeweights: WeightType = 2;
         let node_costs: WeightType = 2;
         let (_node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
-
+        let node_hierarchies = get_nodes_in_hierarchy_order(&edge_weights);
         let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
 
         assert_eq!(layers.len(), 4); // There should be 4 layers

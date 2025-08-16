@@ -421,7 +421,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
     // Going down the tree for building the hulls, you are merging hulls.
 
-
+    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
 
 
 

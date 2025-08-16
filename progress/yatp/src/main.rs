@@ -364,7 +364,117 @@ fn main() {
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = solve;
+const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = convex_solve;
+
+struct HullPart {
+    range_start: WeightType,
+    path_cost: WeightType,
+    end_penalty: WeightType,
+}
+
+/// Helper data structure for O(1) queries of minimum path + penalty costs.
+struct ConvexHull {
+    node: NodeType,
+    penalty: WeightType,
+    parent_edge: Option<BiEdge>,
+    hull_parts: Vec<HullPart>,
+    children: Vec<NodeType>,
+}
+
+/// A solver making use of convex hulls and a hierarchical tree decomposition.
+fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
+    let node_count: usize = node_penalties.len();
+    let node_order = get_nodes_in_hierarchy_order(&edge_weights);
+    let node_hierarchy = std::collections::VecDeque::<Vec<BiEdge>>::from(get_edge_hierarchy(&edge_weights));
+
+    // Build upward from the more leafy nodes.
+    // Build the first layer, pulling every edge from the first bucket of edges.
+    // Afterward, each node will have one or more edges in the next bucket,
+    //     with one pointing at the child convex hull, and the other pointing at the current node.
+
+    // I would love to be able to do this in one iteration, but I might need to pull the first layer,
+    // or make a layered version of the node order, similar to the edge one.
+
+
+    let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
+    let path_counts = get_node_pathcounts(&edge_weights, node_count);
+    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+
+    for node in node_order {
+        let node_index = (node - 1) as usize;
+        let reflexive = HullPart {
+            range_start: 0,
+            path_cost: 0,
+            end_penalty: node_penalties[(node - 1) as usize],
+        };
+
+        let my_children = &node_hulls[node_index].children;
+        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(|&child| &node_hulls[child as usize]).collect();
+
+        let combined_hullparts: Vec<HullPart> = vec![reflexive];
+
+        // TODO: Write the code to build the combined hull.
+
+        node_hulls[node_index].hull_parts = combined_hullparts;
+    }
+
+    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
+    // Going down the tree for building the hulls, you are merging hulls.
+
+
+
+
+
+    0
+}
+
+fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<NodeType>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
+    let mut layers = Vec::<Vec<BiEdge>>::new();
+    let mut working_edges = edge_weights.clone();
+    let mut now_serving = 0;
+    while !working_edges.is_empty() {
+        let leaves: Vec<BiEdge> = working_edges
+            .extract_if(.., |edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                let i_is_leaf = path_counts[index_i].le(&now_serving);
+                let j_is_leaf = path_counts[index_j].le(&now_serving);
+
+                let (node_index, parent_index) = if i_is_leaf {
+                    (index_i, index_j)
+                } else if j_is_leaf {
+                    (index_j, index_i)
+                } else {
+                    return false
+                };
+                node_hulls[parent_index].children.push((node_index + 1) as NodeType);
+                node_hulls[node_index].parent_edge = Some(*edge);
+
+                true
+            })
+            .collect();
+        if leaves.is_empty() {
+            continue;
+        }
+        layers.push(leaves);
+        now_serving += 1;
+    }
+    layers
+}
+
+fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Vec<ConvexHull> {
+    let mut node_hulls = Vec::<ConvexHull>::with_capacity(node_count);
+    for (i, &penalty) in node_penalties.iter().enumerate() {
+        node_hulls.push(ConvexHull {
+            node: (i + 1) as NodeType,
+            penalty,
+            parent_edge: None,
+            hull_parts: Vec::<HullPart>::new(),
+            children: Vec::<NodeType>::new(),
+        });
+    }
+    node_hulls
+}
 
 #[cfg(test)]
 mod yatp_tests {

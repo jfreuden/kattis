@@ -449,19 +449,21 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
             hullpart_heap.extend(edited_hull_parts);
         }
 
-
         // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
         // skipping edges with higher intercepts
         let mut hullpart_list = Vec::new();
         let mut min_tercept = WeightType::MAX;
         while let Some(hullpart) = hullpart_heap.pop() {
-            if hullpart.path_cost < min_tercept {
+            if hullpart.path_cost < min_tercept { // TODO: This is definitely wrong, as it shows only one hullpart for node 2, which seems sus.
                 hullpart_list.push(hullpart);
                 min_tercept = hullpart.path_cost;
             }
         }
 
+        // TODO: Fix hullpart_list
+
         let mut combined_hullparts: Vec<HullPart> = vec![reflexive];
+        combined_hullparts.extend(hullpart_list);
         let mut last_addition = &reflexive;
 
 
@@ -1007,5 +1009,7 @@ mod yatp_tests {
         );
         assert_eq!(*layer.next().unwrap(), edge_weights[4 - 2..=7 - 2].to_vec());
         assert_eq!(*layer.next().unwrap(), edge_weights[2 - 2..=3 - 2].to_vec());
+
+        convex_solve(_node_penalties, edge_weights);
     }
 }

@@ -1,3 +1,5 @@
+use std::cmp::Reverse;
+
 fn read_one<T: std::str::FromStr>() -> T
 where
     T::Err: std::fmt::Debug,
@@ -366,10 +368,33 @@ fn main() {
 }
 const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = convex_solve;
 
+#[derive(Eq, Copy, Clone, Debug)]
 struct HullPart {
     range_start: WeightType,
     path_cost: WeightType,
     end_penalty: WeightType,
+}
+
+impl PartialEq for HullPart {
+    fn eq(&self, other: &Self) -> bool {
+        self.path_cost == other.path_cost &&
+            self.end_penalty == other.end_penalty
+    }
+}
+
+impl PartialOrd for HullPart {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(
+            self.cmp(other)
+        )
+    }
+}
+
+impl Ord for HullPart {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.end_penalty.cmp(&other.end_penalty).reverse()
+            .then(self.path_cost.cmp(&other.path_cost))
+    }
 }
 
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
@@ -409,11 +434,44 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         };
 
         let my_children = &node_hulls[node_index].children;
-        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(|&child| &node_hulls[child as usize]).collect();
+        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(|&child| &node_hulls[(child - 1) as usize]).collect();
 
-        let combined_hullparts: Vec<HullPart> = vec![reflexive];
+        let mut hullpart_heap = std::collections::BinaryHeap::<std::cmp::Reverse<HullPart>>::new();
+        for child_hull in childrens_hulls {
+            let edited_hull_parts =
+                child_hull.hull_parts.iter().map(|&hullpart| std::cmp::Reverse(HullPart {
+                    range_start: 0,
+                    path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight,
+                    end_penalty: hullpart.end_penalty,
+            }));
+            hullpart_heap.extend(edited_hull_parts);
+        }
+
+        let mut combined_hullparts: Vec<HullPart> = vec![reflexive];
+        let mut last_addition = &reflexive;
+
+        while let Some(Reverse(hullpart)) = hullpart_heap.pop() {
+            if hullpart.le(last_addition) { // TODO: check this condition. Too tired to think through if `ge` or `le` is correct.
+                continue; // This edge has a greater slope than the last min, or equal slope with greater intercept
+            }
+            // TODO: insert an edited hullpart, configured with new ceil'd intersection.
+            // TODO: If the ceil'd intersection is the same as the last addition, then we need to pop the last addition, and replace it with this.
+            combined_hullparts.push(hullpart);
+            last_addition = &combined_hullparts.last().unwrap();
+        }
 
         // TODO: Write the code to build the combined hull.
+        if !hullpart_heap.is_empty() {
+            let mut sorted_hullparts =
+                hullpart_heap.into_sorted_vec().iter().rev().map(|&Reverse(hullpart)| hullpart).collect::<Vec<HullPart>>();
+            println!("{:?}", sorted_hullparts);
+
+
+
+
+
+            combined_hullparts.append(&mut sorted_hullparts);
+        }
 
         node_hulls[node_index].hull_parts = combined_hullparts;
     }
@@ -422,7 +480,13 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // Going down the tree for building the hulls, you are merging hulls.
 
     // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
-
+    let a = node_hulls.iter().flat_map(|x| {
+        if x.penalty > 2 {
+            vec![]
+        } else {
+            vec![x]
+        }
+    });
 
 
     0

@@ -432,14 +432,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let path_counts = get_node_pathcounts(&edge_weights, node_count);
     let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
 
-
-    let DEBUG_LAST_NODE = *node_order.last().unwrap();
-    for node in node_order {
-        if node == DEBUG_LAST_NODE {
-            let a = node;
-            println!("{:?}", node_hulls[a as usize - 1]);
-        }
-
+    for &node in node_order.iter() {
         let node_index = (node - 1) as usize;
         let my_children = &node_hulls[node_index].children;
         let mut combined_hullparts: Vec<HullPart> = node_hulls[node_index].hull_parts.clone();
@@ -502,9 +495,13 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // Going down the tree for building the hulls, you are merging hulls.
 
     // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
-
-
-    0
+    node_order.iter().map(|&node| {
+        let node_index = (node - 1) as usize;
+        let convex_hull = &node_hulls[node_index];
+        convex_hull.hull_parts.iter().map(|hullpart| {
+            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
+        }).min().unwrap()
+    }).sum()
 }
 
 fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<NodeType>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
@@ -646,7 +643,7 @@ mod yatp_tests {
                 [i + node_start, j + node_start + 1, 1].into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 10000);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 10000);
     }
 
     #[test]
@@ -679,7 +676,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 9697);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 9697);
     }
 
     #[test]
@@ -699,7 +696,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 7296625);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 7296625);
     }
 
     #[test]
@@ -719,7 +716,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 58466345);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 58466345);
     }
 
     #[test]
@@ -739,7 +736,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 548823761);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 548823761);
     }
 
     #[test]
@@ -759,7 +756,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 52691143621);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 52691143621);
     }
 
     #[test]
@@ -779,10 +776,10 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 571803609907);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 571803609907);
     }
 
-    // #[test]
+    #[test]
     #[allow(dead_code)]
     fn test_optsolve_100000_nodes() {
         let node_count = 100000;
@@ -800,10 +797,10 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 0);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 0);
     }
 
-    // #[test]
+    #[test]
     #[allow(dead_code)]
     fn test_optsolve_200000_nodes() {
         let node_count = 200000;
@@ -821,7 +818,7 @@ mod yatp_tests {
                 .into()
             })
             .collect();
-        assert_eq!(solve(node_penalties, edge_weights), 0);
+        assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 0);
     }
 
     #[test]
@@ -964,7 +961,7 @@ mod yatp_tests {
         (node_penalties, edge_weights)
     }
 
-    // #[test]
+    #[test]
     #[allow(dead_code)]
     fn test_solve_2tree_100000() {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
@@ -1021,6 +1018,6 @@ mod yatp_tests {
         assert_eq!(*layer.next().unwrap(), edge_weights[4 - 2..=7 - 2].to_vec());
         assert_eq!(*layer.next().unwrap(), edge_weights[2 - 2..=3 - 2].to_vec());
 
-        convex_solve(_node_penalties, edge_weights);
+        SELECTED_SOLVER(_node_penalties, edge_weights);
     }
 }

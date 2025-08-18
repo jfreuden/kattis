@@ -404,6 +404,7 @@ impl Ord for HullPart {
 // }
 
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
+#[derive(Debug)]
 struct ConvexHull {
     node: NodeType,
     penalty: WeightType,
@@ -430,15 +431,18 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
     let path_counts = get_node_pathcounts(&edge_weights, node_count);
     let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
-    for node in node_order {
-        let node_index = (node - 1) as usize;
-        let reflexive = HullPart {
-            range_start: 0,
-            path_cost: 0,
-            end_penalty: node_penalties[node_index],
-        };
 
+
+    let DEBUG_LAST_NODE = *node_order.last().unwrap();
+    for node in node_order {
+        if node == DEBUG_LAST_NODE {
+            let a = node;
+            println!("{:?}", node_hulls[a as usize - 1]);
+        }
+
+        let node_index = (node - 1) as usize;
         let my_children = &node_hulls[node_index].children;
+        let mut combined_hullparts: Vec<HullPart> = node_hulls[node_index].hull_parts.clone();
         let hullpart_list = if my_children.is_empty() {
             vec![]
         } else {
@@ -447,6 +451,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
             ).collect();
 
             let mut hullpart_heap = std::collections::BinaryHeap::<std::cmp::Reverse<HullPart>>::new();
+            hullpart_heap.push(std::cmp::Reverse(combined_hullparts.pop().unwrap()));
             for child_hull in childrens_hulls {
                 let edited_hull_parts =
                     child_hull.hull_parts.iter().map(|&hullpart| std::cmp::Reverse(HullPart {
@@ -470,9 +475,8 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
             hullpart_list
         };
 
-        let mut combined_hullparts: Vec<HullPart> = vec![reflexive];
         combined_hullparts.extend(hullpart_list);
-        let mut last_addition = &reflexive;
+        let mut last_addition = combined_hullparts.last().unwrap();
 
 
 
@@ -546,9 +550,13 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
             node: (i + 1) as NodeType,
             penalty,
             parent_edge: None,
-            hull_parts: Vec::<HullPart>::new(),
+            hull_parts: vec![HullPart {
+                range_start: 0,
+                path_cost: 0,
+                end_penalty: penalty,
+            }],
             children: Vec::<NodeType>::new(),
-        });
+        });;
     }
     node_hulls
 }

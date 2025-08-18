@@ -356,37 +356,29 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
 }
 
 fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
-    let mut layers = Vec::<Vec<BiEdge>>::new();
     let mut working_edges = edge_weights.clone();
-    let mut now_serving = 0;
-    while !working_edges.is_empty() {
-        let leaves: Vec<BiEdge> = working_edges
-            .extract_if(.., |edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                let i_is_leaf = path_counts[index_i].le(&now_serving);
-                let j_is_leaf = path_counts[index_j].le(&now_serving);
+    let path_counts_max = *path_counts.iter().max().unwrap();
+    let mut layers = vec![Vec::<BiEdge>::new(); path_counts_max + 1];
 
-                // If both nodes in this edge are leaves, then make the lower index the parent, and the higher index the child.
-                // If one is a leaf, then make the leaf the child.
-                let (node_index, parent_index) = match (i_is_leaf, j_is_leaf, index_i > index_j) {
-                    (true, true, true) => (index_i, index_j),
-                    (true, true, false) => (index_j, index_i),
-                    (true, false, _) => (index_i, index_j),
-                    (false, true, _) => (index_j, index_i),
-                    (false, false, _) => return false,
-                };
-                node_hulls[parent_index].children.push((node_index + 1) as NodeType);
-                node_hulls[node_index].parent_edge = Some(*edge);
+    for edge in working_edges.iter() {
+        let index_i = (edge.i - 1) as usize;
+        let index_j = (edge.j - 1) as usize;
 
-                true
-            })
-            .collect();
-        if leaves.is_empty() {
-            continue;
-        }
-        layers.push(leaves);
-        now_serving += 1;
+        // Look at the path_counts and place them in the layer bucket for whichever node is in a lower count.
+        let i_hierarchy = path_counts[index_i];
+        let j_hierarchy = path_counts[index_j];
+
+        // If both nodes in this edge are leaves, then make the lower index the parent, and the higher index the child.
+        // If one is a leaf, then make the leaf the child.
+        let (node_index, parent_index) = match i_hierarchy.cmp(&j_hierarchy).then(index_i.cmp(&index_j).reverse()) {
+            std::cmp::Ordering::Less => (index_i, index_j),
+            std::cmp::Ordering::Equal => panic!("Invalid edge: Identical `path_count` and node index"),
+            std::cmp::Ordering::Greater => (index_j, index_i),
+        };
+
+        node_hulls[parent_index].children.push((node_index + 1) as NodeType);
+        node_hulls[node_index].parent_edge = Some(*edge);
+        layers[std::cmp::min(i_hierarchy, j_hierarchy)].push(*edge);
     }
     layers
 }

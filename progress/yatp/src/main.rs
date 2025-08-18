@@ -165,42 +165,45 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     let node_count = edge_weights.len() + 1;
     let mut working_edges = edge_weights.clone();
     let mut path_counts = vec![0; node_count];
-    while !working_edges.is_empty() {
-        let mut step_counts = vec![0; node_count];
-        step_counts = working_edges
-            .iter()
-            .fold(step_counts, |mut step_vec, edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                step_vec[index_i] += 1;
-                step_vec[index_j] += 1;
-                step_vec
-            });
+    let mut step_counts = vec![0; node_count];
+    let mut node_edgelists = vec![Vec::<&BiEdge>::new(); node_count];
 
-        path_counts = path_counts
-            .iter()
-            .zip(step_counts.iter())
-            .map(|(&node_pathcount, &node_step)| {
-                if node_step > 1 {
-                    node_pathcount + 1
-                } else {
-                    node_pathcount
-                }
-            })
-            .collect();
+    step_counts = working_edges
+        .iter()
+        .fold(step_counts, |mut step_vec, edge| {
+            let index_i = (edge.i - 1) as usize;
+            let index_j = (edge.j - 1) as usize;
+            step_vec[index_i] += 1;
+            step_vec[index_j] += 1;
+            node_edgelists[index_i].push(edge);
+            node_edgelists[index_j].push(edge);
+            step_vec
+        });
 
-        let not_leaves: Vec<BiEdge> = working_edges
-            .extract_if(.., |edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                let i_is_leaf = step_counts[index_i].eq(&1);
-                let j_is_leaf = step_counts[index_j].eq(&1);
-                !(i_is_leaf || j_is_leaf)
-            })
-            .collect();
+    // TODO: build up the path counts by iterated plucking style
+    path_counts = path_counts
+        .iter()
+        .zip(step_counts.iter())
+        .map(|(&node_pathcount, &node_step)| {
+            if node_step > 1 {
+                node_pathcount + 1
+            } else {
+                node_pathcount
+            }
+        })
+        .collect();
 
-        working_edges = not_leaves;
-    }
+    let not_leaves: Vec<BiEdge> = working_edges
+        .extract_if(.., |edge| {
+            let index_i = (edge.i - 1) as usize;
+            let index_j = (edge.j - 1) as usize;
+            let i_is_leaf = step_counts[index_i].eq(&1);
+            let j_is_leaf = step_counts[index_j].eq(&1);
+            !(i_is_leaf || j_is_leaf)
+        })
+        .collect();
+
+    working_edges = not_leaves;
     path_counts
 }
 

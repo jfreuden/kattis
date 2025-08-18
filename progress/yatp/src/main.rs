@@ -180,30 +180,36 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
             step_vec
         });
 
-    // TODO: build up the path counts by iterated plucking style
-    path_counts = path_counts
-        .iter()
-        .zip(step_counts.iter())
-        .map(|(&node_pathcount, &node_step)| {
-            if node_step > 1 {
-                node_pathcount + 1
-            } else {
-                node_pathcount
-            }
-        })
-        .collect();
+    let leaf_nodes: Vec<NodeType> = step_counts.iter().enumerate().filter_map(|(node_index, &node_count)| {
+        if node_count <= 1 {
+            Some((node_index + 1) as NodeType)
+        } else {
+            None
+        }
+    }).collect();
 
-    let not_leaves: Vec<BiEdge> = working_edges
-        .extract_if(.., |edge| {
-            let index_i = (edge.i - 1) as usize;
-            let index_j = (edge.j - 1) as usize;
-            let i_is_leaf = step_counts[index_i].eq(&1);
-            let j_is_leaf = step_counts[index_j].eq(&1);
-            !(i_is_leaf || j_is_leaf)
-        })
-        .collect();
+    let mut visit_queue: std::collections::VecDeque<(NodeType, usize)> = std::collections::VecDeque::with_capacity(node_count);
+    for leaf_node in leaf_nodes {
+        for &edge in &node_edgelists[leaf_node as usize - 1] {
+            visit_queue.push_back((edge.connected_to(leaf_node).unwrap(), 0));
+        }
+        node_edgelists[leaf_node as usize - 1].clear()
+    }
 
-    working_edges = not_leaves;
+    while let Some((node, layer_value)) = visit_queue.pop_front() {
+        let index = (node - 1) as usize;
+        if node_edgelists[index].is_empty() {
+            continue
+        }
+        path_counts[index] = layer_value + 1;
+        for &edge in &node_edgelists[index] {
+            let attached = edge.connected_to(node).unwrap();
+            let attached_index = (attached - 1) as usize;
+            visit_queue.push_back((attached, layer_value + 1));
+
+        }
+        node_edgelists[index].clear();
+    }
     path_counts
 }
 
@@ -269,15 +275,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let node_count: usize = node_penalties.len();
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-
-    // Build upward from the more leafy nodes.
-    // Build the first layer, pulling every edge from the first bucket of edges.
-    // Afterward, each node will have one or more edges in the next bucket,
-    //     with one pointing at the child convex hull, and the other pointing at the current node.
-
-    // I would love to be able to do this in one iteration, but I might need to pull the first layer,
-    // or make a layered version of the node order, similar to the edge one.
-
 
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
 
@@ -407,7 +404,7 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
                 end_penalty: penalty,
             }],
             children: Vec::<NodeType>::new(),
-        });;
+        });
     }
     node_hulls
 }
@@ -511,7 +508,7 @@ mod yatp_tests {
         let path_counts = get_node_pathcounts(&edge_weights);
         let nodelist = get_nodes_in_hierarchy_order(&path_counts);
         assert_eq!(nodelist.len(), edge_weights.len() + 1);
-        assert_eq!(nodelist, vec![1, 4, 5, 2, 3])
+        assert_eq!(nodelist, vec![5, 4, 1, 3, 2])
     }
 
     #[test]

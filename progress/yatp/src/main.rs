@@ -394,8 +394,8 @@ impl PartialOrd for HullPart {
 
 impl Ord for HullPart {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.end_penalty.cmp(&other.end_penalty).reverse()
-            .then(self.path_cost.cmp(&other.path_cost)).reverse()
+        self.end_penalty.cmp(&other.end_penalty)
+            .then(self.path_cost.cmp(&other.path_cost))
     }
 }
 
@@ -430,7 +430,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
     let path_counts = get_node_pathcounts(&edge_weights, node_count);
     let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
-
     for node in node_order {
         let node_index = (node - 1) as usize;
         let reflexive = HullPart {
@@ -440,33 +439,36 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         };
 
         let my_children = &node_hulls[node_index].children;
-        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(
-            |&child| &node_hulls[(child - 1) as usize]
-        ).collect();
+        let hullpart_list = if my_children.is_empty() {
+            vec![]
+        } else {
+            let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(
+                |&child| &node_hulls[(child - 1) as usize]
+            ).collect();
 
-        let mut hullpart_heap = std::collections::BinaryHeap::<HullPart>::new();
-        for child_hull in childrens_hulls {
-            let edited_hull_parts =
-                child_hull.hull_parts.iter().map(|&hullpart| HullPart {
-                    range_start: 0,
-                    path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight,
-                    end_penalty: hullpart.end_penalty,
-            });
-            hullpart_heap.extend(edited_hull_parts);
-        }
-
-        // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
-        // skipping edges with higher intercepts
-        let mut hullpart_list = Vec::new();
-        let mut min_tercept = WeightType::MAX;
-        while let Some(hullpart) = hullpart_heap.pop() {
-            if hullpart.path_cost < min_tercept { // TODO: This is definitely wrong, as it shows only one hullpart for node 2, which seems sus.
-                hullpart_list.push(hullpart);
-                min_tercept = hullpart.path_cost;
+            let mut hullpart_heap = std::collections::BinaryHeap::<std::cmp::Reverse<HullPart>>::new();
+            for child_hull in childrens_hulls {
+                let edited_hull_parts =
+                    child_hull.hull_parts.iter().map(|&hullpart| std::cmp::Reverse(HullPart {
+                        range_start: 0,
+                        path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight,
+                        end_penalty: hullpart.end_penalty,
+                    }));
+                hullpart_heap.extend(edited_hull_parts);
             }
-        }
 
-        // TODO: Fix hullpart_list
+            // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
+            // skipping edges with higher intercepts
+            let mut hullpart_list = Vec::new();
+            let mut min_tercept = WeightType::MAX;
+            while let Some(std::cmp::Reverse(hullpart)) = hullpart_heap.pop() {
+                if hullpart.path_cost < min_tercept { // TODO: This is definitely wrong, as it shows only one hullpart for node 2, which seems sus.
+                    hullpart_list.push(hullpart);
+                    min_tercept = hullpart.path_cost;
+                }
+            }
+            hullpart_list
+        };
 
         let mut combined_hullparts: Vec<HullPart> = vec![reflexive];
         combined_hullparts.extend(hullpart_list);
@@ -496,13 +498,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // Going down the tree for building the hulls, you are merging hulls.
 
     // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
-    let a = node_hulls.iter().flat_map(|x| {
-        if x.penalty > 2 {
-            vec![]
-        } else {
-            vec![x]
-        }
-    });
 
 
     0

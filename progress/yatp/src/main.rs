@@ -145,7 +145,8 @@ impl EdgeCache {
         let plucked = vec![false; 2 * node_count];
 
         // for edge in &enriched_edgelist {
-        for edge in get_edge_hierarchy(&enriched_edgelist)
+        let path_counts = get_node_pathcounts(&enriched_edgelist);
+        for edge in get_edge_hierarchy(&enriched_edgelist, &path_counts)
             .iter()
             .rev()
             .flatten()
@@ -189,14 +190,14 @@ impl EdgeCache {
 fn bfs_short_circuit(
     edge_cache: &mut EdgeCache,
     start_node: NodeType,
-    node_count: NodeType,
+    node_count: usize,
     cost_caps: &mut [WeightType],
 ) -> WeightType {
     let start_index = (start_node - 1) as usize;
     let start_penalty = edge_cache.nodes[start_index];
     let mut pointer: NodeType = start_node as NodeType;
     let mut queue: std::collections::VecDeque<(NodeType, WeightType)> =
-        std::collections::VecDeque::with_capacity(node_count as usize);
+        std::collections::VecDeque::with_capacity(node_count);
     let mut current_cutoff: WeightType = cost_caps[start_index];
     let mut current_cost: WeightType = 0;
 
@@ -204,7 +205,7 @@ fn bfs_short_circuit(
         let (adjacents, edge_cache) = edge_cache.pluck(pointer);
         for &edge in adjacents {
             let path_cost = current_cost + edge.weight;
-            if edge.j > node_count {
+            if edge.j > node_count as NodeType {
                 current_cutoff =
                     compute_new_cutoff(start_penalty, current_cutoff, edge_cache, edge, path_cost);
                 // cost_caps[index_i] = std::cmp::min(cost_caps[index_i], full_path_cost);
@@ -247,9 +248,10 @@ fn compute_new_cutoff(
 
 fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
     // BFS with a cost short circuit, on a list of edges including a set of synth edges with weight
-    let node_count = nodes.len() as NodeType;
+    let node_count = nodes.len();
     let mut cost_caps: Vec<WeightType> = nodes.iter().map(|&x| x * x).collect();
-    let mut _nodelist = get_nodes_in_hierarchy_order(&edges);
+    let path_counts = get_node_pathcounts(&edges);
+    let mut _nodelist = get_nodes_in_hierarchy_order(&path_counts);
     let mut edge_cache = EdgeCache::new(edges, &nodes);
 
     _nodelist.reverse();
@@ -268,10 +270,7 @@ fn solve(nodes: Vec<WeightType>, edges: Vec<BiEdge>) -> u64 {
         .sum()
 }
 
-fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
-    let node_count: usize = edge_weights.len() + 1;
-    let path_counts = get_node_pathcounts(edge_weights, node_count);
-
+fn get_nodes_in_hierarchy_order(path_counts: &Vec<usize>) -> Vec<NodeType> {
     let mut enumerated_counts: Vec<(NodeType, NodeType)> = path_counts
         .iter()
         .enumerate()
@@ -288,10 +287,7 @@ fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
 /// Returns list of edges based on how far each is from being a leaf-edge.
 /// Note: This is different from "how far from a leaf", but rather how far away from being a leaf
 /// itself. It is a measure of the centrality of a given node.
-fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
-    let node_count: usize = edge_weights.len() + 1;
-    let path_counts = get_node_pathcounts(edge_weights, node_count);
-
+fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>) -> Vec<Vec<BiEdge>> {
     let mut working_edges = edge_weights.clone();
     let mut layers = Vec::<Vec<BiEdge>>::new();
     let mut now_serving = 0;
@@ -314,11 +310,12 @@ fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>) -> Vec<Vec<BiEdge>> {
     layers
 }
 
-fn get_node_pathcounts(edge_weights: &Vec<BiEdge>, node_count: usize) -> Vec<NodeType> {
+fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
+    let node_count = edge_weights.len() + 1;
     let mut working_edges = edge_weights.clone();
-    let mut path_counts = vec![0 as NodeType; node_count];
+    let mut path_counts = vec![0; node_count];
     while !working_edges.is_empty() {
-        let mut step_counts = vec![0 as NodeType; node_count];
+        let mut step_counts = vec![0; node_count];
         step_counts = working_edges
             .iter()
             .fold(step_counts, |mut step_vec, edge| {
@@ -416,8 +413,9 @@ struct ConvexHull {
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
 fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
     let node_count: usize = node_penalties.len();
-    let node_order = get_nodes_in_hierarchy_order(&edge_weights);
-    let node_hierarchy = std::collections::VecDeque::<Vec<BiEdge>>::from(get_edge_hierarchy(&edge_weights));
+    let path_counts = get_node_pathcounts(&edge_weights);
+    let node_order = get_nodes_in_hierarchy_order(&path_counts);
+    let node_hierarchy = std::collections::VecDeque::<Vec<BiEdge>>::from(get_edge_hierarchy(&edge_weights, &path_counts));
 
     // Build upward from the more leafy nodes.
     // Build the first layer, pulling every edge from the first bucket of edges.
@@ -429,9 +427,24 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
 
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
-    let path_counts = get_node_pathcounts(&edge_weights, node_count);
-    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
 
+    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+    generate_hullparts(&node_order, &mut node_hulls);
+
+    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
+    // Going down the tree for building the hulls, you are merging hulls.
+
+    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
+    node_order.iter().map(|&node| {
+        let node_index = (node - 1) as usize;
+        let convex_hull = &node_hulls[node_index];
+        convex_hull.hull_parts.iter().map(|hullpart| {
+            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
+        }).min().unwrap()
+    }).sum()
+}
+
+fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHull>) {
     for &node in node_order.iter() {
         let node_index = (node - 1) as usize;
         let my_children = &node_hulls[node_index].children;
@@ -443,7 +456,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
                 |&child| &node_hulls[(child - 1) as usize]
             ).collect();
 
-            let mut hullpart_heap = std::collections::BinaryHeap::<std::cmp::Reverse<HullPart>>::new();
+            let mut hullpart_heap = Vec::<std::cmp::Reverse<HullPart>>::new();
             hullpart_heap.push(std::cmp::Reverse(combined_hullparts.pop().unwrap()));
             for child_hull in childrens_hulls {
                 let edited_hull_parts =
@@ -454,6 +467,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
                     }));
                 hullpart_heap.extend(edited_hull_parts);
             }
+            hullpart_heap.sort();
 
             // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
             // skipping edges with higher intercepts
@@ -470,7 +484,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
         combined_hullparts.extend(hullpart_list);
         let mut last_addition = combined_hullparts.last().unwrap();
-
 
 
         // while let Some(std::cmp::Reverse(hullpart)) = hullpart_heap.pop() {
@@ -490,21 +503,9 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
         node_hulls[node_index].hull_parts = combined_hullparts;
     }
-
-    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
-    // Going down the tree for building the hulls, you are merging hulls.
-
-    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
-    node_order.iter().map(|&node| {
-        let node_index = (node - 1) as usize;
-        let convex_hull = &node_hulls[node_index];
-        convex_hull.hull_parts.iter().map(|hullpart| {
-            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
-        }).min().unwrap()
-    }).sum()
 }
 
-fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<NodeType>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
+fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
     let mut layers = Vec::<Vec<BiEdge>>::new();
     let mut working_edges = edge_weights.clone();
     let mut now_serving = 0;
@@ -654,7 +655,8 @@ mod yatp_tests {
             [4, 3, 10].into(),
             [2, 1, 2].into(),
         ];
-        let nodelist = get_nodes_in_hierarchy_order(&edge_weights);
+        let path_counts = get_node_pathcounts(&edge_weights);
+        let nodelist = get_nodes_in_hierarchy_order(&path_counts);
         assert_eq!(nodelist.len(), edge_weights.len() + 1);
         assert_eq!(nodelist, vec![1, 4, 5, 2, 3])
     }
@@ -886,8 +888,8 @@ mod yatp_tests {
           3   5
          /
         4           */
-
-        let layers = get_edge_hierarchy(&edge_weights);
+        let path_counts = get_node_pathcounts(&edge_weights);
+        let layers = get_edge_hierarchy(&edge_weights, &path_counts);
         assert_eq!(
             layers,
             vec![
@@ -906,7 +908,7 @@ mod yatp_tests {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
         // what the parent value is. That should be enough to calculate the edges.
 
-        let node_count: WeightType = 10000;
+        let node_count: usize = 10000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
@@ -920,7 +922,7 @@ mod yatp_tests {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
         // what the parent value is. That should be enough to calculate the edges.
 
-        let node_count: WeightType = 50000;
+        let node_count: usize = 50000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
@@ -930,7 +932,7 @@ mod yatp_tests {
     }
 
     fn make_test_2tree(
-        node_count: WeightType,
+        node_count: usize,
         edgeweights: WeightType,
         node_costs: WeightType,
     ) -> (Vec<WeightType>, Vec<BiEdge>) {
@@ -944,7 +946,7 @@ mod yatp_tests {
                     out.push(BiEdge::new(
                         i as NodeType,
                         j as NodeType,
-                        (j * j * j + i) % edgeweights + 1,
+                        (j * j * j + i) as WeightType % edgeweights + 1,
                     ))
                 }
                 if (j + 1) <= node_count {
@@ -952,7 +954,7 @@ mod yatp_tests {
                     out.push(BiEdge::new(
                         i as NodeType,
                         j as NodeType,
-                        (j * j * j + i) % edgeweights + 1,
+                        (j * j * j + i) as WeightType % edgeweights + 1,
                     ))
                 }
                 out
@@ -966,7 +968,7 @@ mod yatp_tests {
     fn test_solve_2tree_100000() {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
         // what the parent value is. That should be enough to calculate the edges.
-        let node_count: WeightType = 100000;
+        let node_count: usize = 100000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
@@ -980,11 +982,12 @@ mod yatp_tests {
     fn test_solve_2tree_200000() {
         // For a binary tree we can trivially make one by saying that left is 2*N and right is 2*N+1
         // what the parent value is. That should be enough to calculate the edges.
-        let node_count: WeightType = 200000;
+        let node_count: usize = 200000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
-        let _layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
+        let path_counts = get_node_pathcounts(&edge_weights);
+        let _layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights, &path_counts);
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
         assert_eq!(out, 2000000000000000);
@@ -998,12 +1001,13 @@ mod yatp_tests {
         //      4           5            6           7
         //  8     9     10    11     12    13    14    15
         //16 17 18 19  20 21 22 23 24 25  26 27 28 29 30 31
-        let node_count: WeightType = 31;
+        let node_count: usize = 31;
         let edgeweights: WeightType = 2;
         let node_costs: WeightType = 2;
         let (_node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
-        let _node_hierarchies = get_nodes_in_hierarchy_order(&edge_weights);
-        let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights);
+        let path_counts = get_node_pathcounts(&edge_weights);
+        let _node_hierarchies = get_nodes_in_hierarchy_order(&path_counts);
+        let layers: Vec<Vec<BiEdge>> = get_edge_hierarchy(&edge_weights, &path_counts);
 
         assert_eq!(layers.len(), 4); // There should be 4 layers
         let mut layer = layers.iter();

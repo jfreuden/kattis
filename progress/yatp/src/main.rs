@@ -125,7 +125,7 @@ fn get_nodes_in_hierarchy_order(path_counts: &Vec<usize>) -> Vec<NodeType> {
     let mut enumerated_counts: Vec<(NodeType, NodeType)> = path_counts
         .iter()
         .enumerate()
-        .map(|(x, &y)| (x as NodeType, y as NodeType))
+        .map(|(node_index, &counts)| (node_index as NodeType, counts as NodeType))
         .collect();
     // If both nodes are leaves, then make the lower index the parent, and the higher index the child.
     enumerated_counts.sort_by(

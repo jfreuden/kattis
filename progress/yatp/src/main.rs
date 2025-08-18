@@ -415,7 +415,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let node_count: usize = node_penalties.len();
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let node_hierarchy = std::collections::VecDeque::<Vec<BiEdge>>::from(get_edge_hierarchy(&edge_weights, &path_counts));
 
     // Build upward from the more leafy nodes.
     // Build the first layer, pulling every edge from the first bucket of edges.

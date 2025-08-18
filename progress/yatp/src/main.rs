@@ -277,7 +277,11 @@ fn get_nodes_in_hierarchy_order(edge_weights: &Vec<BiEdge>) -> Vec<NodeType> {
         .enumerate()
         .map(|(x, &y)| (x as NodeType, y as NodeType))
         .collect();
-    enumerated_counts.sort_by(|(_, a), (_, b)| a.cmp(b));
+    // If both nodes are leaves, then make the lower index the parent, and the higher index the child.
+    enumerated_counts.sort_by(
+        |(a_index, a), (b_index, b)|
+            a.cmp(b).then(a_index.cmp(b_index).reverse())
+    );
     enumerated_counts.iter().map(|&(a, _)| a + 1).collect()
 }
 
@@ -432,11 +436,13 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         let reflexive = HullPart {
             range_start: 0,
             path_cost: 0,
-            end_penalty: node_penalties[(node - 1) as usize],
+            end_penalty: node_penalties[node_index],
         };
 
         let my_children = &node_hulls[node_index].children;
-        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(|&child| &node_hulls[(child - 1) as usize]).collect();
+        let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(
+            |&child| &node_hulls[(child - 1) as usize]
+        ).collect();
 
         let mut hullpart_heap = std::collections::BinaryHeap::<HullPart>::new();
         for child_hull in childrens_hulls {
@@ -514,12 +520,14 @@ fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &V
                 let i_is_leaf = path_counts[index_i].le(&now_serving);
                 let j_is_leaf = path_counts[index_j].le(&now_serving);
 
-                let (node_index, parent_index) = if i_is_leaf {
-                    (index_i, index_j)
-                } else if j_is_leaf {
-                    (index_j, index_i)
-                } else {
-                    return false
+                // If both nodes in this edge are leaves, then make the lower index the parent, and the higher index the child.
+                // If one is a leaf, then make the leaf the child.
+                let (node_index, parent_index) = match (i_is_leaf, j_is_leaf, index_i > index_j) {
+                    (true, true, true) => (index_i, index_j),
+                    (true, true, false) => (index_j, index_i),
+                    (true, false, _) => (index_i, index_j),
+                    (false, true, _) => (index_j, index_i),
+                    (false, false, _) => return false,
                 };
                 node_hulls[parent_index].children.push((node_index + 1) as NodeType);
                 node_hulls[node_index].parent_edge = Some(*edge);

@@ -270,106 +270,70 @@ struct ConvexHull {
     children: Vec<NodeType>,
 }
 
-/// A solver making use of convex hulls and a hierarchical tree decomposition.
-fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
-    let node_count: usize = node_penalties.len();
-    let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
-
-    // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
-    let path_counts = get_node_pathcounts(&edge_weights);
-    let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
-    generate_hullparts(&node_order, &mut node_hulls);
-
-    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
-    // Going down the tree for building the hulls, you are merging hulls.
-
-    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
-    node_order.iter().map(|&node| {
-        let node_index = (node - 1) as usize;
-        let convex_hull = &node_hulls[node_index];
-        convex_hull.hull_parts.iter().map(|hullpart| {
-            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
-        }).min().unwrap()
-    }).sum()
-}
-
 fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHull>) {
     for &node in node_order.iter() {
         let node_index = (node - 1) as usize;
-        let my_children = &node_hulls[node_index].children;
         let mut combined_hullparts: Vec<HullPart> = node_hulls[node_index].hull_parts.clone();
-        let hullpart_list = if my_children.is_empty() {
+        let my_children = &node_hulls[node_index].children;
+        let mut filtered_hullparts = if my_children.is_empty() {
             vec![]
         } else {
             let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(
                 |&child| &node_hulls[(child - 1) as usize]
             ).collect();
 
-            let mut hullpart_heap = Vec::<std::cmp::Reverse<HullPart>>::new();
-            hullpart_heap.push(std::cmp::Reverse(combined_hullparts.pop().unwrap()));
+            let mut hullpart_heap = Vec::<HullPart>::new();
+            hullpart_heap.push(combined_hullparts.pop().unwrap());
             for child_hull in childrens_hulls {
                 let edited_hull_parts =
-                    child_hull.hull_parts.iter().map(|&hullpart| std::cmp::Reverse(HullPart {
+                    child_hull.hull_parts.iter().map(|&hullpart| HullPart {
                         range_start: 0,
                         path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight,
                         end_penalty: hullpart.end_penalty,
-                    }));
+                    });
                 hullpart_heap.extend(edited_hull_parts);
             }
             hullpart_heap.sort();
 
-            // TODO: Examine if this filtering logic is wrong or not.
             let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
                 (Vec::<HullPart>::with_capacity(hullpart_heap.len()), WeightType::MAX),
-                |(mut vec, mut min_tercept), std::cmp::Reverse(hullpart) | {
+                |(mut vec, mut min_tercept), hullpart | {
                     if hullpart.path_cost < min_tercept {
                         vec.push(*hullpart);
                         min_tercept = hullpart.path_cost;
                     }
                 (vec, min_tercept)
             });
-
-            // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
-            // skipping edges with higher intercepts
-            let mut hullpart_list = Vec::<HullPart>::new();
-            while let Some(mut hullpart) = filtered_hullparts.pop() {
-                // y1(x) = y2(x)
-                // m*x + p = n*x + q
-                // (m - n) * x = q - p
-                // x = (q - p) / (m - n)
-                if let(Some(&last_addition)) = hullpart_list.last() {
-                    let intercept_diff = hullpart.path_cost - last_addition.path_cost;
-                    let slope_diff = last_addition.end_penalty - hullpart.end_penalty;
-                    let intercept = intercept_diff.div_ceil(slope_diff);
-                    hullpart.range_start = intercept;
-                }
-                hullpart_list.push(hullpart);
-            }
-            hullpart_list
+            filtered_hullparts
         };
-
+        // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
+        // skipping edges with higher intercepts
+        let hullpart_list = finish_hull(&mut filtered_hullparts);
         combined_hullparts.extend(hullpart_list);
-        let mut last_addition = combined_hullparts.last().unwrap();
-
-
-        // while let Some(std::cmp::Reverse(hullpart)) = hullpart_heap.pop() {
-        //     if hullpart.le(last_addition) ||
-        //         (hullpart.end_penalty.eq(&last_addition.end_penalty) && hullpart.path_cost.ge(&last_addition.path_cost))
-        //     {
-        //         continue; // This edge has a greater slope than the last min, or equal slope with greater intercept
-        //     }
-        //     // TODO: insert an edited hullpart, configured with new ceil'd intersection.
-        //     // TODO: If the ceil'd intersection is the same as the last addition, then we need to pop the last addition, and replace it with this.
-        //     combined_hullparts.push(hullpart);
-        //     last_addition = &combined_hullparts.last().unwrap();
-        // }
-        //
-        // // TODO: Write the code to build the combined hull.
-
-
         node_hulls[node_index].hull_parts = combined_hullparts;
     }
+}
+
+fn finish_hull(filtered_hullparts: &mut Vec<HullPart>) -> Vec<HullPart> {
+    let mut hullpart_list = Vec::<HullPart>::new();
+
+    while let Some(mut hullpart) = filtered_hullparts.pop() {
+
+        // TODO: Make this more of a condate search. See below todo.
+
+        if let (Some(&last_addition)) = hullpart_list.last() {
+
+            // TODO: before we calculate, evaluate y(x) for x = last_addition.range_start (last intersection)
+
+            // intersection x = (q - p) / (m - n)
+            let intercept_diff = hullpart.path_cost - last_addition.path_cost;
+            let slope_diff = last_addition.end_penalty - hullpart.end_penalty;
+            let intercept = intercept_diff.div_ceil(slope_diff);
+            hullpart.range_start = intercept;
+        }
+        hullpart_list.push(hullpart);
+    }
+    hullpart_list
 }
 
 fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
@@ -416,6 +380,30 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
         });
     }
     node_hulls
+}
+
+/// A solver making use of convex hulls and a hierarchical tree decomposition.
+fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
+    let node_count: usize = node_penalties.len();
+    let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
+
+    // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
+    let path_counts = get_node_pathcounts(&edge_weights);
+    let node_order = get_nodes_in_hierarchy_order(&path_counts);
+    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+    generate_hullparts(&node_order, &mut node_hulls);
+
+    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
+    // Going down the tree for building the hulls, you are merging hulls.
+
+    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
+    node_order.iter().map(|&node| {
+        let node_index = (node - 1) as usize;
+        let convex_hull = &node_hulls[node_index];
+        convex_hull.hull_parts.iter().map(|hullpart| {
+            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
+        }).min().unwrap()
+    }).sum()
 }
 
 #[cfg(test)]

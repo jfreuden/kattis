@@ -273,11 +273,11 @@ struct ConvexHull {
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
 fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
     let node_count: usize = node_penalties.len();
-    let path_counts = get_node_pathcounts(&edge_weights);
-    let node_order = get_nodes_in_hierarchy_order(&path_counts);
-
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
 
+    // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
+    let path_counts = get_node_pathcounts(&edge_weights);
+    let node_order = get_nodes_in_hierarchy_order(&path_counts);
     let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
 
@@ -319,15 +319,32 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
             }
             hullpart_heap.sort();
 
+            // TODO: Examine if this filtering logic is wrong or not.
+            let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
+                (Vec::<HullPart>::with_capacity(hullpart_heap.len()), WeightType::MAX),
+                |(mut vec, mut min_tercept), std::cmp::Reverse(hullpart) | {
+                    if hullpart.path_cost < min_tercept {
+                        vec.push(*hullpart);
+                        min_tercept = hullpart.path_cost;
+                    }
+                (vec, min_tercept)
+            });
+
             // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
             // skipping edges with higher intercepts
-            let mut hullpart_list = Vec::new();
-            let mut min_tercept = WeightType::MAX;
-            while let Some(std::cmp::Reverse(hullpart)) = hullpart_heap.pop() {
-                if hullpart.path_cost < min_tercept { // TODO: This is definitely wrong, as it shows only one hullpart for node 2, which seems sus.
-                    hullpart_list.push(hullpart);
-                    min_tercept = hullpart.path_cost;
+            let mut hullpart_list = Vec::<HullPart>::new();
+            while let Some(mut hullpart) = filtered_hullparts.pop() {
+                // y1(x) = y2(x)
+                // m*x + p = n*x + q
+                // (m - n) * x = q - p
+                // x = (q - p) / (m - n)
+                if let(Some(&last_addition)) = hullpart_list.last() {
+                    let intercept_diff = hullpart.path_cost - last_addition.path_cost;
+                    let slope_diff = last_addition.end_penalty - hullpart.end_penalty;
+                    let intercept = intercept_diff.div_ceil(slope_diff);
+                    hullpart.range_start = intercept;
                 }
+                hullpart_list.push(hullpart);
             }
             hullpart_list
         };

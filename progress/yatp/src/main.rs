@@ -211,20 +211,6 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     path_counts
 }
 
-fn main() {
-    let number_nodes: usize = read_one();
-    let node_penalties = read_vec::<WeightType>();
-    let edge_weights: Vec<BiEdge> = {
-        let mut out = Vec::with_capacity(2 * number_nodes - 1);
-        for _ in 0..number_nodes - 1 {
-            out.push(BiEdge::from(read_array::<WeightType, 3, _>()));
-        }
-        out
-    };
-    println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
-}
-const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = convex_solve;
-
 #[derive(Eq, Copy, Clone, Debug)]
 struct HullPart {
     range_start: WeightType,
@@ -355,6 +341,7 @@ fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &V
         };
 
         node_hulls[parent_index].children.push((node_index + 1) as NodeType);
+        debug_assert!(node_hulls[node_index].parent_edge.is_none());
         node_hulls[node_index].parent_edge = Some(*edge);
         layers[std::cmp::min(i_hierarchy, j_hierarchy)].push(*edge);
     }
@@ -386,24 +373,32 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let _ = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+    let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
 
     // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
     // Going down the tree for building the hulls, you are merging hulls.
 
-    // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
     node_order.iter().map(|&node| {
         let mut node_index = (node - 1) as usize;
-        let mut best_min = WeightType::MAX;
         let mut convex_hull = &node_hulls[node_index];
         let start_penalty = convex_hull.penalty;
         let mut path_offset = 0;
+
+        let mut best_min = WeightType::MAX;
+
+
         loop {
-            best_min = std::cmp::min(best_min, convex_hull.hull_parts.iter().map(|hullpart| {
-                // TODO: Binary Search for only the one sampling point, instead of a min.
-                path_offset + hullpart.path_cost + start_penalty * hullpart.end_penalty
-            }).min().unwrap());
+            let search_result = convex_hull.hull_parts.binary_search_by(|hullpart| {
+                hullpart.range_start.cmp(&start_penalty)
+            });
+            let true_hullpart = match search_result {
+                Ok(idx) => &convex_hull.hull_parts[idx],            // exact hit
+                Err(0)  => panic!("Aaaaaaaaah!"),                         // all elements > key
+                Err(idx) => &convex_hull.hull_parts[idx - 1],       // element just before insertion point
+            };
+
+            best_min = std::cmp::min(best_min, path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty);
 
             if let Some(parent_edge) = &convex_hull.parent_edge {
                 node_index = (parent_edge.connected_to((node_index + 1) as NodeType).unwrap() - 1) as usize;
@@ -416,6 +411,20 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         best_min
     }).sum()
 }
+
+fn main() {
+    let number_nodes: usize = read_one();
+    let node_penalties = read_vec::<WeightType>();
+    let edge_weights: Vec<BiEdge> = {
+        let mut out = Vec::with_capacity(2 * number_nodes - 1);
+        for _ in 0..number_nodes - 1 {
+            out.push(BiEdge::from(read_array::<WeightType, 3, _>()));
+        }
+        out
+    };
+    println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
+}
+const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = convex_solve;
 
 #[cfg(test)]
 mod yatp_tests;

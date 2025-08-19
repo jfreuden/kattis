@@ -1,3 +1,5 @@
+mod tests;
+
 fn read_one<T: std::str::FromStr>() -> T
 where
     T::Err: std::fmt::Debug,
@@ -204,9 +206,7 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
         path_counts[index] = layer_value + 1;
         for &edge in &node_edgelists[index] {
             let attached = edge.connected_to(node).unwrap();
-            let attached_index = (attached - 1) as usize;
             visit_queue.push_back((attached, layer_value + 1));
-
         }
         node_edgelists[index].clear();
     }
@@ -263,7 +263,6 @@ impl Ord for HullPart {
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
 #[derive(Debug)]
 struct ConvexHull {
-    node: NodeType,
     penalty: WeightType,
     parent_edge: Option<BiEdge>,
     hull_parts: Vec<HullPart>,
@@ -276,7 +275,7 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
         let mut combined_hullparts: Vec<HullPart> = node_hulls[node_index].hull_parts.clone();
         let my_children = &node_hulls[node_index].children;
         let mut filtered_hullparts = if my_children.is_empty() {
-            vec![]
+            vec![combined_hullparts.pop().unwrap()]
         } else {
             let childrens_hulls: Vec<&ConvexHull> = my_children.iter().map(
                 |&child| &node_hulls[(child - 1) as usize]
@@ -318,18 +317,18 @@ fn finish_hull(filtered_hullparts: &mut Vec<HullPart>) -> Vec<HullPart> {
     let mut hullpart_list = Vec::<HullPart>::new();
 
     while let Some(mut hullpart) = filtered_hullparts.pop() {
-
-        // TODO: Make this more of a condate search. See below todo.
-
-        if let (Some(&last_addition)) = hullpart_list.last() {
-
-            // TODO: before we calculate, evaluate y(x) for x = last_addition.range_start (last intersection)
-
+        // Let's make a 'stutter'. This is where we use a while let as an if let, because we might have to retry after popping.
+        'inner: while let Some(&last_addition) = hullpart_list.last() {
             // intersection x = (q - p) / (m - n)
             let intercept_diff = hullpart.path_cost - last_addition.path_cost;
             let slope_diff = last_addition.end_penalty - hullpart.end_penalty;
-            let intercept = intercept_diff.div_ceil(slope_diff);
+            let intercept = intercept_diff.div_ceil(slope_diff) as WeightType;
+            if intercept.le(&last_addition.range_start) {
+                hullpart_list.pop();
+                continue 'inner;
+            }
             hullpart.range_start = intercept;
+            break 'inner;
         }
         hullpart_list.push(hullpart);
     }
@@ -366,9 +365,8 @@ fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &V
 
 fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Vec<ConvexHull> {
     let mut node_hulls = Vec::<ConvexHull>::with_capacity(node_count);
-    for (i, &penalty) in node_penalties.iter().enumerate() {
+    for &penalty in node_penalties.iter() {
         node_hulls.push(ConvexHull {
-            node: (i + 1) as NodeType,
             penalty,
             parent_edge: None,
             hull_parts: vec![HullPart {
@@ -390,7 +388,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+    let _ = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
 
     // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
@@ -398,11 +396,26 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
     // TODO: Write the sampling code, particularly the part with the climb up the parent edges.
     node_order.iter().map(|&node| {
-        let node_index = (node - 1) as usize;
-        let convex_hull = &node_hulls[node_index];
-        convex_hull.hull_parts.iter().map(|hullpart| {
-            hullpart.path_cost + convex_hull.penalty * hullpart.end_penalty
-        }).min().unwrap()
+        let mut node_index = (node - 1) as usize;
+        let mut best_min = WeightType::MAX;
+        let mut convex_hull = &node_hulls[node_index];
+        let start_penalty = convex_hull.penalty;
+        let mut path_offset = 0;
+        loop {
+            best_min = std::cmp::min(best_min, convex_hull.hull_parts.iter().map(|hullpart| {
+                // TODO: Binary Search for only the one sampling point, instead of a min.
+                path_offset + hullpart.path_cost + start_penalty * hullpart.end_penalty
+            }).min().unwrap());
+
+            if let Some(parent_edge) = &convex_hull.parent_edge {
+                node_index = (parent_edge.connected_to((node_index + 1) as NodeType).unwrap() - 1) as usize;
+                convex_hull = &node_hulls[node_index];
+                path_offset += parent_edge.weight;
+            } else {
+                break;
+            }
+        }
+        best_min
     }).sum()
 }
 
@@ -480,7 +493,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_100_nodes() {
+    fn test_solve_linetree_100_nodes() {
         let node_count = 100;
         let node_start = 1;
 
@@ -509,7 +522,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_50_nodes() {
+    fn test_solve_linetree_50_nodes() {
         let node_count = 50;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -529,7 +542,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_500_nodes() {
+    fn test_solve_linetree_500_nodes() {
         let node_count = 500;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -549,7 +562,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_1000_nodes() {
+    fn test_solve_linetree_1000_nodes() {
         let node_count = 1000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -569,7 +582,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_2000_nodes() {
+    fn test_solve_linetree_2000_nodes() {
         let node_count = 2000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -589,7 +602,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_10000_nodes() {
+    fn test_solve_linetree_10000_nodes() {
         let node_count = 10000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -609,7 +622,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_optsolve_50000_nodes() {
+    fn test_solve_linetree_50000_nodes() {
         let node_count = 50000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -630,7 +643,7 @@ mod yatp_tests {
 
     #[test]
     #[allow(dead_code)]
-    fn test_optsolve_100000_nodes() {
+    fn test_solve_linetree_100000_nodes() {
         let node_count = 100000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -651,7 +664,7 @@ mod yatp_tests {
 
     #[test]
     #[allow(dead_code)]
-    fn test_optsolve_200000_nodes() {
+    fn test_solve_linetree_200000_nodes() {
         let node_count = 200000;
         let node_start = 1;
         let mut node_penalties = (node_start..node_start + node_count).collect::<Vec<WeightType>>();
@@ -671,7 +684,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_solve_200_nodes() {
+    fn test_solve_linetree_200_nodes() {
         let mut node_penalties = (1..201).collect::<Vec<WeightType>>();
         node_penalties.rotate_left(23);
         let edge_weights: Vec<BiEdge> = (0..199)
@@ -695,7 +708,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_long_cheap_path() {
+    fn test_solve_long_cheap_path() {
         let node_penalties = std::iter::once(2)
             .chain(std::iter::repeat_n(70, 40))
             .chain(std::iter::once(2))
@@ -706,7 +719,7 @@ mod yatp_tests {
     }
 
     #[test]
-    fn test_10k_star() {
+    fn test_solve_10k_star() {
         let node_count: WeightType = 10000;
         let edgeweights: WeightType = 1000000;
         let node_costs: WeightType = 100000;
@@ -821,7 +834,7 @@ mod yatp_tests {
         let (node_penalties, edge_weights) = make_test_2tree(node_count, edgeweights, node_costs);
 
         let out = SELECTED_SOLVER(node_penalties, edge_weights);
-        assert_eq!(out, 0);
+        assert_eq!(out, 1000000000000000);
     }
 
     #[test]

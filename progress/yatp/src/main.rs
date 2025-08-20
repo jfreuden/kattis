@@ -206,7 +206,7 @@ fn get_true_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
 
 fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     let node_count = edge_weights.len() + 1;
-    let mut working_edges = edge_weights.clone();
+    let working_edges = edge_weights.clone();
     let mut path_counts = vec![0; node_count];
     let mut step_counts = vec![0; node_count];
     let mut node_edgelists = vec![Vec::<&BiEdge>::new(); node_count];
@@ -334,7 +334,7 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
             }
             hullpart_heap.sort();
 
-            let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
+            let (filtered_hullparts, _) = hullpart_heap.iter().fold(
                 (Vec::<HullPart>::with_capacity(hullpart_heap.len()), WeightType::MAX),
                 |(mut vec, mut min_tercept), hullpart | {
                     if hullpart.path_cost < min_tercept {
@@ -375,8 +375,8 @@ fn finish_hull(filtered_hullparts: &mut Vec<HullPart>) -> Vec<HullPart> {
     hullpart_list
 }
 
-fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, mut node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
-    let mut working_edges = edge_weights.clone();
+fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, node_hulls: &mut Vec<ConvexHull>) -> Vec<Vec<BiEdge>> {
+    let working_edges = edge_weights.clone();
     let path_counts_max = *path_counts.iter().max().unwrap();
     let mut layers = vec![Vec::<BiEdge>::new(); path_counts_max + 1];
 
@@ -423,56 +423,79 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
 
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
 fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
-    let node_count: usize = node_penalties.len();
-    let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
-
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
-    generate_hullparts(&node_order, &mut node_hulls);
+    let node_hulls = make_node_hulls(&node_penalties, &edge_weights, &path_counts, &node_order);
 
-    // Going up the tree for a query you are adding the path distances and simply checking if there is a new minimum.
-    // Going down the tree for building the hulls, you are merging hulls.
+    let mut navigation_stack: Vec<Vec<NodeType>> = vec![
+        vec![*node_order.last().unwrap()],
+    ];
+    let mut stack_of_hulls = Vec::<&ConvexHull>::new();
+    let mut sum_of_mins = 0 as WeightType;
 
-    node_order.iter().map(|&node| {
-        let mut node_index = (node - 1) as usize;
-        let mut convex_hull = &node_hulls[node_index];
+    while let Some(parentage_stack) = navigation_stack.last_mut() {
+        // stutter if the parentage_stack is empty.
+        if parentage_stack.is_empty() {
+            navigation_stack.pop();
+            stack_of_hulls.pop();
+            continue;
+        }
+
+        let node = parentage_stack.pop().unwrap();
+        let node_index = (node - 1) as usize;
+        let convex_hull = &node_hulls[node_index];
         let start_penalty = convex_hull.penalty;
-        let mut path_offset = 0;
-        let mut best_min = start_penalty * start_penalty;
-        loop {
-            if path_offset >= best_min {
-                break
-            }
-            best_min = if convex_hull.hull_parts.len() > 8 {
-                let search_result = convex_hull.hull_parts.binary_search_by(|hullpart| {
-                    hullpart.range_start.cmp(&start_penalty)
-                });
-                let true_hullpart = match search_result {
-                    Ok(idx) => &convex_hull.hull_parts[idx],            // exact hit
-                    Err(0)  => panic!("Aaaaaaaaah!"),                         // all elements > key
-                    Err(idx) => &convex_hull.hull_parts[idx - 1],       // element just before insertion point
-                };
-                let best_cost_at_level = path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty;
-                std::cmp::min(best_min, best_cost_at_level)
-            } else {
-                let best_cost_at_level = convex_hull.hull_parts.iter().map(|hullpart| {
-                    path_offset + hullpart.path_cost + start_penalty * hullpart.end_penalty
-                }).min().unwrap();
-                std::cmp::min(best_min, best_cost_at_level)
-            };
+        stack_of_hulls.push(convex_hull);
 
-            if let Some(parent_edge) = &convex_hull.parent_edge {
-                node_index = (parent_edge.connected_to((node_index + 1) as NodeType).unwrap() - 1) as usize;
-                convex_hull = &node_hulls[node_index];
+        // do math on all hulls in hullstack to see which has best min.
+        let mut path_offset = 0 as WeightType;
+        let mut best_min = start_penalty * start_penalty;
+        for &hull in stack_of_hulls.iter().rev() {
+            let best_cost_at_level = best_cost_for_level(&start_penalty, &hull.hull_parts, path_offset);
+            best_min = std::cmp::min(best_min, best_cost_at_level);
+            if let Some(parent_edge) = &hull.parent_edge {
                 path_offset += parent_edge.weight;
-            } else {
-                break;
+                if path_offset >= best_min {
+                    break
+                }
             }
         }
-        best_min
-    }).sum()
+        sum_of_mins += best_min;
+
+        navigation_stack.push(convex_hull.children.clone());
+    }
+    sum_of_mins
+    // P
+    //   if
+
+
+    
+
+}
+
+fn best_cost_for_level(start_penalty: &WeightType, hullparts: &Vec<HullPart>, path_offset: WeightType) -> WeightType {
+    let search_result = binary_search_for(hullparts, &start_penalty);
+    let true_hullpart = match search_result {
+        Ok(idx) => &hullparts[idx],            // exact hit
+        Err(idx) => &hullparts[idx - 1],       // element just before insertion point
+    };
+    let best_cost_at_level = path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty;
+    best_cost_at_level
+}
+
+fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, node_order: &Vec<NodeType>) -> Vec<ConvexHull> {
+    let node_count: usize = node_penalties.len();
+    let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
+    let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
+    generate_hullparts(&node_order, &mut node_hulls);
+    node_hulls
+}
+
+fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: &WeightType) -> Result<usize, usize> {
+    hull_parts.binary_search_by(|hullpart| {
+        hullpart.range_start.cmp(&start_penalty)
+    })
 }
 
 fn main() {

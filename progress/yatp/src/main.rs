@@ -161,6 +161,49 @@ fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>) -> V
     layers
 }
 
+fn get_true_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
+    let node_count = edge_weights.len() + 1;
+    let mut working_edges = edge_weights.clone();
+    let mut path_counts = vec![0; node_count];
+    while !working_edges.is_empty() {
+        let mut step_counts = vec![0; node_count];
+        step_counts = working_edges
+            .iter()
+            .fold(step_counts, |mut step_vec, edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                step_vec[index_i] += 1;
+                step_vec[index_j] += 1;
+                step_vec
+            });
+
+        path_counts = path_counts
+            .iter()
+            .zip(step_counts.iter())
+            .map(|(&node_pathcount, &node_step)| {
+                if node_step > 1 {
+                    node_pathcount + 1
+                } else {
+                    node_pathcount
+                }
+            })
+            .collect();
+
+        let not_leaves: Vec<BiEdge> = working_edges
+            .extract_if(.., |edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                let i_is_leaf = step_counts[index_i].eq(&1);
+                let j_is_leaf = step_counts[index_j].eq(&1);
+                !(i_is_leaf || j_is_leaf)
+            })
+            .collect();
+
+        working_edges = not_leaves;
+    }
+    path_counts
+}
+
 fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     let node_count = edge_weights.len() + 1;
     let mut working_edges = edge_weights.clone();
@@ -189,22 +232,32 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     }).collect();
 
     let mut visit_queue: std::collections::VecDeque<(NodeType, usize)> = std::collections::VecDeque::with_capacity(node_count);
+    let mut dead_children: Vec<usize> = vec![0; node_count];
     for leaf_node in leaf_nodes {
-        for &edge in &node_edgelists[leaf_node as usize - 1] {
-            visit_queue.push_back((edge.connected_to(leaf_node).unwrap(), 0));
+        let leaf_index = (leaf_node - 1) as usize;
+        for &edge in &node_edgelists[leaf_index] {
+            let parent_node = edge.connected_to(leaf_node).unwrap();
+            let parent_index = (parent_node - 1) as usize;
+            dead_children[parent_index] += 1;
+            let living_children = node_edgelists[parent_index].len() - dead_children[parent_index];
+            if living_children == 1 {
+                visit_queue.push_back((parent_node, 0));
+            }
         }
-        node_edgelists[leaf_node as usize - 1].clear()
+        node_edgelists[leaf_index].clear()
     }
 
     while let Some((node, layer_value)) = visit_queue.pop_front() {
         let index = (node - 1) as usize;
-        if node_edgelists[index].is_empty() {
-            continue
-        }
         path_counts[index] = layer_value + 1;
         for &edge in &node_edgelists[index] {
             let attached = edge.connected_to(node).unwrap();
-            visit_queue.push_back((attached, layer_value + 1));
+            let attached_index = (attached - 1) as usize;
+            dead_children[attached_index] += 1;
+            let living_children = node_edgelists[attached_index].len() - dead_children[attached_index];
+            if living_children == 1 {
+                visit_queue.push_back((attached, layer_value + 1));
+            }
         }
         node_edgelists[index].clear();
     }
@@ -372,6 +425,12 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
+
+    // let true_path_counts = get_true_node_pathcounts(&edge_weights);
+    // let zipped: Vec<_> = path_counts.iter().zip(true_path_counts.iter()).map(|(&opt, &real)| (opt, real, opt == real)).collect();
+    // let onlybools: Vec<_> = zipped.iter().map(|&(opt, real, eq)| eq).collect();
+    // assert!(zipped.iter().all(|&(opt, real, eq)| eq));
+
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
     let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);

@@ -253,6 +253,9 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
         for &edge in &node_edgelists[index] {
             let attached = edge.connected_to(node).unwrap();
             let attached_index = (attached - 1) as usize;
+            if node_edgelists[attached_index].is_empty() {
+                continue;
+            }
             dead_children[attached_index] += 1;
             let living_children = node_edgelists[attached_index].len() - dead_children[attached_index];
             if living_children == 1 {
@@ -425,12 +428,6 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
 
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
-
-    // let true_path_counts = get_true_node_pathcounts(&edge_weights);
-    // let zipped: Vec<_> = path_counts.iter().zip(true_path_counts.iter()).map(|(&opt, &real)| (opt, real, opt == real)).collect();
-    // let onlybools: Vec<_> = zipped.iter().map(|&(opt, real, eq)| eq).collect();
-    // assert!(zipped.iter().all(|&(opt, real, eq)| eq));
-
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
     let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
@@ -443,21 +440,28 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         let mut convex_hull = &node_hulls[node_index];
         let start_penalty = convex_hull.penalty;
         let mut path_offset = 0;
-
-        let mut best_min = WeightType::MAX;
-
-
+        let mut best_min = start_penalty * start_penalty;
         loop {
-            let search_result = convex_hull.hull_parts.binary_search_by(|hullpart| {
-                hullpart.range_start.cmp(&start_penalty)
-            });
-            let true_hullpart = match search_result {
-                Ok(idx) => &convex_hull.hull_parts[idx],            // exact hit
-                Err(0)  => panic!("Aaaaaaaaah!"),                         // all elements > key
-                Err(idx) => &convex_hull.hull_parts[idx - 1],       // element just before insertion point
+            if path_offset >= best_min {
+                break
+            }
+            best_min = if convex_hull.hull_parts.len() > 8 {
+                let search_result = convex_hull.hull_parts.binary_search_by(|hullpart| {
+                    hullpart.range_start.cmp(&start_penalty)
+                });
+                let true_hullpart = match search_result {
+                    Ok(idx) => &convex_hull.hull_parts[idx],            // exact hit
+                    Err(0)  => panic!("Aaaaaaaaah!"),                         // all elements > key
+                    Err(idx) => &convex_hull.hull_parts[idx - 1],       // element just before insertion point
+                };
+                let best_cost_at_level = path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty;
+                std::cmp::min(best_min, best_cost_at_level)
+            } else {
+                let best_cost_at_level = convex_hull.hull_parts.iter().map(|hullpart| {
+                    path_offset + hullpart.path_cost + start_penalty * hullpart.end_penalty
+                }).min().unwrap();
+                std::cmp::min(best_min, best_cost_at_level)
             };
-
-            best_min = std::cmp::min(best_min, path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty);
 
             if let Some(parent_edge) = &convex_hull.parent_edge {
                 node_index = (parent_edge.connected_to((node_index + 1) as NodeType).unwrap() - 1) as usize;

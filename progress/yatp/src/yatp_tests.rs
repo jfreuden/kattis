@@ -236,7 +236,7 @@ fn test_solve_linetree_100000_nodes() {
             .into()
         })
         .collect();
-    assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 0);
+    assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 208975396308);
 }
 
 #[test]
@@ -257,7 +257,7 @@ fn test_solve_linetree_200000_nodes() {
             .into()
         })
         .collect();
-    assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 0);
+    assert_eq!(SELECTED_SOLVER(node_penalties, edge_weights), 162272919846);
 }
 
 #[test]

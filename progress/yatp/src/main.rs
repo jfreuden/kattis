@@ -449,33 +449,32 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         stack_of_hulls.push(convex_hull);
 
         // do math on all hulls in hullstack to see which has best min.
-        let mut path_offset = 0 as WeightType;
-        let mut best_min = start_penalty * start_penalty;
-        for &hull in stack_of_hulls.iter().rev() {
-            let best_cost_at_level = best_cost_for_level(&start_penalty, &hull.hull_parts, path_offset);
-            best_min = std::cmp::min(best_min, best_cost_at_level);
-            if let Some(parent_edge) = &hull.parent_edge {
-                path_offset += parent_edge.weight;
-                if path_offset >= best_min {
-                    break
-                }
-            }
-        }
+        let best_min = get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
         sum_of_mins += best_min;
 
         navigation_stack.push(convex_hull.children.clone());
     }
     sum_of_mins
-    // P
-    //   if
-
-
-    
-
 }
 
-fn best_cost_for_level(start_penalty: &WeightType, hullparts: &Vec<HullPart>, path_offset: WeightType) -> WeightType {
-    let search_result = binary_search_for(hullparts, &start_penalty);
+fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<&ConvexHull>, start_penalty: WeightType) -> WeightType {
+    let mut path_offset = 0 as WeightType;
+    let mut best_min = start_penalty * start_penalty;
+    for &hull in stack_of_hulls.iter().rev() {
+        let best_cost_at_level = best_cost_for_level(&hull.hull_parts, start_penalty, path_offset);
+        best_min = std::cmp::min(best_min, best_cost_at_level);
+        if let Some(parent_edge) = &hull.parent_edge {
+            path_offset += parent_edge.weight;
+            if path_offset >= best_min {
+                break
+            }
+        }
+    }
+    best_min
+}
+
+fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType, path_offset: WeightType) -> WeightType {
+    let search_result = binary_search_for(hullparts, start_penalty);
     let true_hullpart = match search_result {
         Ok(idx) => &hullparts[idx],            // exact hit
         Err(idx) => &hullparts[idx - 1],       // element just before insertion point
@@ -492,7 +491,7 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
     node_hulls
 }
 
-fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: &WeightType) -> Result<usize, usize> {
+fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> Result<usize, usize> {
     hull_parts.binary_search_by(|hullpart| {
         hullpart.range_start.cmp(&start_penalty)
     })

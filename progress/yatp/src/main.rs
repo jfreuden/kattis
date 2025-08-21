@@ -46,7 +46,8 @@ where
 /// The final answer is the sum of all of these minimum costs.
 
 type NodeType = u32;
-type WeightType = u64;
+type WeightType = u32;
+type AnswerType = u64;
 
 /// A Bidirectional edge
 #[derive(Debug, Copy, Clone, Eq)]
@@ -270,8 +271,8 @@ fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
 #[derive(Eq, Copy, Clone, Debug)]
 struct HullPart {
     range_start: WeightType,
-    path_cost: WeightType,
     end_penalty: WeightType,
+    path_cost: AnswerType,
 }
 
 impl PartialEq for HullPart {
@@ -303,7 +304,7 @@ impl Ord for HullPart {
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ConvexHull {
-    penalty: WeightType,
+    // penalty: WeightType,
     parent_edge: Option<BiEdge>,
     hull_parts: Vec<HullPart>,
     children: Vec<NodeType>,
@@ -327,7 +328,7 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
                 let edited_hull_parts =
                     child_hull.hull_parts.iter().map(|&hullpart| HullPart {
                         range_start: 0,
-                        path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight,
+                        path_cost: hullpart.path_cost + child_hull.parent_edge.unwrap().weight as AnswerType,
                         end_penalty: hullpart.end_penalty,
                     });
                 hullpart_heap.extend(edited_hull_parts);
@@ -335,7 +336,7 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
             hullpart_heap.sort();
 
             let (filtered_hullparts, _) = hullpart_heap.iter().fold(
-                (Vec::<HullPart>::with_capacity(hullpart_heap.len()), WeightType::MAX),
+                (Vec::<HullPart>::with_capacity(hullpart_heap.len()), AnswerType::MAX),
                 |(mut vec, mut min_tercept), hullpart | {
                     if hullpart.path_cost < min_tercept {
                         vec.push(*hullpart);
@@ -358,7 +359,7 @@ fn finish_hull(filtered_hullparts: &mut Vec<HullPart>) -> Vec<HullPart> {
         // Let's make a 'stutter'. This is where we use a while let as an if let, because we might have to retry after popping.
         'inner: while let Some(&last_addition) = hullpart_list.last() {
             // intersection x = (q - p) / (m - n)
-            let intercept_diff = hullpart.path_cost - last_addition.path_cost;
+            let intercept_diff = (hullpart.path_cost - last_addition.path_cost) as WeightType;
             let slope_diff = last_addition.end_penalty - hullpart.end_penalty;
             let intercept = intercept_diff.div_ceil(slope_diff) as WeightType;
             if intercept.le(&last_addition.range_start) {
@@ -405,7 +406,7 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
     let mut node_hulls = Vec::<ConvexHull>::with_capacity(node_count);
     for &penalty in node_penalties.iter() {
         node_hulls.push(ConvexHull {
-            penalty,
+            // penalty,
             parent_edge: None,
             hull_parts: vec![HullPart {
                 range_start: 0,
@@ -419,7 +420,7 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
 }
 
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
-fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u64 {
+fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> AnswerType {
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
@@ -429,7 +430,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         vec![*node_order.last().unwrap()],
     ];
     let mut stack_of_hulls = Vec::<ConvexHull>::new();
-    let mut sum_of_mins = 0 as WeightType;
+    let mut sum_of_mins = 0 as AnswerType;
 
     while let Some(parentage_stack) = navigation_stack.last_mut() {
         // stutter if the parentage_stack is empty.
@@ -442,7 +443,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         let node = parentage_stack.pop().unwrap();
         let node_index = (node - 1) as usize;
         let convex_hull = &node_hulls[node_index];
-        let start_penalty = convex_hull.penalty;
+        let start_penalty = node_penalties[node_index];
         stack_of_hulls.push(convex_hull.clone());
 
         // do math on all hulls in hullstack to see which has best min.
@@ -454,14 +455,14 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     sum_of_mins
 }
 
-fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> WeightType {
-    let mut path_offset = 0 as WeightType;
-    let mut best_min = start_penalty * start_penalty;
+fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> AnswerType {
+    let mut path_offset = 0 as AnswerType;
+    let mut best_min = (start_penalty as AnswerType) * (start_penalty as AnswerType);
     for hull in stack_of_hulls.iter().rev() {
         let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
         best_min = std::cmp::min(best_min, best_cost_at_level);
         if let Some(parent_edge) = &hull.parent_edge {
-            path_offset += parent_edge.weight;
+            path_offset += parent_edge.weight as AnswerType;
             if path_offset >= best_min {
                 break
             }
@@ -470,13 +471,18 @@ fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: 
     best_min
 }
 
-fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType) -> WeightType {
-    let search_result = binary_search_for(hullparts, start_penalty);
-    let true_hullpart = match search_result {
-        Ok(idx) => &hullparts[idx],            // exact hit
-        Err(idx) => &hullparts[idx - 1],       // element just before insertion point
+#[inline(always)]
+fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType) -> AnswerType {
+    let true_hullpart = if hullparts.len() != 1 {
+        let search_result = binary_search_for(hullparts, start_penalty);
+        match search_result {
+            Ok(idx) => &hullparts[idx],            // exact hit
+            Err(idx) => &hullparts[idx - 1],       // element just before insertion point
+        }
+    } else {
+        hullparts.first().unwrap()
     };
-    true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty
+    true_hullpart.path_cost + start_penalty as AnswerType * true_hullpart.end_penalty as AnswerType
 }
 
 fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, node_order: &Vec<NodeType>) -> Vec<ConvexHull> {
@@ -487,6 +493,7 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
     node_hulls
 }
 
+#[inline(always)]
 fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> Result<usize, usize> {
     hull_parts.binary_search_by(|hullpart| {
         start_penalty.cmp(&hullpart.range_start).reverse()
@@ -505,7 +512,7 @@ fn main() {
     };
     println!("{}", SELECTED_SOLVER(node_penalties, edge_weights))
 }
-const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> u64 = convex_solve;
+const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> AnswerType = convex_solve;
 
 #[cfg(test)]
 mod yatp_tests;

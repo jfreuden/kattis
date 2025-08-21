@@ -136,4 +136,4 @@ version = "0.1.0"
 
 [[package]]
 name = "yatp"
-version = "0.1.0"
+version = "0.1.1"

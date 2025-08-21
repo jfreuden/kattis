@@ -297,10 +297,6 @@ impl Ord for HullPart {
     }
 }
 
-// fn get_intersected_hullpart(last_addition: &HullPart, candidate: &HullPart) -> HullPart {
-//
-// }
-
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct ConvexHull {
@@ -454,6 +450,22 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
     let mut node_hulls = create_hull_blanks(&node_penalties, node_count);
     let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
+
+    let min_penalty = *node_penalties.iter().min().unwrap();
+    let max_penalty = *node_penalties.iter().max().unwrap();
+    for decontamination_target in node_hulls.iter_mut() {
+        let mut last_start=  WeightType::MAX; //Max to protect the reflexive
+        decontamination_target.hull_parts.reverse();
+        decontamination_target.hull_parts.retain(|hull_part| {
+            let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
+            let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
+            let will_remove = range_too_low || range_too_high;
+            last_start = hull_part.range_start;
+            !will_remove
+        });
+        decontamination_target.hull_parts.reverse();
+    }
+
     node_hulls
 }
 

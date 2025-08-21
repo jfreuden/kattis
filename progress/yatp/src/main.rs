@@ -419,42 +419,6 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
     node_hulls
 }
 
-/// A solver making use of convex hulls and a hierarchical tree decomposition.
-fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> AnswerType {
-    // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
-    let path_counts = get_node_pathcounts(&edge_weights);
-    let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let node_hulls = make_node_hulls(&node_penalties, &edge_weights, &path_counts, &node_order);
-
-    let mut navigation_stack: Vec<Vec<NodeType>> = vec![
-        vec![*node_order.last().unwrap()],
-    ];
-    let mut stack_of_hulls = Vec::<ConvexHull>::new();
-    let mut sum_of_mins = 0 as AnswerType;
-
-    while let Some(parentage_stack) = navigation_stack.last_mut() {
-        // stutter if the parentage_stack is empty.
-        if parentage_stack.is_empty() {
-            navigation_stack.pop();
-            stack_of_hulls.pop();
-            continue;
-        }
-
-        let node = parentage_stack.pop().unwrap();
-        let node_index = (node - 1) as usize;
-        let convex_hull = &node_hulls[node_index];
-        let start_penalty = node_penalties[node_index];
-        stack_of_hulls.push(convex_hull.clone());
-
-        // do math on all hulls in hullstack to see which has best min.
-        let best_min = get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
-        sum_of_mins += best_min;
-
-        navigation_stack.push(convex_hull.children.clone());
-    }
-    sum_of_mins
-}
-
 fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> AnswerType {
     let mut path_offset = 0 as AnswerType;
     let mut best_min = (start_penalty as AnswerType) * (start_penalty as AnswerType);
@@ -498,6 +462,42 @@ fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> R
     hull_parts.binary_search_by(|hullpart| {
         start_penalty.cmp(&hullpart.range_start).reverse()
     })
+}
+
+/// A solver making use of convex hulls and a hierarchical tree decomposition.
+fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> AnswerType {
+    // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
+    let path_counts = get_node_pathcounts(&edge_weights);
+    let node_order = get_nodes_in_hierarchy_order(&path_counts);
+    let node_hulls = make_node_hulls(&node_penalties, &edge_weights, &path_counts, &node_order);
+
+    let mut navigation_stack: Vec<Vec<NodeType>> = vec![
+        vec![*node_order.last().unwrap()],
+    ];
+    let mut stack_of_hulls = Vec::<ConvexHull>::new();
+    let mut sum_of_mins = 0 as AnswerType;
+
+    while let Some(parentage_stack) = navigation_stack.last_mut() {
+        // stutter if the parentage_stack is empty.
+        if parentage_stack.is_empty() {
+            navigation_stack.pop();
+            stack_of_hulls.pop();
+            continue;
+        }
+
+        let node = parentage_stack.pop().unwrap();
+        let node_index = (node - 1) as usize;
+        let convex_hull = &node_hulls[node_index];
+        let start_penalty = node_penalties[node_index];
+        stack_of_hulls.push(convex_hull.clone());
+
+        // do math on all hulls in hullstack to see which has best min.
+        let best_min = get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
+        sum_of_mins += best_min;
+
+        navigation_stack.push(convex_hull.children.clone());
+    }
+    sum_of_mins
 }
 
 fn main() {

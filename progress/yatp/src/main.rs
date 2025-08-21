@@ -301,7 +301,7 @@ impl Ord for HullPart {
 // }
 
 /// Helper data structure for O(1) queries of minimum path + penalty costs.
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 struct ConvexHull {
     penalty: WeightType,
     parent_edge: Option<BiEdge>,
@@ -428,7 +428,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     let mut navigation_stack: Vec<Vec<NodeType>> = vec![
         vec![*node_order.last().unwrap()],
     ];
-    let mut stack_of_hulls = Vec::<&ConvexHull>::new();
+    let mut stack_of_hulls = Vec::<ConvexHull>::new();
     let mut sum_of_mins = 0 as WeightType;
 
     while let Some(parentage_stack) = navigation_stack.last_mut() {
@@ -443,7 +443,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
         let node_index = (node - 1) as usize;
         let convex_hull = &node_hulls[node_index];
         let start_penalty = convex_hull.penalty;
-        stack_of_hulls.push(convex_hull);
+        stack_of_hulls.push(convex_hull.clone());
 
         // do math on all hulls in hullstack to see which has best min.
         let best_min = get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
@@ -454,10 +454,10 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> u
     sum_of_mins
 }
 
-fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<&ConvexHull>, start_penalty: WeightType) -> WeightType {
+fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> WeightType {
     let mut path_offset = 0 as WeightType;
     let mut best_min = start_penalty * start_penalty;
-    for &hull in stack_of_hulls.iter().rev() {
+    for hull in stack_of_hulls.iter().rev() {
         let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
         best_min = std::cmp::min(best_min, best_cost_at_level);
         if let Some(parent_edge) = &hull.parent_edge {

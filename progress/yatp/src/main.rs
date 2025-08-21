@@ -347,9 +347,7 @@ fn generate_hullparts(node_order: &Vec<NodeType>, node_hulls: &mut Vec<ConvexHul
         };
         // Now that we have the MinHeap (lowest-slope, lowest-intercept), we need to pull all valid edges into a vector
         // skipping edges with higher intercepts
-        let hullpart_list = finish_hull(&mut filtered_hullparts);
-        combined_hullparts.extend(hullpart_list);
-        node_hulls[node_index].hull_parts = combined_hullparts;
+        node_hulls[node_index].hull_parts = finish_hull(&mut filtered_hullparts);
     }
 }
 
@@ -397,7 +395,6 @@ fn get_layers_set_hull_relationships(edge_weights: &Vec<BiEdge>, path_counts: &V
         };
 
         node_hulls[parent_index].children.push((node_index + 1) as NodeType);
-        debug_assert!(node_hulls[node_index].parent_edge.is_none());
         node_hulls[node_index].parent_edge = Some(*edge);
         layers[std::cmp::min(i_hierarchy, j_hierarchy)].push(*edge);
     }
@@ -461,7 +458,7 @@ fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<&ConvexHull>, start_penalty:
     let mut path_offset = 0 as WeightType;
     let mut best_min = start_penalty * start_penalty;
     for &hull in stack_of_hulls.iter().rev() {
-        let best_cost_at_level = best_cost_for_level(&hull.hull_parts, start_penalty, path_offset);
+        let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
         best_min = std::cmp::min(best_min, best_cost_at_level);
         if let Some(parent_edge) = &hull.parent_edge {
             path_offset += parent_edge.weight;
@@ -473,14 +470,13 @@ fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<&ConvexHull>, start_penalty:
     best_min
 }
 
-fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType, path_offset: WeightType) -> WeightType {
+fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType) -> WeightType {
     let search_result = binary_search_for(hullparts, start_penalty);
     let true_hullpart = match search_result {
         Ok(idx) => &hullparts[idx],            // exact hit
         Err(idx) => &hullparts[idx - 1],       // element just before insertion point
     };
-    let best_cost_at_level = path_offset + true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty;
-    best_cost_at_level
+    true_hullpart.path_cost + start_penalty * true_hullpart.end_penalty
 }
 
 fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, node_order: &Vec<NodeType>) -> Vec<ConvexHull> {
@@ -493,7 +489,7 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
 
 fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> Result<usize, usize> {
     hull_parts.binary_search_by(|hullpart| {
-        hullpart.range_start.cmp(&start_penalty)
+        start_penalty.cmp(&hullpart.range_start).reverse()
     })
 }
 

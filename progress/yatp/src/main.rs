@@ -416,19 +416,22 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
 }
 
 fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> AnswerType {
-    let mut path_offset = 0 as AnswerType;
-    let mut best_min = (start_penalty as AnswerType) * (start_penalty as AnswerType);
-    for hull in stack_of_hulls.iter().rev() {
-        let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
-        best_min = std::cmp::min(best_min, best_cost_at_level);
-        if let Some(parent_edge) = &hull.parent_edge {
-            path_offset += parent_edge.weight as AnswerType;
-            if path_offset >= best_min {
-                break
-            }
-        }
-    }
-    best_min
+    let mut path_offset = AnswerType::default();
+    let mut best_min = (start_penalty as AnswerType).pow(2);
+    // for hull in stack_of_hulls.iter().rev() {
+    //     let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
+    //     best_min = std::cmp::min(best_min, best_cost_at_level);
+    //     if let Some(parent_edge) = &hull.parent_edge {
+    //         path_offset += parent_edge.weight as AnswerType;
+    //         if path_offset >= best_min {
+    //             break
+    //         }
+    //     }
+    // }
+    // best_min
+    stack_of_hulls.iter().rev().map(|hull| {
+        path_offset + best_cost_for_level(&hull.hull_parts, start_penalty)
+    }).min().unwrap()
 }
 
 #[inline(always)]
@@ -436,13 +439,13 @@ fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType) -> 
     let true_hullpart = if hullparts.len() != 1 {
         let search_result = binary_search_for(hullparts, start_penalty);
         match search_result {
-            Ok(idx) => &hullparts[idx],            // exact hit
-            Err(idx) => &hullparts[idx - 1],       // element just before insertion point
+            Ok(idx) => hullparts[idx],            // exact hit
+            Err(idx) => hullparts[idx - 1],       // element just before insertion point
         }
     } else {
-        hullparts.first().unwrap()
+        *hullparts.first().unwrap()
     };
-    true_hullpart.path_cost + start_penalty as AnswerType * true_hullpart.end_penalty as AnswerType
+    start_penalty as AnswerType * true_hullpart.end_penalty as AnswerType + true_hullpart.path_cost
 }
 
 fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>, node_order: &Vec<NodeType>) -> Vec<ConvexHull> {
@@ -472,7 +475,7 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
 #[inline(always)]
 fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> Result<usize, usize> {
     hull_parts.binary_search_by(|hullpart| {
-        start_penalty.cmp(&hullpart.range_start).reverse()
+        hullpart.range_start.cmp(&start_penalty)
     })
 }
 
@@ -504,8 +507,7 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
         stack_of_hulls.push(convex_hull.clone());
 
         // do math on all hulls in hullstack to see which has best min.
-        let best_min = get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
-        sum_of_mins += best_min;
+        sum_of_mins += get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
 
         navigation_stack.push(convex_hull.children.clone());
     }

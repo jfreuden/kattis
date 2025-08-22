@@ -418,20 +418,17 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
 fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> AnswerType {
     let mut path_offset = AnswerType::default();
     let mut best_min = (start_penalty as AnswerType).pow(2);
-    // for hull in stack_of_hulls.iter().rev() {
-    //     let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
-    //     best_min = std::cmp::min(best_min, best_cost_at_level);
-    //     if let Some(parent_edge) = &hull.parent_edge {
-    //         path_offset += parent_edge.weight as AnswerType;
-    //         if path_offset >= best_min {
-    //             break
-    //         }
-    //     }
-    // }
-    // best_min
-    stack_of_hulls.iter().rev().map(|hull| {
-        path_offset + best_cost_for_level(&hull.hull_parts, start_penalty)
-    }).min().unwrap()
+    for hull in stack_of_hulls.iter().rev() {
+        let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
+        best_min = std::cmp::min(best_min, best_cost_at_level);
+        if let Some(parent_edge) = &hull.parent_edge {
+            path_offset += parent_edge.weight as AnswerType;
+            if path_offset >= best_min {
+                break
+            }
+        }
+    }
+    best_min
 }
 
 #[inline(always)]

@@ -99,7 +99,17 @@ fn lump_front_increments(operations_list: &mut Vec<Op>) {
 }
 
 fn brute_solve(array_len: usize, operations_list: Vec::<Op>) -> Vec<ValueType> {
-    todo!()
+    let mut dumb_array = vec![ValueType::default(); array_len];
+    let mut query_answers = Vec::<ValueType>::new();
+    for op in operations_list {
+        if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
+            let answer = dumb_array.iter().take(query.index).sum();
+            query_answers.push(answer);
+        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+            dumb_array[increment.index] += increment.value;
+        }
+    }
+    query_answers
 }
 
 fn fast_solve(array_len: usize, mut operations_list: Vec::<Op>) -> Vec<ValueType> {
@@ -109,7 +119,7 @@ fn fast_solve(array_len: usize, mut operations_list: Vec::<Op>) -> Vec<ValueType
     todo!()
 }
 
-const SELECTED_SOLVER: fn(usize, Vec::<Op>) -> Vec<ValueType> = fast_solve;
+const SELECTED_SOLVER: fn(usize, Vec::<Op>) -> Vec<ValueType> = brute_solve;
 
 fn main() {
     let [array_len, operations_count]: [usize; 2] = read_array();

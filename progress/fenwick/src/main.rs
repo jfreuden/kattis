@@ -72,7 +72,7 @@ type Op = Box<dyn ProblemOperation>;
 /// Remove any increment operation that will never be queried
 /// Since the query is a prefix-sum, this amounts to:
 /// "Remove any increment operation with index greater than the highest query index"
-fn remove_end_incremements(operations_list: &mut Vec<Op>) {
+fn remove_end_increments(operations_list: &mut Vec<Op>) {
     // Find highest query
     let mut highest_index = usize::MAX;
     for op in operations_list.iter() {
@@ -89,6 +89,7 @@ fn remove_end_incremements(operations_list: &mut Vec<Op>) {
         }
         false
     }).collect();
+    eprintln!("Removed {} end increments that will never be queried.", trashed_increments.len());
 }
 
 /// Combine increment operations that will always collectively affect the first (and all following) queries
@@ -102,7 +103,7 @@ fn brute_solve(array_len: usize, operations_list: Vec::<Op>) -> Vec<ValueType> {
 }
 
 fn fast_solve(array_len: usize, mut operations_list: Vec::<Op>) -> Vec<ValueType> {
-    remove_end_incremements(&mut operations_list);
+    remove_end_increments(&mut operations_list);
     lump_front_increments(&mut operations_list);
 
     todo!()
@@ -134,8 +135,43 @@ fn main() {
         }
     }
 
-    let query_results = brute_solve(array_len, operations_list);
+    let query_results = SELECTED_SOLVER(array_len, operations_list);
     for result in query_results {
         println!("{}", result)
+    }
+}
+
+#[cfg(test)]
+mod fenwick_tests {
+    use super::*;
+
+    #[test]
+    fn test_solve_sample_1() {
+        let array_len = 10 as usize;
+        let operation_list: Vec<Op> = vec![
+            Box::new(IncrementOp { index: 7, value: 23 }),
+            Box::new(QueryOp { index: 8 }),
+            Box::new(IncrementOp { index: 3, value: 17 }),
+            Box::new( QueryOp { index: 8 }),
+        ];
+        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        for result in query_results {
+            println!("{}", result)
+        }
+    }
+
+    #[test]
+    fn test_solve_sample_2() {
+        let array_len = 5 as usize;
+        let operation_list: Vec<Op> = vec![
+            Box::new(IncrementOp { index: 0, value: -43 }),
+            Box::new(IncrementOp { index: 4, value: 1 }),
+            Box::new(QueryOp { index: 0 }),
+            Box::new( QueryOp { index: 5 }),
+        ];
+        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        for result in query_results {
+            println!("{}", result)
+        }
     }
 }

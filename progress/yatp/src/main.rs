@@ -449,21 +449,6 @@ fn make_node_hulls(node_penalties: &Vec<WeightType>, edge_weights: &Vec<BiEdge>,
     let _layers = get_layers_set_hull_relationships(&edge_weights, &path_counts, &mut node_hulls);
     generate_hullparts(&node_order, &mut node_hulls);
 
-    let min_penalty = *node_penalties.iter().min().unwrap();
-    let max_penalty = *node_penalties.iter().max().unwrap();
-    for decontamination_target in node_hulls.iter_mut() {
-        let mut last_start=  WeightType::MAX; //Max to protect the reflexive
-        decontamination_target.hull_parts.reverse();
-        decontamination_target.hull_parts.retain(|hull_part| {
-            let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
-            let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
-            let will_remove = range_too_low || range_too_high;
-            last_start = hull_part.range_start;
-            !will_remove
-        });
-        decontamination_target.hull_parts.reverse();
-    }
-
     node_hulls
 }
 
@@ -484,7 +469,23 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
     let path_counts = get_node_pathcounts(&edge_weights);
     let node_order = get_nodes_in_hierarchy_order(&path_counts);
-    let node_hulls = make_node_hulls(&node_penalties, &edge_weights, &path_counts, &node_order);
+    let mut node_hulls = make_node_hulls(&node_penalties, &edge_weights, &path_counts, &node_order);
+
+    let min_penalty = *node_penalties.iter().min().unwrap();
+    let max_penalty = *node_penalties.iter().max().unwrap();
+    for decontamination_target in node_hulls.iter_mut() {
+        let mut last_start=  WeightType::MAX; //Max to protect the reflexive
+        decontamination_target.hull_parts.reverse();
+        decontamination_target.hull_parts.retain(|hull_part| {
+            let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
+            let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
+            let will_remove = range_too_low || range_too_high;
+            last_start = hull_part.range_start;
+            !will_remove
+        });
+        decontamination_target.hull_parts.reverse();
+    }
+
 
     let mut navigation_stack: Vec<Vec<NodeType>> = vec![
         vec![*node_order.last().unwrap()],
@@ -505,13 +506,49 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
         let start_penalty = node_penalties[node_index];
         let convex_hull = &node_hulls[node_index];
         let parent_edge_weight = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { WeightType::default() };
+
+        // Future assimilate_edges function:
+        let mut hullpart_heap = convex_hull.hull_parts.clone();
+        let path_offset = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { 0 };
+        if let Some(last_convex_hull) = stack_of_hulls.last() {
+            hullpart_heap.extend(last_convex_hull.hull_parts.iter().map(|hull_part: &HullPart| {
+                HullPart {
+                    range_start: hull_part.range_start,
+                    end_penalty: hull_part.end_penalty,
+                    path_cost: hull_part.path_cost + path_offset as AnswerType
+                }
+            }));
+        }
+        hullpart_heap.sort();
+        let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
+            (Vec::<HullPart>::with_capacity(hullpart_heap.len()), AnswerType::MAX),
+            |(mut vec, mut min_tercept), hullpart | {
+                if hullpart.path_cost < min_tercept {
+                    vec.push(*hullpart);
+                    min_tercept = hullpart.path_cost;
+                }
+                (vec, min_tercept)
+            });
+        hullpart_heap = finish_hull(&mut filtered_hullparts);
+        let mut last_start=  WeightType::MAX; //Max to protect the reflexive
+        hullpart_heap.reverse();
+        hullpart_heap.retain(|hull_part| {
+            let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
+            let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
+            let will_remove = range_too_low || range_too_high;
+            last_start = hull_part.range_start;
+            !will_remove
+        });
+        hullpart_heap.reverse();
+        let best_cost_at_level = best_cost_for_level(&hullpart_heap, start_penalty);
+        sum_of_mins += best_cost_at_level;
         stack_of_hulls.push(StrippedHull {
-            hull_parts: convex_hull.hull_parts.clone(),
+            hull_parts: hullpart_heap,
             parent_edge_weight
         });
 
         // do math on all hulls in hullstack to see which has best min.
-        sum_of_mins += get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
+        // sum_of_mins += get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
 
         navigation_stack.push(convex_hull.children.clone());
     }

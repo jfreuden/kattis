@@ -415,17 +415,15 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
     node_hulls
 }
 
-fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<ConvexHull>, start_penalty: WeightType) -> AnswerType {
+fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<StrippedHull>, start_penalty: WeightType) -> AnswerType {
     let mut path_offset = AnswerType::default();
     let mut best_min = (start_penalty as AnswerType).pow(2);
-    for hull in stack_of_hulls.iter().rev() {
-        let best_cost_at_level = path_offset + best_cost_for_level(&hull.hull_parts, start_penalty);
+    for StrippedHull { hull_parts, parent_edge_weight} in stack_of_hulls.iter().rev() {
+        let best_cost_at_level = path_offset + best_cost_for_level(hull_parts, start_penalty);
         best_min = std::cmp::min(best_min, best_cost_at_level);
-        if let Some(parent_edge) = &hull.parent_edge {
-            path_offset += parent_edge.weight as AnswerType;
-            if path_offset >= best_min {
-                break
-            }
+        path_offset += *parent_edge_weight as AnswerType;
+        if path_offset >= best_min {
+            break
         }
     }
     best_min
@@ -476,6 +474,11 @@ fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> R
     })
 }
 
+struct StrippedHull {
+    hull_parts: Vec<HullPart>,
+    parent_edge_weight: WeightType
+}
+
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
 fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> AnswerType {
     // TODO: Combine path_counts and hull_relationships code, returning the node order instead of layers
@@ -486,8 +489,8 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
     let mut navigation_stack: Vec<Vec<NodeType>> = vec![
         vec![*node_order.last().unwrap()],
     ];
-    let mut stack_of_hulls = Vec::<ConvexHull>::new();
-    let mut sum_of_mins = 0 as AnswerType;
+    let mut stack_of_hulls = Vec::<StrippedHull>::new();
+    let mut sum_of_mins = AnswerType::default();
 
     while let Some(parentage_stack) = navigation_stack.last_mut() {
         // stutter if the parentage_stack is empty.
@@ -499,9 +502,13 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
 
         let node = parentage_stack.pop().unwrap();
         let node_index = (node - 1) as usize;
-        let convex_hull = &node_hulls[node_index];
         let start_penalty = node_penalties[node_index];
-        stack_of_hulls.push(convex_hull.clone());
+        let convex_hull = &node_hulls[node_index];
+        let parent_edge_weight = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { WeightType::default() };
+        stack_of_hulls.push(StrippedHull {
+            hull_parts: convex_hull.hull_parts.clone(),
+            parent_edge_weight
+        });
 
         // do math on all hulls in hullstack to see which has best min.
         sum_of_mins += get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);

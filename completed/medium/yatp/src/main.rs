@@ -479,6 +479,3 @@ const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> AnswerType = convex_s
 
 #[cfg(test)]
 mod yatp_tests;
-
-#[cfg(test)]
-mod secret_tests;

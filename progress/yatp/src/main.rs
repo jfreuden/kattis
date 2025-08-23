@@ -136,75 +136,6 @@ fn get_nodes_in_hierarchy_order(path_counts: &Vec<usize>) -> Vec<NodeType> {
     enumerated_counts.iter().map(|&(a, _)| a + 1).collect()
 }
 
-/// Returns list of edges based on how far each is from being a leaf-edge.
-/// Note: This is different from "how far from a leaf", but rather how far away from being a leaf
-/// itself. It is a measure of the centrality of a given node.
-fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>) -> Vec<Vec<BiEdge>> {
-    let mut working_edges = edge_weights.clone();
-    let mut layers = Vec::<Vec<BiEdge>>::new();
-    let mut now_serving = 0;
-    while !working_edges.is_empty() {
-        let leaves: Vec<BiEdge> = working_edges
-            .extract_if(.., |edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                let i_is_leaf = path_counts[index_i].le(&now_serving);
-                let j_is_leaf = path_counts[index_j].le(&now_serving);
-                i_is_leaf || j_is_leaf
-            })
-            .collect();
-        if leaves.is_empty() {
-            continue;
-        }
-        layers.push(leaves);
-        now_serving += 1;
-    }
-    layers
-}
-
-fn get_true_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
-    let node_count = edge_weights.len() + 1;
-    let mut working_edges = edge_weights.clone();
-    let mut path_counts = vec![0; node_count];
-    while !working_edges.is_empty() {
-        let mut step_counts = vec![0; node_count];
-        step_counts = working_edges
-            .iter()
-            .fold(step_counts, |mut step_vec, edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                step_vec[index_i] += 1;
-                step_vec[index_j] += 1;
-                step_vec
-            });
-
-        path_counts = path_counts
-            .iter()
-            .zip(step_counts.iter())
-            .map(|(&node_pathcount, &node_step)| {
-                if node_step > 1 {
-                    node_pathcount + 1
-                } else {
-                    node_pathcount
-                }
-            })
-            .collect();
-
-        let not_leaves: Vec<BiEdge> = working_edges
-            .extract_if(.., |edge| {
-                let index_i = (edge.i - 1) as usize;
-                let index_j = (edge.j - 1) as usize;
-                let i_is_leaf = step_counts[index_i].eq(&1);
-                let j_is_leaf = step_counts[index_j].eq(&1);
-                !(i_is_leaf || j_is_leaf)
-            })
-            .collect();
-
-        working_edges = not_leaves;
-    }
-    path_counts
-}
-
 fn get_node_pathcounts(edge_weights: &Vec<BiEdge>) -> Vec<usize> {
     let node_count = edge_weights.len() + 1;
     let working_edges = edge_weights.clone();
@@ -415,20 +346,6 @@ fn create_hull_blanks(node_penalties: &Vec<WeightType>, node_count: usize) -> Ve
     node_hulls
 }
 
-fn get_best_for_stack_of_hulls(stack_of_hulls: &Vec<StrippedHull>, start_penalty: WeightType) -> AnswerType {
-    let mut path_offset = AnswerType::default();
-    let mut best_min = (start_penalty as AnswerType).pow(2);
-    for StrippedHull { hull_parts, parent_edge_weight} in stack_of_hulls.iter().rev() {
-        let best_cost_at_level = path_offset + best_cost_for_level(hull_parts, start_penalty);
-        best_min = std::cmp::min(best_min, best_cost_at_level);
-        path_offset += *parent_edge_weight as AnswerType;
-        if path_offset >= best_min {
-            break
-        }
-    }
-    best_min
-}
-
 #[inline(always)]
 fn best_cost_for_level(hullparts: &Vec<HullPart>, start_penalty: WeightType) -> AnswerType {
     let true_hullpart = if hullparts.len() != 1 {
@@ -459,9 +376,40 @@ fn binary_search_for(hull_parts: &Vec<HullPart>, start_penalty: WeightType) -> R
     })
 }
 
-struct StrippedHull {
-    hull_parts: Vec<HullPart>,
-    parent_edge_weight: WeightType
+fn assimilate_hull_edges(min_penalty: WeightType, max_penalty: WeightType, stack_of_hulls: &Vec<Vec<HullPart>>, convex_hull: &ConvexHull) -> Vec<HullPart> {
+    let mut hullpart_heap = convex_hull.hull_parts.clone();
+    let path_offset = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { 0 };
+    if let Some(last_hull_parts) = stack_of_hulls.last() {
+        hullpart_heap.extend(last_hull_parts.iter().map(|hull_part: &HullPart| {
+            HullPart {
+                range_start: hull_part.range_start,
+                end_penalty: hull_part.end_penalty,
+                path_cost: hull_part.path_cost + path_offset as AnswerType
+            }
+        }));
+    }
+    hullpart_heap.sort();
+    let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
+        (Vec::<HullPart>::with_capacity(hullpart_heap.len()), AnswerType::MAX),
+        |(mut vec, mut min_tercept), hullpart| {
+            if hullpart.path_cost < min_tercept {
+                vec.push(*hullpart);
+                min_tercept = hullpart.path_cost;
+            }
+            (vec, min_tercept)
+        });
+    hullpart_heap = finish_hull(&mut filtered_hullparts);
+    let mut last_start = WeightType::MAX; //Max to protect the reflexive
+    hullpart_heap.reverse();
+    hullpart_heap.retain(|hull_part| {
+        let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
+        let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
+        let will_remove = range_too_low || range_too_high;
+        last_start = hull_part.range_start;
+        !will_remove
+    });
+    hullpart_heap.reverse();
+    hullpart_heap
 }
 
 /// A solver making use of convex hulls and a hierarchical tree decomposition.
@@ -486,11 +434,10 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
         decontamination_target.hull_parts.reverse();
     }
 
-
     let mut navigation_stack: Vec<Vec<NodeType>> = vec![
         vec![*node_order.last().unwrap()],
     ];
-    let mut stack_of_hulls = Vec::<StrippedHull>::new();
+    let mut stack_of_hulls = Vec::<Vec<HullPart>>::new();
     let mut sum_of_mins = AnswerType::default();
 
     while let Some(parentage_stack) = navigation_stack.last_mut() {
@@ -505,55 +452,16 @@ fn convex_solve(node_penalties: Vec<WeightType>, edge_weights: Vec<BiEdge>) -> A
         let node_index = (node - 1) as usize;
         let start_penalty = node_penalties[node_index];
         let convex_hull = &node_hulls[node_index];
-        let parent_edge_weight = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { WeightType::default() };
 
-        // Future assimilate_edges function:
-        let mut hullpart_heap = convex_hull.hull_parts.clone();
-        let path_offset = if let Some(parent_edge) = convex_hull.parent_edge { parent_edge.weight } else { 0 };
-        if let Some(last_convex_hull) = stack_of_hulls.last() {
-            hullpart_heap.extend(last_convex_hull.hull_parts.iter().map(|hull_part: &HullPart| {
-                HullPart {
-                    range_start: hull_part.range_start,
-                    end_penalty: hull_part.end_penalty,
-                    path_cost: hull_part.path_cost + path_offset as AnswerType
-                }
-            }));
-        }
-        hullpart_heap.sort();
-        let (mut filtered_hullparts, _) = hullpart_heap.iter().fold(
-            (Vec::<HullPart>::with_capacity(hullpart_heap.len()), AnswerType::MAX),
-            |(mut vec, mut min_tercept), hullpart | {
-                if hullpart.path_cost < min_tercept {
-                    vec.push(*hullpart);
-                    min_tercept = hullpart.path_cost;
-                }
-                (vec, min_tercept)
-            });
-        hullpart_heap = finish_hull(&mut filtered_hullparts);
-        let mut last_start=  WeightType::MAX; //Max to protect the reflexive
-        hullpart_heap.reverse();
-        hullpart_heap.retain(|hull_part| {
-            let range_too_low = last_start < min_penalty && hull_part.range_start < min_penalty;
-            let range_too_high = last_start > max_penalty && hull_part.range_start > max_penalty;
-            let will_remove = range_too_low || range_too_high;
-            last_start = hull_part.range_start;
-            !will_remove
-        });
-        hullpart_heap.reverse();
+        let hullpart_heap = assimilate_hull_edges(min_penalty, max_penalty, &stack_of_hulls, convex_hull);
         let best_cost_at_level = best_cost_for_level(&hullpart_heap, start_penalty);
         sum_of_mins += best_cost_at_level;
-        stack_of_hulls.push(StrippedHull {
-            hull_parts: hullpart_heap,
-            parent_edge_weight
-        });
-
-        // do math on all hulls in hullstack to see which has best min.
-        // sum_of_mins += get_best_for_stack_of_hulls(&stack_of_hulls, start_penalty);
-
+        stack_of_hulls.push(hullpart_heap);
         navigation_stack.push(convex_hull.children.clone());
     }
     sum_of_mins
 }
+
 
 fn main() {
     let number_nodes: usize = read_one();
@@ -571,3 +479,6 @@ const SELECTED_SOLVER: fn(Vec<WeightType>, Vec<BiEdge>) -> AnswerType = convex_s
 
 #[cfg(test)]
 mod yatp_tests;
+
+#[cfg(test)]
+mod secret_tests;

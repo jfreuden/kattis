@@ -1,5 +1,31 @@
 use super::*;
 
+/// Returns list of edges based on how far each is from being a leaf-edge.
+/// Note: This is different from "how far from a leaf", but rather how far away from being a leaf
+/// itself. It is a measure of the centrality of a given node.
+fn get_edge_hierarchy(edge_weights: &Vec<BiEdge>, path_counts: &Vec<usize>) -> Vec<Vec<BiEdge>> {
+    let mut working_edges = edge_weights.clone();
+    let mut layers = Vec::<Vec<BiEdge>>::new();
+    let mut now_serving = 0;
+    while !working_edges.is_empty() {
+        let leaves: Vec<BiEdge> = working_edges
+            .extract_if(.., |edge| {
+                let index_i = (edge.i - 1) as usize;
+                let index_j = (edge.j - 1) as usize;
+                let i_is_leaf = path_counts[index_i].le(&now_serving);
+                let j_is_leaf = path_counts[index_j].le(&now_serving);
+                i_is_leaf || j_is_leaf
+            })
+            .collect();
+        if leaves.is_empty() {
+            continue;
+        }
+        layers.push(leaves);
+        now_serving += 1;
+    }
+    layers
+}
+
 #[test]
 fn test_edge_new() {
     let edge = BiEdge::new(3, 2, 8);

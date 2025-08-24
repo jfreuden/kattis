@@ -43,7 +43,7 @@ struct IncrementOp {
 }
 
 struct QueryOp {
-    index: IndexType
+    index: IndexType,
 }
 
 trait ProblemOperation: std::any::Any {
@@ -81,15 +81,22 @@ fn remove_end_increments(operations_list: &mut Vec<Op>) {
         }
     }
     // extractif any increments
-    let trashed_increments: Vec<Op> = operations_list.extract_if(.., |op| {
-        if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
-            if increment.index > highest_index {
-                return true
+    let trashed_increments: Vec<Op> = operations_list
+        .extract_if(.., |op| {
+            if let Some(&IncrementOp { index, value: _ }) =
+                op.as_any().downcast_ref::<IncrementOp>()
+            {
+                if index > highest_index {
+                    return true;
+                }
             }
-        }
-        false
-    }).collect();
-    eprintln!("Removed {} end increments that will never be queried.", trashed_increments.len());
+            false
+        })
+        .collect();
+    eprintln!(
+        "Removed {} end increments that will never be queried.",
+        trashed_increments.len()
+    );
 }
 
 /// Combine increment operations that will always collectively affect the first (and all following) queries
@@ -98,9 +105,10 @@ fn lump_front_increments(operations_list: &mut Vec<Op>) {
     todo!()
 }
 
-fn brute_solve(array_len: usize, operations_list: Vec::<Op>) -> Vec<ValueType> {
+fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let mut dumb_array = vec![ValueType::default(); array_len];
     let mut query_answers = Vec::<ValueType>::new();
+
     for op in operations_list {
         if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
             let answer = dumb_array.iter().take(query.index).sum();
@@ -112,14 +120,14 @@ fn brute_solve(array_len: usize, operations_list: Vec::<Op>) -> Vec<ValueType> {
     query_answers
 }
 
-fn fast_solve(array_len: usize, mut operations_list: Vec::<Op>) -> Vec<ValueType> {
+fn fast_solve(array_len: usize, mut operations_list: Vec<Op>) -> Vec<ValueType> {
     remove_end_increments(&mut operations_list);
     lump_front_increments(&mut operations_list);
 
     todo!()
 }
 
-const SELECTED_SOLVER: fn(usize, Vec::<Op>) -> Vec<ValueType> = brute_solve;
+const SELECTED_SOLVER: fn(usize, Vec<Op>) -> Vec<ValueType> = brute_solve;
 
 fn main() {
     let [array_len, operations_count]: [usize; 2] = read_array();
@@ -127,21 +135,28 @@ fn main() {
     for _ in 0..operations_count {
         let op = read_vec::<String>();
         match op.len() {
-            2 => { // Query Operation
+            2 => {
+                // Query Operation
                 let [key, index]: [String; 2] = op.try_into().unwrap();
                 if key != "?" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Box::new(QueryOp { index: index.parse::<IndexType>().unwrap() }));
-            },
-            3 => { // Increment Operation
+                operations_list.push(Box::new(QueryOp {
+                    index: index.parse::<IndexType>().unwrap(),
+                }));
+            }
+            3 => {
+                // Increment Operation
                 let [key, index, delta]: [String; 3] = op.try_into().unwrap();
                 if key != "+" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Box::new(IncrementOp { index: index.parse::<IndexType>().unwrap(), value: delta.parse::<ValueType>().unwrap()}))
-            },
-            _ => panic!("Invalid operation")
+                operations_list.push(Box::new(IncrementOp {
+                    index: index.parse::<IndexType>().unwrap(),
+                    value: delta.parse::<ValueType>().unwrap(),
+                }))
+            }
+            _ => panic!("Invalid operation"),
         }
     }
 
@@ -159,29 +174,71 @@ mod fenwick_tests {
     fn test_solve_sample_1() {
         let array_len = 10 as usize;
         let operation_list: Vec<Op> = vec![
-            Box::new(IncrementOp { index: 7, value: 23 }),
+            Box::new(IncrementOp {
+                index: 7,
+                value: 23,
+            }),
             Box::new(QueryOp { index: 8 }),
-            Box::new(IncrementOp { index: 3, value: 17 }),
-            Box::new( QueryOp { index: 8 }),
+            Box::new(IncrementOp {
+                index: 3,
+                value: 17,
+            }),
+            Box::new(QueryOp { index: 8 }),
         ];
         let query_results = SELECTED_SOLVER(array_len, operation_list);
-        for result in query_results {
-            println!("{}", result)
-        }
+
+        let answers = vec![23, 40];
+        assert_eq!(query_results, answers)
     }
 
     #[test]
     fn test_solve_sample_2() {
         let array_len = 5 as usize;
         let operation_list: Vec<Op> = vec![
-            Box::new(IncrementOp { index: 0, value: -43 }),
+            Box::new(IncrementOp {
+                index: 0,
+                value: -43,
+            }),
             Box::new(IncrementOp { index: 4, value: 1 }),
             Box::new(QueryOp { index: 0 }),
-            Box::new( QueryOp { index: 5 }),
+            Box::new(QueryOp { index: 5 }),
         ];
         let query_results = SELECTED_SOLVER(array_len, operation_list);
-        for result in query_results {
-            println!("{}", result)
+
+        let answers = vec![0, -42];
+        assert_eq!(query_results, answers)
+    }
+
+    #[test]
+    fn test_solve_maximal_limits() {
+        let array_len = 5000000 as usize;
+        let operations_count = 5000000;
+
+        let calc_increment_index = |i: usize| (i * i) % array_len;
+        let calc_increment_value = |i: i64| (i * i - 7893 * i) % array_len as i64;
+        let calc_query_index =
+            |i: usize| (17 * i % array_len * i % array_len * i + 209) % array_len;
+
+        let mut operation_list: Vec<Op> = vec![];
+        for i in 0..operations_count {
+            match i % 17 {
+                0 | 1 | 7 | 8 | 14 | 16 | 17 => {
+                    operation_list.push(Box::new(IncrementOp {
+                        index: calc_increment_index(i),
+                        value: calc_increment_value(i as i64),
+                    }));
+                }
+                _ => {
+                    operation_list.push(Box::new(QueryOp {
+                        index: calc_query_index(i),
+                    }));
+                }
+            }
         }
+
+        let query_results = SELECTED_SOLVER(array_len, operation_list);
+
+        let answers = vec![];
+        assert_eq!(query_results, answers)
     }
 }

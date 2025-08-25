@@ -106,23 +106,76 @@ fn lump_front_increments(operations_list: &mut Vec<Op>) {
 }
 
 fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-    let mut dumb_array = vec![ValueType::default(); array_len];
+    let mut dumb_sum_array = vec![ValueType::default(); array_len];
     let mut query_answers = Vec::<ValueType>::new();
 
-    for op in operations_list {
-        if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-            let answer = dumb_array.iter().take(query.index).sum();
-            query_answers.push(answer);
-        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
-            dumb_array[increment.index] += increment.value;
+    let op_count = operations_list.len();
+    let batch_len = 10;
+
+    for (batch, op_batch) in operations_list.chunks(batch_len).enumerate() {
+        for op in op_batch {
+            if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
+                let answer = if query.index == 0 {
+                    0
+                } else {
+                    dumb_sum_array[query.index - 1]
+                };
+                query_answers.push(answer);
+            } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+                for val in dumb_sum_array[increment.index..].iter_mut() {
+                    *val += increment.value;
+                }
+            }
         }
+        eprintln!(
+            "Completed {} / {}",
+            batch * batch_len + op_batch.len(),
+            op_count
+        );
     }
     query_answers
+}
+
+fn get_optype_counts(ops: &Vec<Op>) -> (usize, usize) {
+    let mut increment_count = 0;
+    let mut query_count = 0;
+    for op in ops {
+        if op.as_any().downcast_ref::<QueryOp>().is_some() {
+            query_count += 1;
+        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+            increment_count += 1;
+        }
+    }
+    (increment_count, query_count)
 }
 
 fn fast_solve(array_len: usize, mut operations_list: Vec<Op>) -> Vec<ValueType> {
     remove_end_increments(&mut operations_list);
     lump_front_increments(&mut operations_list);
+
+    let operations_count = operations_list.len();
+    let (increment_count, query_count) = get_optype_counts(&operations_list);
+    let mut dependent_increments_lists = Vec::<Vec<IncrementOp>>::with_capacity(increment_count);
+    let mut queries = Vec::<QueryOp>::with_capacity(query_count);
+
+    let mut dependent_increments = Vec::<IncrementOp>::new();
+    // todo: above was the "let's organize all the dependent increments to go before the relevant query" work.
+
+    let mut data_fenwick = vec![0 as ValueType; array_len];
+
+    for op in operations_list {
+        if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
+            let answer = if query.index == 0 {
+                0
+            } else {
+                let mut part_sum = 0;
+                // todo: its not o(1) lookup. write the index processing methods.
+
+                data_fenwick[query.index - 1]
+            };
+        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+        }
+    }
 
     todo!()
 }
@@ -211,8 +264,9 @@ mod fenwick_tests {
 
     #[test]
     fn test_solve_maximal_limits() {
-        let array_len = 5000000 as usize;
-        let operations_count = 5000000;
+        let shared_size = 5000000;
+        let array_len = shared_size;
+        let operations_count = shared_size;
 
         let calc_increment_index = |i: usize| (i * i) % array_len;
         let calc_increment_value = |i: i64| (i * i - 7893 * i) % array_len as i64;
@@ -237,8 +291,110 @@ mod fenwick_tests {
         }
 
         let query_results = SELECTED_SOLVER(array_len, operation_list);
-
-        let answers = vec![];
-        assert_eq!(query_results, answers)
+        println!("{:?}", query_results);
+        let answers = [
+            2562526284382,
+            3621678267650,
+            267364417242,
+            1294683465160,
+            3312346904256,
+            2793920088052,
+            3731956426586,
+            257918645348,
+            1167691769248,
+            2064155451020,
+            287882189922,
+            1134921427868,
+            1968572114670,
+            2794132214400,
+            3606647800468,
+            794667534770,
+            3827969787644,
+            159511411788,
+            875892949814,
+            1581611597054,
+            2278437897064,
+            4295726128694,
+            551250654474,
+            1191890890870,
+            1821003732792,
+            2440308179650,
+            3650046532060,
+            1541221867048,
+            2087936518386,
+            2625939010564,
+            3154855570510,
+            3675461291350,
+            774154807902,
+            1254582368302,
+            1724477327402,
+            2185966728414,
+            2639132151604,
+            3519107184884,
+            776462482756,
+            1169305538478,
+            1552030633046,
+            1926406037888,
+            2295447356890,
+            3348756495774,
+            3686547186792,
+            4014602427816,
+            4331873895986,
+            250171691596,
+            851649662352,
+            1969898135102,
+            2233132305510,
+            2489221119562,
+            2738969077336,
+            2981139017630,
+            3671047154496,
+            3887609521614,
+            4096416543844,
+            4298711911872,
+            102326962590,
+            479073403636,
+            1171038636864,
+            1329013086964,
+            1482990047132,
+            1629970422092,
+            1773051493416,
+            2172150703016,
+            2297666972436,
+            2416369498628,
+            2529815528996,
+            2639127173660,
+            2847868783156,
+            3210665488864,
+            3291132903924,
+            3369129274276,
+            3442947409494,
+            3512071179528,
+            3704172477196,
+            3760408280050,
+            3813867245164,
+            3863829209922,
+            3912108529410,
+            3998247693190,
+            4136399382978,
+            4165721408566,
+            4192294007674,
+            4216931579006,
+            4239633902936,
+            4295712665662,
+            4311282477824,
+            4324888491890,
+            4337297471766,
+            4347735758038,
+            4365429899492,
+            4387055348436,
+            4390207631994,
+            4392752161222,
+            4394557676000,
+            4395794700624,
+            1014107192,
+            1139759910,
+        ]
+        .to_vec();
+        assert_eq!(query_results[operations_count - 100..], answers)
     }
 }

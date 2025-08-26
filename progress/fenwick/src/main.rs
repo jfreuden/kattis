@@ -153,12 +153,11 @@ fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let mut data_fenwick = vec![0 as ValueType; array_len];
 
     for op in operations_list {
-        if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-            let answer = if query.index == 0 {
+        if let Some(&QueryOp{index: query_index}) = op.as_any().downcast_ref::<QueryOp>() {
+            let answer = if query_index == 0 {
                 0
             } else {
-
-                bit_query_indices(query.index, array_len).iter().map(|&i| data_fenwick[i - 1]).sum()
+                bit_query_indices(query_index).iter().map(|&i| data_fenwick[i - 1]).sum()
             };
             answers.push(answer);
         } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
@@ -211,16 +210,20 @@ fn main() {
     }
 }
 
-fn bit_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
-    let mut query_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
+fn bit_query_indices(query_index: usize) -> Vec<usize> {
+    let logged_size = (query_index.ilog2() + 1) as usize;
+    let mut query_indices = Vec::with_capacity(logged_size);
     let mut mask = 0usize;
-
+    let mut last_pushed = 0;
     while query_index & mask != query_index {
-        query_indices.push(query_index & (!mask));
+        let candidate = query_index & (!mask);
+        if candidate != last_pushed {
+            query_indices.push(candidate);
+            last_pushed = candidate;
+        }
         mask = (mask << 1) + 1;
 
     }
-    query_indices.dedup(); // TODO: Fix the root problem that causes the need to dedup.
     query_indices
 }
 
@@ -254,7 +257,7 @@ mod fenwick_tests {
     fn test_bit_query_indices() {
         let max_index = 7;
         for i in 1..=max_index {
-            let proposed_query_indices = bit_query_indices(i, max_index);
+            let proposed_query_indices = bit_query_indices(i);
             println!("Prefix Query {:2} ({:06b} -> {:06b}) of {:2}: {:?}", i, i, !i & 0b111111, max_index, proposed_query_indices);
         }
     }

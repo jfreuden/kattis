@@ -138,7 +138,7 @@ impl Op {
 // }
 
 
-fn bit_query_indices(mut query_index: usize) -> Vec<usize> {
+fn bit_query_indices(query_index: usize) -> Vec<usize> {
     let logged_size = (query_index.ilog2() + 1) as usize;
     let mut query_indices = Vec::with_capacity(logged_size);
     let mut mask = 0usize;
@@ -177,6 +177,31 @@ fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_
     write_indices
 }
 
+fn standard_increment_indices(increment_index: usize, max_index: usize) -> Vec<usize> {
+    let mut query_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
+    let mut working_index = increment_index as ValueType + 1;
+
+    while working_index <= max_index as i64 {
+        query_indices.push(working_index as IndexType);
+
+        working_index = working_index + (working_index & -working_index);
+    }
+
+    query_indices
+}
+
+fn standard_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
+    let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
+    let mut working_index = query_index as ValueType;
+    while working_index > 0 {
+        write_indices.push(working_index as IndexType);
+
+        working_index = working_index - (working_index & (-working_index));
+    }
+
+    write_indices
+}
+
 fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let starting_bit_value = {
         let two_pow = (array_len + 1).next_power_of_two() >> 1;
@@ -198,12 +223,12 @@ fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
             let answer = if query_index == 0 {
                 0
             } else {
-                let query_indices = bit_query_indices(query_index);
+                let query_indices = standard_query_indices(query_index, array_len);
                 query_indices.iter().map(|&i| data_fenwick[i - 1]).sum()
             };
             answers.push(answer);
         } else {
-            let increment_indices = bit_increment_indices(op.index, starting_bit_value, array_len);
+            let increment_indices = standard_increment_indices(op.index, array_len);
             for i in increment_indices {
                 data_fenwick[i - 1] += op.value;
             }
@@ -260,7 +285,7 @@ mod fenwick_tests {
 
     #[test]
     fn test_bit_query_indices() {
-        let max_index = 7;
+        let max_index = 12;
         for i in 1..=max_index {
             let proposed_query_indices = bit_query_indices(i);
             println!("Prefix Query {:2} ({:06b} -> {:06b}) of {:2}: {:?}", i, i, !i & 0b111111, max_index, proposed_query_indices);
@@ -269,7 +294,7 @@ mod fenwick_tests {
 
     #[test]
     fn test_bit_increment_indices() {
-        let max_index: usize = 63;
+        let max_index: usize = 12;
         let starting_bit_value = {
             let two_pow = (max_index + 1).next_power_of_two() >> 1;
             if two_pow == 0 {
@@ -279,10 +304,15 @@ mod fenwick_tests {
             }
         };
 
+        let mut keepalive_counter = 0;
         for i in 0..max_index {
             let proposed_assign_indices = bit_increment_indices(i, starting_bit_value, max_index);
-            println!("Assign {:2} ({:06b} -> {:06b}) of {:2}: {:?}", i, i, !i & 0b111111, max_index, proposed_assign_indices);
+            println!("Assign {:2} ({:06b} -> {:06b}) of {:2}: {:?}\r", i, i, !i & 0b111111, max_index, proposed_assign_indices);
+            keepalive_counter += proposed_assign_indices.len();
         }
+
+        println!("Incremented assignment {}", keepalive_counter);
+
     }
 
 

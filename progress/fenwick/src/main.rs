@@ -1,12 +1,3 @@
-fn read_one<T: std::str::FromStr>() -> T
-where
-    T::Err: std::fmt::Debug,
-{
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.trim().parse::<T>().unwrap()
-}
-
 fn read_vec<T: std::str::FromStr>() -> Vec<T>
 where
     T::Err: std::fmt::Debug,
@@ -48,21 +39,14 @@ struct QueryOp {
 
 trait ProblemOperation: std::any::Any {
     fn as_any(&self) -> &dyn std::any::Any;
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any;
 }
 impl ProblemOperation for IncrementOp {
     fn as_any(&self) -> &dyn std::any::Any {
         self
     }
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
 }
 impl ProblemOperation for QueryOp {
     fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
         self
     }
 }
@@ -72,6 +56,7 @@ type Op = Box<dyn ProblemOperation>;
 /// Remove any increment operation that will never be queried
 /// Since the query is a prefix-sum, this amounts to:
 /// "Remove any increment operation with index greater than the highest query index"
+#[allow(unused)]
 fn remove_end_increments(operations_list: &mut Vec<Op>) {
     // Find highest query
     let mut highest_index = usize::MAX;
@@ -100,11 +85,13 @@ fn remove_end_increments(operations_list: &mut Vec<Op>) {
 }
 
 /// Combine increment operations that will always collectively affect the first (and all following) queries
+#[allow(unused)]
 fn lump_front_increments(operations_list: &mut Vec<Op>) {
     // Essentially, all early-zoned increments between queries can be combined
     todo!()
 }
 
+#[allow(unused)]
 fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let mut dumb_sum_array = vec![ValueType::default(); array_len];
     let mut query_answers = Vec::<ValueType>::new();
@@ -136,23 +123,21 @@ fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     query_answers
 }
 
+#[allow(unused)]
 fn get_optype_counts(ops: &Vec<Op>) -> (usize, usize) {
     let mut increment_count = 0;
     let mut query_count = 0;
     for op in ops {
         if op.as_any().downcast_ref::<QueryOp>().is_some() {
             query_count += 1;
-        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+        } else if op.as_any().downcast_ref::<IncrementOp>().is_some() {
             increment_count += 1;
         }
     }
     (increment_count, query_count)
 }
 
-fn fast_solve(array_len: usize, mut operations_list: Vec<Op>) -> Vec<ValueType> {
-    // remove_end_increments(&mut operations_list);
-    // lump_front_increments(&mut operations_list);
-
+fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let starting_bit_value = {
         let two_pow = (array_len + 1).next_power_of_two() >> 1;
         if two_pow == 0 {
@@ -163,11 +148,7 @@ fn fast_solve(array_len: usize, mut operations_list: Vec<Op>) -> Vec<ValueType> 
     };
 
     let operations_count = operations_list.len();
-    let (increment_count, query_count) = get_optype_counts(&operations_list);
-    // let mut dependent_increments_lists = Vec::<Vec<IncrementOp>>::with_capacity(increment_count);
-    // let mut queries = Vec::<QueryOp>::with_capacity(query_count);
-    // let mut dependent_increments = Vec::<IncrementOp>::new();
-    let mut answers = Vec::<ValueType>::with_capacity(query_count);
+    let mut answers = Vec::<ValueType>::with_capacity(operations_count);
 
     let mut data_fenwick = vec![0 as ValueType; array_len];
 
@@ -176,6 +157,7 @@ fn fast_solve(array_len: usize, mut operations_list: Vec<Op>) -> Vec<ValueType> 
             let answer = if query.index == 0 {
                 0
             } else {
+
                 bit_query_indices(query.index, array_len).iter().map(|&i| data_fenwick[i - 1]).sum()
             };
             answers.push(answer);
@@ -382,8 +364,8 @@ mod fenwick_tests {
         let operations_count = shared_size;
         let operation_list = generate_test_ops(array_len, operations_count);
 
-        let query_results = SELECTED_SOLVER(array_len, operation_list);
-        // println!("{:?}", query_results);
+        let _query_results = SELECTED_SOLVER(array_len, operation_list);
+        // println!("{:?}", _query_results);
         assert!(true);
     }
 }

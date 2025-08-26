@@ -151,6 +151,7 @@ fn bit_query_indices(mut query_index: usize) -> Vec<usize> {
         }
         mask = (mask << 1) + 1;
     }
+    query_indices.reverse();
     query_indices
 }
 
@@ -244,9 +245,13 @@ fn main() {
     }
 
     let query_results = SELECTED_SOLVER(array_len, operations_list);
+
+    use std::io::{stdout, Write};
+    let mut lock = stdout().lock();
     for result in query_results {
-        println!("{}", result)
+        writeln!(lock, "{}", result).unwrap();
     }
+    lock.flush().unwrap();
 }
 
 #[cfg(test)]
@@ -360,5 +365,15 @@ mod fenwick_tests {
         let _query_results = SELECTED_SOLVER(array_len, operation_list);
         // println!("{:?}", _query_results);
         assert!(true);
+    }
+
+    #[test]
+    fn test_no_operations() {
+        let shared_size = 5000000;
+        let array_len = shared_size;
+        let operations_count = 0;
+        let operation_list = generate_test_ops(array_len, operations_count);
+        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        assert_eq!(query_results.len(), 0);
     }
 }

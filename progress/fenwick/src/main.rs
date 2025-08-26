@@ -28,113 +28,152 @@ where
 type IndexType = usize;
 type ValueType = i64;
 
-struct IncrementOp {
+struct Op {
     index: IndexType,
     value: ValueType,
 }
 
-struct QueryOp {
-    index: IndexType,
-}
-
-trait ProblemOperation: std::any::Any {
-    fn as_any(&self) -> &dyn std::any::Any;
-}
-impl ProblemOperation for IncrementOp {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-impl ProblemOperation for QueryOp {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-}
-
-type Op = Box<dyn ProblemOperation>;
-
-/// Remove any increment operation that will never be queried
-/// Since the query is a prefix-sum, this amounts to:
-/// "Remove any increment operation with index greater than the highest query index"
-#[allow(unused)]
-fn remove_end_increments(operations_list: &mut Vec<Op>) {
-    // Find highest query
-    let mut highest_index = usize::MAX;
-    for op in operations_list.iter() {
-        if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-            highest_index = std::cmp::max(highest_index, query.index);
+impl Op {
+    fn new_query(index: IndexType) -> Self {
+        Op {
+            index,
+            value: ValueType::MAX,
         }
     }
-    // extractif any increments
-    let trashed_increments: Vec<Op> = operations_list
-        .extract_if(.., |op| {
-            if let Some(&IncrementOp { index, value: _ }) =
-                op.as_any().downcast_ref::<IncrementOp>()
-            {
-                if index > highest_index {
-                    return true;
-                }
-            }
-            false
-        })
-        .collect();
-    eprintln!(
-        "Removed {} end increments that will never be queried.",
-        trashed_increments.len()
-    );
-}
 
-/// Combine increment operations that will always collectively affect the first (and all following) queries
-#[allow(unused)]
-fn lump_front_increments(operations_list: &mut Vec<Op>) {
-    // Essentially, all early-zoned increments between queries can be combined
-    todo!()
-}
-
-#[allow(unused)]
-fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-    let mut dumb_sum_array = vec![ValueType::default(); array_len];
-    let mut query_answers = Vec::<ValueType>::new();
-
-    let op_count = operations_list.len();
-    let batch_len = 10;
-
-    for (batch, op_batch) in operations_list.chunks(batch_len).enumerate() {
-        for op in op_batch {
-            if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-                let answer = if query.index == 0 {
-                    0
-                } else {
-                    dumb_sum_array[query.index - 1]
-                };
-                query_answers.push(answer);
-            } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
-                for val in dumb_sum_array[increment.index..].iter_mut() {
-                    *val += increment.value;
-                }
-            }
-        }
-        eprintln!(
-            "Completed {} / {}",
-            batch * batch_len + op_batch.len(),
-            op_count
-        );
-    }
-    query_answers
-}
-
-#[allow(unused)]
-fn get_optype_counts(ops: &Vec<Op>) -> (usize, usize) {
-    let mut increment_count = 0;
-    let mut query_count = 0;
-    for op in ops {
-        if op.as_any().downcast_ref::<QueryOp>().is_some() {
-            query_count += 1;
-        } else if op.as_any().downcast_ref::<IncrementOp>().is_some() {
-            increment_count += 1;
+    fn new_increment(index: IndexType, value: ValueType) -> Self {
+        Op {
+            index,
+            value,
         }
     }
-    (increment_count, query_count)
+
+    fn is_query(&self) -> bool {
+        self.value == ValueType::MAX
+    }
+}
+
+// /// Remove any increment operation that will never be queried
+// /// Since the query is a prefix-sum, this amounts to:
+// /// "Remove any increment operation with index greater than the highest query index"
+// #[allow(unused)]
+// fn remove_end_increments(operations_list: &mut Vec<Op>) {
+//     // Find highest query
+//     let mut highest_index = usize::MAX;
+//     for op in operations_list.iter() {
+//         if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
+//             highest_index = std::cmp::max(highest_index, query.index);
+//         }
+//     }
+//     // extractif any increments
+//     let trashed_increments: Vec<Op> = operations_list
+//         .extract_if(.., |op| {
+//             if let Some(&IncrementOp { index, value: _ }) =
+//                 op.as_any().downcast_ref::<IncrementOp>()
+//             {
+//                 if index > highest_index {
+//                     return true;
+//                 }
+//             }
+//             false
+//         })
+//         .collect();
+//     eprintln!(
+//         "Removed {} end increments that will never be queried.",
+//         trashed_increments.len()
+//     );
+// }
+//
+// /// Combine increment operations that will always collectively affect the first (and all following) queries
+// #[allow(unused)]
+// fn lump_front_increments(operations_list: &mut Vec<Op>) {
+//     // Essentially, all early-zoned increments between queries can be combined
+//     todo!()
+// }
+
+// #[allow(unused)]
+// fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
+//     let mut dumb_sum_array = vec![ValueType::default(); array_len];
+//     let mut query_answers = Vec::<ValueType>::new();
+//
+//     let op_count = operations_list.len();
+//     let batch_len = 10;
+//
+//     for (batch, op_batch) in operations_list.chunks(batch_len).enumerate() {
+//         for op in op_batch {
+//             if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
+//                 let answer = if query.index == 0 {
+//                     0
+//                 } else {
+//                     dumb_sum_array[query.index - 1]
+//                 };
+//                 query_answers.push(answer);
+//             } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
+//                 for val in dumb_sum_array[increment.index..].iter_mut() {
+//                     *val += increment.value;
+//                 }
+//             }
+//         }
+//         eprintln!(
+//             "Completed {} / {}",
+//             batch * batch_len + op_batch.len(),
+//             op_count
+//         );
+//     }
+//     query_answers
+// }
+//
+// #[allow(unused)]
+// fn get_optype_counts(ops: &Vec<Op>) -> (usize, usize) {
+//     let mut increment_count = 0;
+//     let mut query_count = 0;
+//     for op in ops {
+//         if op.as_any().downcast_ref::<QueryOp>().is_some() {
+//             query_count += 1;
+//         } else if op.as_any().downcast_ref::<IncrementOp>().is_some() {
+//             increment_count += 1;
+//         }
+//     }
+//     (increment_count, query_count)
+// }
+
+
+fn bit_query_indices(mut query_index: usize) -> Vec<usize> {
+    let logged_size = (query_index.ilog2() + 1) as usize;
+    let mut query_indices = Vec::with_capacity(logged_size);
+    let mut mask = 0usize;
+    let mut last_pushed = 0;
+    while query_index & mask != query_index {
+        let candidate = query_index & (!mask);
+        if candidate != last_pushed {
+            query_indices.push(candidate);
+            last_pushed = candidate;
+        }
+        mask = (mask << 1) + 1;
+    }
+    query_indices
+}
+
+fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_index: usize) -> Vec<usize> {
+    let working_index = !increment_index;
+    let mut bit_value = starting_bit_value;
+
+    let mut index_boost = 0;
+    let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
+    while working_index != 0 && bit_value > 0 {
+        if bit_value + index_boost > max_index {
+            // TODO: Find a better way to avoid these invalid indices
+        }
+        else if (working_index & bit_value) != 0 {
+            write_indices.push(bit_value + index_boost);
+        } else {
+            index_boost += bit_value;
+        }
+
+        bit_value >>= 1;
+    }
+    write_indices.reverse();
+    write_indices
 }
 
 fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
@@ -153,17 +192,19 @@ fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
     let mut data_fenwick = vec![0 as ValueType; array_len];
 
     for op in operations_list {
-        if let Some(&QueryOp{index: query_index}) = op.as_any().downcast_ref::<QueryOp>() {
+        if op.is_query() {
+            let query_index = op.index;
             let answer = if query_index == 0 {
                 0
             } else {
-                bit_query_indices(query_index).iter().map(|&i| data_fenwick[i - 1]).sum()
+                let query_indices = bit_query_indices(query_index);
+                query_indices.iter().map(|&i| data_fenwick[i - 1]).sum()
             };
             answers.push(answer);
-        } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
-            let increment_indices = bit_increment_indices(increment.index, starting_bit_value, array_len);
+        } else {
+            let increment_indices = bit_increment_indices(op.index, starting_bit_value, array_len);
             for i in increment_indices {
-                data_fenwick[i - 1] += increment.value;
+                data_fenwick[i - 1] += op.value;
             }
         }
     }
@@ -185,9 +226,7 @@ fn main() {
                 if key != "?" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Box::new(QueryOp {
-                    index: index.parse::<IndexType>().unwrap(),
-                }));
+                operations_list.push(Op::new_query(index.parse::<IndexType>().unwrap()));
             }
             3 => {
                 // Increment Operation
@@ -195,10 +234,10 @@ fn main() {
                 if key != "+" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Box::new(IncrementOp {
-                    index: index.parse::<IndexType>().unwrap(),
-                    value: delta.parse::<ValueType>().unwrap(),
-                }))
+                operations_list.push(Op::new_increment(
+                    index.parse::<IndexType>().unwrap(),
+                    delta.parse::<ValueType>().unwrap(),
+                ));
             }
             _ => panic!("Invalid operation"),
         }
@@ -208,45 +247,6 @@ fn main() {
     for result in query_results {
         println!("{}", result)
     }
-}
-
-fn bit_query_indices(query_index: usize) -> Vec<usize> {
-    let logged_size = (query_index.ilog2() + 1) as usize;
-    let mut query_indices = Vec::with_capacity(logged_size);
-    let mut mask = 0usize;
-    let mut last_pushed = 0;
-    while query_index & mask != query_index {
-        let candidate = query_index & (!mask);
-        if candidate != last_pushed {
-            query_indices.push(candidate);
-            last_pushed = candidate;
-        }
-        mask = (mask << 1) + 1;
-
-    }
-    query_indices
-}
-
-fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_index: usize) -> Vec<usize> {
-    let working_index = !increment_index;
-    let mut bit_value = starting_bit_value;
-
-    let mut index_boost = 0;
-    let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
-    while working_index != 0 && bit_value > 0 {
-        if bit_value + index_boost > max_index{
-            // TODO: Find a better way to avoid these invalid indices
-        }
-        else if (working_index & bit_value) != 0 {
-            write_indices.push(bit_value + index_boost);
-        } else {
-            index_boost += bit_value;
-        }
-
-        bit_value >>= 1;
-    }
-    write_indices.reverse();
-    write_indices
 }
 
 #[cfg(test)]
@@ -285,16 +285,10 @@ mod fenwick_tests {
     fn test_solve_sample_1() {
         let array_len = 10 as usize;
         let operation_list: Vec<Op> = vec![
-            Box::new(IncrementOp {
-                index: 7,
-                value: 23,
-            }),
-            Box::new(QueryOp { index: 8 }),
-            Box::new(IncrementOp {
-                index: 3,
-                value: 17,
-            }),
-            Box::new(QueryOp { index: 8 }),
+            Op::new_increment(7, 23),
+            Op::new_query(8),
+            Op::new_increment(3, 17),
+            Op::new_query(8),
         ];
         let query_results = SELECTED_SOLVER(array_len, operation_list);
 
@@ -306,13 +300,10 @@ mod fenwick_tests {
     fn test_solve_sample_2() {
         let array_len = 5 as usize;
         let operation_list: Vec<Op> = vec![
-            Box::new(IncrementOp {
-                index: 0,
-                value: -43,
-            }),
-            Box::new(IncrementOp { index: 4, value: 1 }),
-            Box::new(QueryOp { index: 0 }),
-            Box::new(QueryOp { index: 5 }),
+            Op::new_increment(0, -43),
+            Op::new_increment(4, 1),
+            Op::new_query(0),
+            Op::new_query(5),
         ];
         let query_results = SELECTED_SOLVER(array_len, operation_list);
 
@@ -345,15 +336,14 @@ mod fenwick_tests {
         for i in 0..operations_count {
             match i % 17 {
                 0 | 1 | 7 | 8 | 14 | 16 | 17 => {
-                    operation_list.push(Box::new(IncrementOp {
-                        index: calc_increment_index(i),
-                        value: calc_increment_value(i as i64),
-                    }));
+                    operation_list.push(
+                        Op::new_increment(calc_increment_index(i), calc_increment_value(i as i64))
+                    );
                 }
                 _ => {
-                    operation_list.push(Box::new(QueryOp {
-                        index: calc_query_index(i),
-                    }));
+                    operation_list.push(
+                        Op::new_query(calc_query_index(i))
+                    );
                 }
             }
         }

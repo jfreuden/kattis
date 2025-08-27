@@ -225,10 +225,11 @@ mod fenwick_tests {
 
     #[test]
     fn test_maximal_limits() {
+
+
         run_problem(
-            std::fs::File::open("/home/rainybyte/RustroverProjects/kattis/fenwick_max.in").unwrap(),
-            std::fs::File::create("/home/rainybyte/RustroverProjects/kattis/fenwick-test.out")
-                .unwrap(),
+            std::fs::File::open("./fenwick_max.in").unwrap(),
+            std::fs::File::create("./fenwick-test.out").unwrap(),
         );
         assert!(true);
     }

@@ -1,4 +1,6 @@
-fn read_vec<T: std::str::FromStr, R: std::io::Read>(buf_reader: &mut std::io::BufReader<R>) -> Vec<T>
+fn read_vec<T: std::str::FromStr, R: std::io::Read>(
+    buf_reader: &mut std::io::BufReader<R>,
+) -> Vec<T>
 where
     T::Err: std::fmt::Debug,
 {
@@ -65,10 +67,7 @@ impl Op {
     }
 
     fn new_increment(index: IndexType, value: ValueType) -> Self {
-        Op {
-            index,
-            value,
-        }
+        Op { index, value }
     }
 
     fn is_query(&self) -> bool {
@@ -91,7 +90,7 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     let mut all_lines = String::new();
     std::io::Read::read_to_string(&mut bufreader, &mut all_lines).unwrap();
     for line in all_lines.split('\n') {
-        let op: Vec<&str> = line.split_ascii_whitespace().map(|tok|tok).collect();
+        let op: Vec<&str> = line.split_ascii_whitespace().map(|tok| tok).collect();
         match op.len() {
             2 => {
                 // Query Operation
@@ -123,7 +122,7 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     let starting_cap = operations_count * 64;
     let mut bufwriter = std::io::BufWriter::with_capacity(starting_cap, write_source);
     for answer in answers {
-        use std::io::{Write};
+        use std::io::Write;
         writeln!(&mut bufwriter, "{}", answer).unwrap();
     }
 }
@@ -190,7 +189,13 @@ mod fenwick_tests {
 
         let query_results = fast_solve(array_len, operation_list);
         println!("{:?}", query_results);
-        let answers = [-92, -92, -92, -92, -92, -92, -92, -92, -174, -94, -174, -92, -92, -142, -142, -142, 0, -92, -404, -92, -92, -278, -212, -92, -172, -172, -92, -172, -172, -172, -92, 0, -232, -276, -806, -628, -596, -800, -276, -664, -664, -276, -396, -376, -276, -954, -326, -960, -276, -696, -1096, -696, -276, -276, -884, -604, -508, -1020, -276, -276, -508, -1112, -276, -510, -926]
+        let answers = [
+            -92, -92, -92, -92, -92, -92, -92, -92, -174, -94, -174, -92, -92, -142, -142, -142, 0,
+            -92, -404, -92, -92, -278, -212, -92, -172, -172, -92, -172, -172, -172, -92, 0, -232,
+            -276, -806, -628, -596, -800, -276, -664, -664, -276, -396, -376, -276, -954, -326,
+            -960, -276, -696, -1096, -696, -276, -276, -884, -604, -508, -1020, -276, -276, -508,
+            -1112, -276, -510, -926,
+        ]
         .to_vec();
         assert_eq!(query_results[operations_count - 100..], answers)
     }
@@ -205,14 +210,13 @@ mod fenwick_tests {
         for i in 0..operations_count {
             match i % 17 {
                 0 | 1 | 7 | 8 | 14 | 16 | 17 => {
-                    operation_list.push(
-                        Op::new_increment(calc_increment_index(i), calc_increment_value(i as i64))
-                    );
+                    operation_list.push(Op::new_increment(
+                        calc_increment_index(i),
+                        calc_increment_value(i as i64),
+                    ));
                 }
                 _ => {
-                    operation_list.push(
-                        Op::new_query(calc_query_index(i))
-                    );
+                    operation_list.push(Op::new_query(calc_query_index(i)));
                 }
             }
         }
@@ -223,7 +227,8 @@ mod fenwick_tests {
     fn test_maximal_limits() {
         run_problem(
             std::fs::File::open("/home/rainybyte/RustroverProjects/kattis/fenwick_max.in").unwrap(),
-            std::fs::File::create("/home/rainybyte/RustroverProjects/kattis/fenwick-test.out").unwrap(),
+            std::fs::File::create("/home/rainybyte/RustroverProjects/kattis/fenwick-test.out")
+                .unwrap(),
         );
         assert!(true);
     }

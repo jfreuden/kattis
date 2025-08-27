@@ -75,11 +75,18 @@ impl Op {
     }
 }
 
-fn main() {
-    let stdin_lock = std::io::stdin().lock();
-    let stdout_lock = std::io::stdout().lock();
-
-    run_problem(stdin_lock, stdout_lock);
+fn do_fenwick_operations(fenwick: &mut FenwickTree, operations_list: Vec<Op>) -> Vec<ValueType> {
+    let operations_count = operations_list.len();
+    let mut answers = Vec::<ValueType>::with_capacity(operations_count);
+    for op in operations_list {
+        if op.is_query() {
+            let answer = fenwick.query(op.index);
+            answers.push(answer);
+        } else {
+            fenwick.increment(op.index, op.value);
+        }
+    }
+    answers
 }
 
 fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source: W) {
@@ -108,16 +115,7 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     }
 
     let mut fenwick = FenwickTree::new(array_len);
-    let mut answers = Vec::<ValueType>::with_capacity(operations_count);
-
-    for op in operations_list {
-        if op.is_query() {
-            let answer = fenwick.query(op.index);
-            answers.push(answer);
-        } else {
-            fenwick.increment(op.index, op.value);
-        }
-    }
+    let answers = do_fenwick_operations(&mut fenwick, operations_list);
 
     let starting_cap = operations_count * 64;
     let mut bufwriter = std::io::BufWriter::with_capacity(starting_cap, write_source);
@@ -127,26 +125,20 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     }
 }
 
+fn main() {
+    let stdin_lock = std::io::stdin().lock();
+    let stdout_lock = std::io::stdout().lock();
+
+    run_problem(stdin_lock, stdout_lock);
+}
+
 #[cfg(test)]
 mod fenwick_tests {
     use super::*;
 
     fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
         let mut fenwick = FenwickTree::new(array_len);
-
-        let operations_count = operations_list.len();
-        let mut answers = Vec::<ValueType>::with_capacity(operations_count);
-
-        for op in operations_list {
-            if op.is_query() {
-                let answer = fenwick.query(op.index);
-                answers.push(answer);
-            } else {
-                fenwick.increment(op.index, op.value);
-            }
-        }
-
-        answers
+        do_fenwick_operations(&mut fenwick, operations_list)
     }
 
     #[test]
@@ -225,11 +217,9 @@ mod fenwick_tests {
 
     #[test]
     fn test_maximal_limits() {
-
-
         run_problem(
             std::fs::File::open("./fenwick_max.in").unwrap(),
-            std::fs::File::create("../../../../fenwick-test.out").unwrap(),
+            std::fs::File::create("./fenwick-test.out").unwrap(),
         );
         assert!(true);
     }

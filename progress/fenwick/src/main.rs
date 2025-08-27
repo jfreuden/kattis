@@ -3,7 +3,6 @@ where
     T::Err: std::fmt::Debug,
 {
     use std::io::BufRead;
-
     let mut line = String::new();
     buf_reader.read_line(&mut line).unwrap();
     line.split_whitespace()
@@ -89,29 +88,23 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     let [array_len, operations_count]: [usize; 2] = read_vec(&mut bufreader).try_into().unwrap();
     let mut operations_list = Vec::with_capacity(operations_count);
 
-    for _ in 0..operations_count {
-        let op = read_vec(&mut bufreader);
+    let mut all_lines = String::new();
+    std::io::Read::read_to_string(&mut bufreader, &mut all_lines).unwrap();
+    for line in all_lines.split('\n') {
+        let op: Vec<&str> = line.split_ascii_whitespace().map(|tok|tok).collect();
         match op.len() {
             2 => {
                 // Query Operation
-                let [key, index]: [String; 2] = op.try_into().unwrap();
-                if key != "?" {
-                    panic!("Invalid operation")
-                }
-                let query_index = index.parse::<IndexType>().unwrap();
+                let query_index = op[1].parse::<IndexType>().unwrap();
                 operations_list.push(Op::new_query(query_index));
             }
             3 => {
                 // Increment Operation
-                let [key, index, delta]: [String; 3] = op.try_into().unwrap();
-                if key != "+" {
-                    panic!("Invalid operation")
-                }
-                let increment_index = index.parse::<IndexType>().unwrap();
-                let increment_value = delta.parse::<ValueType>().unwrap();
+                let increment_index = op[1].parse::<IndexType>().unwrap();
+                let increment_value = op[2].parse::<ValueType>().unwrap();
                 operations_list.push(Op::new_increment(increment_index, increment_value));
             }
-            _ => panic!("Invalid operation"),
+            _ => break,
         }
     }
 
@@ -229,8 +222,8 @@ mod fenwick_tests {
     #[test]
     fn test_maximal_limits() {
         run_problem(
-            std::fs::File::open("./fenwick_max.in").unwrap(),
-            std::fs::File::create("./fenwick-test.out").unwrap(),
+            std::fs::File::open("/home/rainybyte/RustroverProjects/kattis/fenwick_max.in").unwrap(),
+            std::fs::File::create("/home/rainybyte/RustroverProjects/kattis/fenwick-test.out").unwrap(),
         );
         assert!(true);
     }

@@ -28,72 +28,6 @@ where
 type IndexType = usize;
 type ValueType = i64;
 
-struct Op {
-    index: IndexType,
-    value: ValueType,
-}
-
-impl Op {
-    fn new_query(index: IndexType) -> Self {
-        Op {
-            index,
-            value: ValueType::MAX,
-        }
-    }
-
-    fn new_increment(index: IndexType, value: ValueType) -> Self {
-        Op {
-            index,
-            value,
-        }
-    }
-
-    fn is_query(&self) -> bool {
-        self.value == ValueType::MAX
-    }
-}
-
-#[inline(always)]
-fn bit_query_indices(query_index: usize) -> Vec<usize> {
-    let logged_size = (query_index.ilog2() + 1) as usize;
-    let mut query_indices = Vec::with_capacity(logged_size);
-    let mut mask = 0usize;
-    let mut last_pushed = 0;
-    while query_index & mask != query_index {
-        let candidate = query_index & (!mask);
-        if candidate != last_pushed {
-            query_indices.push(candidate);
-            last_pushed = candidate;
-        }
-        mask = (mask << 1) + 1;
-    }
-    query_indices.reverse();
-    query_indices
-}
-
-#[inline(always)]
-fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_index: usize) -> Vec<usize> {
-    let working_index = !increment_index;
-    let mut bit_value = starting_bit_value;
-
-    let mut index_boost = 0;
-    let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
-    while working_index != 0 && bit_value > 0 {
-        if bit_value + index_boost > max_index {
-            // TODO: Find a better way to avoid these invalid indices
-        }
-        else if (working_index & bit_value) != 0 {
-            write_indices.push(bit_value + index_boost);
-        } else {
-            index_boost += bit_value;
-        }
-
-        bit_value >>= 1;
-    }
-    write_indices.reverse();
-    write_indices
-}
-
 #[inline(always)]
 fn standard_increment_indices(increment_index: usize, max_index: usize) -> Vec<usize> {
     let mut query_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
@@ -123,41 +57,17 @@ fn standard_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
 
 struct FenwickTree {
     data_fenwick: Vec<ValueType>,
-    standard_formulas: bool,
-    _starting_bit_value: usize
 }
 
 impl FenwickTree {
     fn new(array_len: usize) -> Self {
-        let starting_bit_value = {
-            let two_pow = (array_len + 1).next_power_of_two() >> 1;
-            if two_pow == 0 {
-                1usize
-            } else {
-                two_pow
-            }
-        };
         FenwickTree {
             data_fenwick: vec![0 as ValueType; array_len],
-            standard_formulas: false,
-            _starting_bit_value: starting_bit_value,
-        }
-    }
-
-    fn new_standard(array_len: usize) -> Self {
-        FenwickTree {
-            data_fenwick: vec![0 as ValueType; array_len],
-            standard_formulas: true,
-            _starting_bit_value: 0,
         }
     }
 
     fn increment(&mut self, index: usize, value: ValueType) {
-        let increment_indices = if self.standard_formulas {
-            standard_increment_indices(index, self.data_fenwick.len())
-        } else {
-            bit_increment_indices(index, self._starting_bit_value, self.data_fenwick.len())
-        };
+        let increment_indices = standard_increment_indices(index, self.data_fenwick.len());
         for i in increment_indices {
             self.data_fenwick[i - 1] += value;
         }
@@ -168,11 +78,7 @@ impl FenwickTree {
         let answer = if query_index == 0 {
             0
         } else {
-            let query_indices = if self.standard_formulas {
-                standard_query_indices(query_index, self.data_fenwick.len())
-            } else {
-                bit_query_indices(query_index)
-            };
+            let query_indices = standard_query_indices(query_index, self.data_fenwick.len());
             query_indices.iter().map(|&i| self.data_fenwick[i - 1]).sum()
         };
         answer
@@ -215,8 +121,33 @@ fn main() {
 mod fenwick_tests {
     use super::*;
 
+    struct Op {
+        index: IndexType,
+        value: ValueType,
+    }
+
+    impl Op {
+        fn new_query(index: IndexType) -> Self {
+            Op {
+                index,
+                value: ValueType::MAX,
+            }
+        }
+
+        fn new_increment(index: IndexType, value: ValueType) -> Self {
+            Op {
+                index,
+                value,
+            }
+        }
+
+        fn is_query(&self) -> bool {
+            self.value == ValueType::MAX
+        }
+    }
+
     fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-        let mut fenwick = FenwickTree::new_standard(array_len);
+        let mut fenwick = FenwickTree::new(array_len);
 
         let operations_count = operations_list.len();
         let mut answers = Vec::<ValueType>::with_capacity(operations_count);
@@ -232,39 +163,6 @@ mod fenwick_tests {
 
         answers
     }
-
-    #[test]
-    fn test_bit_query_indices() {
-        let max_index = 12;
-        for i in 1..=max_index {
-            let proposed_query_indices = bit_query_indices(i);
-            println!("Prefix Query {:2} ({:06b} -> {:06b}) of {:2}: {:?}", i, i, !i & 0b111111, max_index, proposed_query_indices);
-        }
-    }
-
-    #[test]
-    fn test_bit_increment_indices() {
-        let max_index: usize = 12;
-        let starting_bit_value = {
-            let two_pow = (max_index + 1).next_power_of_two() >> 1;
-            if two_pow == 0 {
-                1usize
-            } else {
-                two_pow
-            }
-        };
-
-        let mut keepalive_counter = 0;
-        for i in 0..max_index {
-            let proposed_assign_indices = bit_increment_indices(i, starting_bit_value, max_index);
-            println!("Assign {:2} ({:06b} -> {:06b}) of {:2}: {:?}\r", i, i, !i & 0b111111, max_index, proposed_assign_indices);
-            keepalive_counter += proposed_assign_indices.len();
-        }
-
-        println!("Incremented assignment {}", keepalive_counter);
-
-    }
-
 
     #[test]
     fn test_solve_sample_1() {

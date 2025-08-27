@@ -1,59 +1,18 @@
-fn read_vec<T: std::str::FromStr>() -> Vec<T>
+fn read_vec<T: std::str::FromStr, R: std::io::Read>(buf_reader: &mut std::io::BufReader<R>) -> Vec<T>
 where
     T::Err: std::fmt::Debug,
 {
+    use std::io::BufRead;
+
     let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
+    buf_reader.read_line(&mut line).unwrap();
     line.split_whitespace()
         .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
         .collect()
 }
 
-fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> Result<[T; K], E>
-where
-    T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
-{
-    read_vec::<T>().try_into()
-}
-
-fn read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
-where
-    T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
-{
-    try_read_array().unwrap()
-}
-
 type IndexType = usize;
 type ValueType = i64;
-
-#[inline(always)]
-fn standard_increment_indices(increment_index: usize, max_index: usize) -> Vec<usize> {
-    let mut query_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
-    let mut working_index = increment_index as ValueType + 1;
-
-    while working_index <= max_index as i64 {
-        query_indices.push(working_index as IndexType);
-
-        working_index = working_index + (working_index & -working_index);
-    }
-
-    query_indices
-}
-
-#[inline(always)]
-fn standard_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
-    let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
-    let mut working_index = query_index as ValueType;
-    while working_index > 0 {
-        write_indices.push(working_index as IndexType);
-
-        working_index = working_index - (working_index & (-working_index));
-    }
-
-    write_indices
-}
 
 struct FenwickTree {
     data_fenwick: Vec<ValueType>,
@@ -67,31 +26,71 @@ impl FenwickTree {
     }
 
     fn increment(&mut self, index: usize, value: ValueType) {
-        let increment_indices = standard_increment_indices(index, self.data_fenwick.len());
-        for i in increment_indices {
-            self.data_fenwick[i - 1] += value;
+        let max_index = self.data_fenwick.len();
+        let mut working_index = index as ValueType + 1;
+
+        while working_index <= max_index as i64 {
+            self.data_fenwick[working_index as usize - 1] += value;
+            working_index = working_index + (working_index & -working_index);
         }
     }
 
     fn query(&self, index: usize) -> ValueType {
         let query_index = index;
-        let answer = if query_index == 0 {
+        if query_index == 0 {
             0
         } else {
-            let query_indices = standard_query_indices(query_index, self.data_fenwick.len());
-            query_indices.iter().map(|&i| self.data_fenwick[i - 1]).sum()
-        };
-        answer
+            let mut sum = 0;
+
+            let mut working_index = query_index as ValueType;
+            while working_index > 0 {
+                sum += self.data_fenwick[working_index as usize - 1];
+                working_index = working_index - (working_index & (-working_index));
+            }
+            sum
+        }
+    }
+}
+
+struct Op {
+    index: IndexType,
+    value: ValueType,
+}
+
+impl Op {
+    fn new_query(index: IndexType) -> Self {
+        Op {
+            index,
+            value: ValueType::MAX,
+        }
+    }
+
+    fn new_increment(index: IndexType, value: ValueType) -> Self {
+        Op {
+            index,
+            value,
+        }
+    }
+
+    fn is_query(&self) -> bool {
+        self.value == ValueType::MAX
     }
 }
 
 fn main() {
-    let [array_len, operations_count]: [usize; 2] = read_array();
+    let stdin_lock = std::io::stdin().lock();
+    let stdout_lock = std::io::stdout().lock();
 
-    let mut fenwick = FenwickTree::new(array_len);
+    run_problem(stdin_lock, stdout_lock);
+}
+
+fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source: W) {
+    let mut bufreader = std::io::BufReader::new(read_source);
+    let [array_len, operations_count]: [usize; 2] = read_vec(&mut bufreader).try_into().unwrap();
+    let mut operations_list = Vec::with_capacity(operations_count);
 
     for _ in 0..operations_count {
-        let op = read_vec::<String>();
+        let op = read_vec(&mut bufreader);
         match op.len() {
             2 => {
                 // Query Operation
@@ -100,7 +99,7 @@ fn main() {
                     panic!("Invalid operation")
                 }
                 let query_index = index.parse::<IndexType>().unwrap();
-                println!("{}", fenwick.query(query_index));
+                operations_list.push(Op::new_query(query_index));
             }
             3 => {
                 // Increment Operation
@@ -110,41 +109,35 @@ fn main() {
                 }
                 let increment_index = index.parse::<IndexType>().unwrap();
                 let increment_value = delta.parse::<ValueType>().unwrap();
-                fenwick.increment(increment_index, increment_value);
+                operations_list.push(Op::new_increment(increment_index, increment_value));
             }
             _ => panic!("Invalid operation"),
         }
+    }
+
+    let mut fenwick = FenwickTree::new(array_len);
+    let mut answers = Vec::<ValueType>::with_capacity(operations_count);
+
+    for op in operations_list {
+        if op.is_query() {
+            let answer = fenwick.query(op.index);
+            answers.push(answer);
+        } else {
+            fenwick.increment(op.index, op.value);
+        }
+    }
+
+    let starting_cap = operations_count * 64;
+    let mut bufwriter = std::io::BufWriter::with_capacity(starting_cap, write_source);
+    for answer in answers {
+        use std::io::{Write};
+        writeln!(&mut bufwriter, "{}", answer).unwrap();
     }
 }
 
 #[cfg(test)]
 mod fenwick_tests {
     use super::*;
-
-    struct Op {
-        index: IndexType,
-        value: ValueType,
-    }
-
-    impl Op {
-        fn new_query(index: IndexType) -> Self {
-            Op {
-                index,
-                value: ValueType::MAX,
-            }
-        }
-
-        fn new_increment(index: IndexType, value: ValueType) -> Self {
-            Op {
-                index,
-                value,
-            }
-        }
-
-        fn is_query(&self) -> bool {
-            self.value == ValueType::MAX
-        }
-    }
 
     fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
         let mut fenwick = FenwickTree::new(array_len);
@@ -235,13 +228,10 @@ mod fenwick_tests {
 
     #[test]
     fn test_maximal_limits() {
-        let shared_size = 5000000;
-        let array_len = shared_size;
-        let operations_count = shared_size;
-        let operation_list = generate_test_ops(array_len, operations_count);
-
-        let _query_results = fast_solve(array_len, operation_list);
-        // println!("{:?}", _query_results);
+        run_problem(
+            std::fs::File::open("./fenwick_max.in").unwrap(),
+            std::fs::File::create("./fenwick-test.out").unwrap(),
+        );
         assert!(true);
     }
 

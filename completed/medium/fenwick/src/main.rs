@@ -229,7 +229,7 @@ mod fenwick_tests {
 
         run_problem(
             std::fs::File::open("./fenwick_max.in").unwrap(),
-            std::fs::File::create("./fenwick-test.out").unwrap(),
+            std::fs::File::create("../../../../fenwick-test.out").unwrap(),
         );
         assert!(true);
     }

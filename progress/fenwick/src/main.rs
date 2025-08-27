@@ -53,91 +53,7 @@ impl Op {
     }
 }
 
-// /// Remove any increment operation that will never be queried
-// /// Since the query is a prefix-sum, this amounts to:
-// /// "Remove any increment operation with index greater than the highest query index"
-// #[allow(unused)]
-// fn remove_end_increments(operations_list: &mut Vec<Op>) {
-//     // Find highest query
-//     let mut highest_index = usize::MAX;
-//     for op in operations_list.iter() {
-//         if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-//             highest_index = std::cmp::max(highest_index, query.index);
-//         }
-//     }
-//     // extractif any increments
-//     let trashed_increments: Vec<Op> = operations_list
-//         .extract_if(.., |op| {
-//             if let Some(&IncrementOp { index, value: _ }) =
-//                 op.as_any().downcast_ref::<IncrementOp>()
-//             {
-//                 if index > highest_index {
-//                     return true;
-//                 }
-//             }
-//             false
-//         })
-//         .collect();
-//     eprintln!(
-//         "Removed {} end increments that will never be queried.",
-//         trashed_increments.len()
-//     );
-// }
-//
-// /// Combine increment operations that will always collectively affect the first (and all following) queries
-// #[allow(unused)]
-// fn lump_front_increments(operations_list: &mut Vec<Op>) {
-//     // Essentially, all early-zoned increments between queries can be combined
-//     todo!()
-// }
-
-// #[allow(unused)]
-// fn brute_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-//     let mut dumb_sum_array = vec![ValueType::default(); array_len];
-//     let mut query_answers = Vec::<ValueType>::new();
-//
-//     let op_count = operations_list.len();
-//     let batch_len = 10;
-//
-//     for (batch, op_batch) in operations_list.chunks(batch_len).enumerate() {
-//         for op in op_batch {
-//             if let Some(query) = op.as_any().downcast_ref::<QueryOp>() {
-//                 let answer = if query.index == 0 {
-//                     0
-//                 } else {
-//                     dumb_sum_array[query.index - 1]
-//                 };
-//                 query_answers.push(answer);
-//             } else if let Some(increment) = op.as_any().downcast_ref::<IncrementOp>() {
-//                 for val in dumb_sum_array[increment.index..].iter_mut() {
-//                     *val += increment.value;
-//                 }
-//             }
-//         }
-//         eprintln!(
-//             "Completed {} / {}",
-//             batch * batch_len + op_batch.len(),
-//             op_count
-//         );
-//     }
-//     query_answers
-// }
-//
-// #[allow(unused)]
-// fn get_optype_counts(ops: &Vec<Op>) -> (usize, usize) {
-//     let mut increment_count = 0;
-//     let mut query_count = 0;
-//     for op in ops {
-//         if op.as_any().downcast_ref::<QueryOp>().is_some() {
-//             query_count += 1;
-//         } else if op.as_any().downcast_ref::<IncrementOp>().is_some() {
-//             increment_count += 1;
-//         }
-//     }
-//     (increment_count, query_count)
-// }
-
-
+#[inline(always)]
 fn bit_query_indices(query_index: usize) -> Vec<usize> {
     let logged_size = (query_index.ilog2() + 1) as usize;
     let mut query_indices = Vec::with_capacity(logged_size);
@@ -155,6 +71,7 @@ fn bit_query_indices(query_index: usize) -> Vec<usize> {
     query_indices
 }
 
+#[inline(always)]
 fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_index: usize) -> Vec<usize> {
     let working_index = !increment_index;
     let mut bit_value = starting_bit_value;
@@ -177,6 +94,7 @@ fn bit_increment_indices(increment_index: usize, starting_bit_value: usize, max_
     write_indices
 }
 
+#[inline(always)]
 fn standard_increment_indices(increment_index: usize, max_index: usize) -> Vec<usize> {
     let mut query_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
     let mut working_index = increment_index as ValueType + 1;
@@ -190,6 +108,7 @@ fn standard_increment_indices(increment_index: usize, max_index: usize) -> Vec<u
     query_indices
 }
 
+#[inline(always)]
 fn standard_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
     let mut write_indices = Vec::with_capacity((max_index.ilog2() + 1) as usize);
     let mut working_index = query_index as ValueType;
@@ -260,26 +179,6 @@ impl FenwickTree {
     }
 }
 
-fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-    let mut fenwick = FenwickTree::new(array_len);
-
-    let operations_count = operations_list.len();
-    let mut answers = Vec::<ValueType>::with_capacity(operations_count);
-
-    for op in operations_list {
-        if op.is_query() {
-            let answer = fenwick.query(op.index);
-            answers.push(answer);
-        } else {
-            fenwick.increment(op.index, op.value);
-        }
-    }
-
-    answers
-}
-
-const SELECTED_SOLVER: fn(usize, Vec<Op>) -> Vec<ValueType> = fast_solve;
-
 fn main() {
     let [array_len, operations_count]: [usize; 2] = read_array();
 
@@ -315,6 +214,24 @@ fn main() {
 #[cfg(test)]
 mod fenwick_tests {
     use super::*;
+
+    fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
+        let mut fenwick = FenwickTree::new_standard(array_len);
+
+        let operations_count = operations_list.len();
+        let mut answers = Vec::<ValueType>::with_capacity(operations_count);
+
+        for op in operations_list {
+            if op.is_query() {
+                let answer = fenwick.query(op.index);
+                answers.push(answer);
+            } else {
+                fenwick.increment(op.index, op.value);
+            }
+        }
+
+        answers
+    }
 
     #[test]
     fn test_bit_query_indices() {
@@ -358,7 +275,7 @@ mod fenwick_tests {
             Op::new_increment(3, 17),
             Op::new_query(8),
         ];
-        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        let query_results = fast_solve(array_len, operation_list);
 
         let answers = vec![23, 40];
         assert_eq!(query_results, answers)
@@ -373,7 +290,7 @@ mod fenwick_tests {
             Op::new_query(0),
             Op::new_query(5),
         ];
-        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        let query_results = fast_solve(array_len, operation_list);
 
         let answers = vec![0, -42];
         assert_eq!(query_results, answers)
@@ -387,7 +304,7 @@ mod fenwick_tests {
 
         let operation_list = generate_test_ops(array_len, operations_count);
 
-        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        let query_results = fast_solve(array_len, operation_list);
         println!("{:?}", query_results);
         let answers = [-92, -92, -92, -92, -92, -92, -92, -92, -174, -94, -174, -92, -92, -142, -142, -142, 0, -92, -404, -92, -92, -278, -212, -92, -172, -172, -92, -172, -172, -172, -92, 0, -232, -276, -806, -628, -596, -800, -276, -664, -664, -276, -396, -376, -276, -954, -326, -960, -276, -696, -1096, -696, -276, -276, -884, -604, -508, -1020, -276, -276, -508, -1112, -276, -510, -926]
         .to_vec();
@@ -425,7 +342,7 @@ mod fenwick_tests {
         let operations_count = shared_size;
         let operation_list = generate_test_ops(array_len, operations_count);
 
-        let _query_results = SELECTED_SOLVER(array_len, operation_list);
+        let _query_results = fast_solve(array_len, operation_list);
         // println!("{:?}", _query_results);
         assert!(true);
     }
@@ -436,7 +353,7 @@ mod fenwick_tests {
         let array_len = shared_size;
         let operations_count = 0;
         let operation_list = generate_test_ops(array_len, operations_count);
-        let query_results = SELECTED_SOLVER(array_len, operation_list);
+        let query_results = fast_solve(array_len, operation_list);
         assert_eq!(query_results.len(), 0);
     }
 }

@@ -48,7 +48,167 @@ where
 }
 
 fn main() {
-    reversebinary();
+    mclimb();
+}
+
+fn mclimb() {
+    let rocks: u32 = read_one();
+    let liter_cost: u32 = read_one();
+    let _: u64 = read_one();
+
+    println!("{}", rocks * liter_cost);
+}
+
+fn _13floors() {
+    let real_floor: u32 = read_one();
+    println!("{}", real_floor + (real_floor >= 13) as u32);
+}
+
+fn flatterland() {
+    let people: u64 = read_one();
+    let abstand: u64 = read_one();
+    println!("{}", (people - 1) * abstand);
+}
+
+fn hackaholics() {
+    let hackathons: u64 = read_one();
+    let _: u64 = read_one();
+    let avg_prizes: u64 = read_one();
+
+    println!("{}", hackathons * avg_prizes);
+}
+
+fn catinabox() {
+    let [height, width, length, cat_volume] = read_array::<u64, 4, _>();
+    match cat_volume.cmp(&(height * width * length)) {
+        std::cmp::Ordering::Equal => println!("COZY"),
+        std::cmp::Ordering::Less => println!("SO MUCH SPACE"),
+        std::cmp::Ordering::Greater => println!("TOO TIGHT"),
+    }
+}
+
+fn isithalloween() {
+    let input = read_str();
+    if input == "OCT 31" || input == "DEC 25" {
+        println!("yup");
+    } else {
+        println!("nope");
+    }
+}
+
+fn edays() {
+    let miles: u32 = read_one();
+    let _: u32 = read_one();
+    let _: i32 = read_one();
+
+    println!("{}", 2 * miles);
+}
+
+fn hissingmicrophone() {
+    let input = read_str();
+
+    if input.contains("ss") {
+        println!("hiss");
+    } else {
+        println!("no hiss");
+    }
+}
+
+trait UpgradedIterator: Iterator {
+    fn my_avg(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: std::ops::Add<Output = Self::Item>
+        + std::ops::Div<Output = Self::Item>
+        + From<u8>
+        + PartialEq
+        + Clone,
+    {
+        let zero = Self::Item::from(0u8);
+        let one = Self::Item::from(1u8);
+
+        let (sum, count) = self.fold((zero.clone(), zero.clone()), |(s, c), x| (s + x, c + one.clone()));
+        if count == zero { None } else { Some(sum / count) }
+    }
+}
+
+impl<T: ?Sized> UpgradedIterator for T where T: Iterator {}
+
+fn batterup() {
+    let _at_bats: u32 = read_one();
+    let bat_results: Vec<i32> = read_vec();
+
+    let slugging_percentage = bat_results
+        .iter()
+        .filter(|&x| !x.is_negative())
+        .map(|&x| x as f32)
+        .my_avg()
+        .unwrap();
+
+    println!("{}", slugging_percentage);
+}
+
+fn filip() {
+    let [mut str_a, mut str_b]: [String; 2] = read_array();
+    str_a = str_a.chars().rev().collect::<String>();
+    str_b = str_b.chars().rev().collect::<String>();
+    let nums: Vec<u16> = vec![
+        str_a.parse().unwrap(),
+        str_b.parse().unwrap()
+    ];
+
+    println!("{}", nums.iter().max().unwrap());
+}
+
+fn faktor() {
+    let [article_count, desired_impact]: [u32; 2] = read_array();
+
+    let bribed_scientists = article_count * (desired_impact - 1) + 1;
+    println!("{}", bribed_scientists);
+}
+
+fn grassseed() {
+    let seed_cost: f32 = read_one();
+    let num_lawns: usize = read_one();
+
+    let mut total_lawn_area = 0f32;
+
+    for _ in 0..num_lawns {
+        let [length, width] = read_array::<f32, 2, _>();
+        total_lawn_area += length * width;
+    }
+
+    println!("{}", total_lawn_area * seed_cost);
+}
+
+fn pot() {
+    let number_of_terms: u64 = read_one();
+
+    let mut terms = Vec::with_capacity(number_of_terms as usize);
+    for _ in 0..number_of_terms {
+        terms.push(read_one::<u64>());
+    }
+
+    let real_terms = terms.iter().map(|x| {
+        let div = x / 10;
+        let modulo = x % 10;
+        div.pow(modulo as u32)
+    });
+
+    println!("{}", real_terms.sum::<u64>());
+}
+
+fn pet() {
+    let gradeslist: Vec<(u8, u8)> = vec![
+        (1, read_vec().iter().sum()),
+        (2, read_vec().iter().sum()),
+        (3, read_vec().iter().sum()),
+        (4, read_vec().iter().sum()),
+        (5, read_vec().iter().sum()),
+    ];
+
+    let best = gradeslist.iter().max_by(|&a, &b| a.1.cmp(&b.1)).unwrap();
+    println!("{} {}", best.0, best.1);
 }
 
 fn reversebinary() {
@@ -126,7 +286,7 @@ fn grafaholur() {
 }
 
 fn triangelfabriken() {
-    let mut angles: Vec<u16> = vec![
+    let angles: Vec<u16> = vec![
         read_one(),
         read_one(),
         read_one(),

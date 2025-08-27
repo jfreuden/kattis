@@ -202,36 +202,76 @@ fn standard_query_indices(query_index: usize, max_index: usize) -> Vec<usize> {
     write_indices
 }
 
-fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
-    let starting_bit_value = {
-        let two_pow = (array_len + 1).next_power_of_two() >> 1;
-        if two_pow == 0 {
-            1usize
-        } else {
-            two_pow
+struct FenwickTree {
+    data_fenwick: Vec<ValueType>,
+    standard_formulas: bool,
+    _starting_bit_value: usize
+}
+
+impl FenwickTree {
+    fn new(array_len: usize) -> Self {
+        let starting_bit_value = {
+            let two_pow = (array_len + 1).next_power_of_two() >> 1;
+            if two_pow == 0 {
+                1usize
+            } else {
+                two_pow
+            }
+        };
+        FenwickTree {
+            data_fenwick: vec![0 as ValueType; array_len],
+            standard_formulas: false,
+            _starting_bit_value: starting_bit_value,
         }
-    };
+    }
+
+    fn new_standard(array_len: usize) -> Self {
+        FenwickTree {
+            data_fenwick: vec![0 as ValueType; array_len],
+            standard_formulas: true,
+            _starting_bit_value: 0,
+        }
+    }
+
+    fn increment(&mut self, index: usize, value: ValueType) {
+        let increment_indices = if self.standard_formulas {
+            standard_increment_indices(index, self.data_fenwick.len())
+        } else {
+            bit_increment_indices(index, self._starting_bit_value, self.data_fenwick.len())
+        };
+        for i in increment_indices {
+            self.data_fenwick[i - 1] += value;
+        }
+    }
+
+    fn query(&self, index: usize) -> ValueType {
+        let query_index = index;
+        let answer = if query_index == 0 {
+            0
+        } else {
+            let query_indices = if self.standard_formulas {
+                standard_query_indices(query_index, self.data_fenwick.len())
+            } else {
+                bit_query_indices(query_index)
+            };
+            query_indices.iter().map(|&i| self.data_fenwick[i - 1]).sum()
+        };
+        answer
+    }
+}
+
+fn fast_solve(array_len: usize, operations_list: Vec<Op>) -> Vec<ValueType> {
+    let mut fenwick = FenwickTree::new(array_len);
 
     let operations_count = operations_list.len();
     let mut answers = Vec::<ValueType>::with_capacity(operations_count);
 
-    let mut data_fenwick = vec![0 as ValueType; array_len];
-
     for op in operations_list {
         if op.is_query() {
-            let query_index = op.index;
-            let answer = if query_index == 0 {
-                0
-            } else {
-                let query_indices = standard_query_indices(query_index, array_len);
-                query_indices.iter().map(|&i| data_fenwick[i - 1]).sum()
-            };
+            let answer = fenwick.query(op.index);
             answers.push(answer);
         } else {
-            let increment_indices = standard_increment_indices(op.index, array_len);
-            for i in increment_indices {
-                data_fenwick[i - 1] += op.value;
-            }
+            fenwick.increment(op.index, op.value);
         }
     }
 
@@ -242,7 +282,9 @@ const SELECTED_SOLVER: fn(usize, Vec<Op>) -> Vec<ValueType> = fast_solve;
 
 fn main() {
     let [array_len, operations_count]: [usize; 2] = read_array();
-    let mut operations_list = Vec::<Op>::with_capacity(operations_count);
+
+    let mut fenwick = FenwickTree::new(array_len);
+
     for _ in 0..operations_count {
         let op = read_vec::<String>();
         match op.len() {
@@ -252,7 +294,8 @@ fn main() {
                 if key != "?" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Op::new_query(index.parse::<IndexType>().unwrap()));
+                let query_index = index.parse::<IndexType>().unwrap();
+                println!("{}", fenwick.query(query_index));
             }
             3 => {
                 // Increment Operation
@@ -260,23 +303,13 @@ fn main() {
                 if key != "+" {
                     panic!("Invalid operation")
                 }
-                operations_list.push(Op::new_increment(
-                    index.parse::<IndexType>().unwrap(),
-                    delta.parse::<ValueType>().unwrap(),
-                ));
+                let increment_index = index.parse::<IndexType>().unwrap();
+                let increment_value = delta.parse::<ValueType>().unwrap();
+                fenwick.increment(increment_index, increment_value);
             }
             _ => panic!("Invalid operation"),
         }
     }
-
-    let query_results = SELECTED_SOLVER(array_len, operations_list);
-
-    use std::io::{stdout, Write};
-    let mut lock = stdout().lock();
-    for result in query_results {
-        writeln!(lock, "{}", result).unwrap();
-    }
-    lock.flush().unwrap();
 }
 
 #[cfg(test)]

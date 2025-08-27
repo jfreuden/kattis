@@ -48,7 +48,12 @@ where
 }
 
 fn main() {
-    cetvrta();
+    reversebinary();
+}
+
+fn reversebinary() {
+    let input: u64 = read_one();
+    println!("{}", input.reverse_bits() >> input.leading_zeros());
 }
 
 fn cetvrta() {

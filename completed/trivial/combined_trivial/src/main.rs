@@ -48,7 +48,164 @@ where
 }
 
 fn main() {
-    vedurheidar()
+    cetvrta();
+}
+
+fn cetvrta() {
+    let [x1, y1] = read_array::<u16, 2, _>();
+    let [x2, y2] = read_array::<u16, 2, _>();
+    let [x3, y3] = read_array::<u16, 2, _>();
+
+
+    let initial_xs = [x1];
+    let initial_ys = [y1];
+
+    let fourth_x = if initial_xs.contains(&x2) {
+        x3
+    } else if initial_xs.contains(&x3) {
+        x2
+    } else {
+        x1
+    };
+
+    let fourth_y = if initial_ys.contains(&y2) {
+        y3
+    } else if initial_ys.contains(&y3) {
+        y2
+    } else {
+        y1
+    };
+
+    println!("{} {}", fourth_x, fourth_y);
+}
+
+fn sibice() {
+    let [num_matches, box_w, box_h] = read_array::<u16, 3, _>();
+    let box_diag = (box_h * box_h + box_w * box_w).isqrt();
+    for _ in 0..num_matches {
+        let match_len: u16 = read_one();
+        if match_len > box_diag {
+            println!("NE")
+        } else {
+            println!("DA")
+        }
+    }
+}
+
+fn wakeupcall() {
+    let _ = read_str();
+    let first = read_vec::<i64>();
+    let second = read_vec::<i64>();
+
+    let first_sum: i64 = first.iter().sum();
+    let second_sum = second.iter().sum();
+    match first_sum.cmp(&second_sum) {
+        std::cmp::Ordering::Less => println!("Button 2"),
+        std::cmp::Ordering::Greater => println!("Button 1"),
+        std::cmp::Ordering::Equal => println!("Oh no"),
+    }
+}
+
+fn grafaholur() {
+    let starting_worker_count: f32 = read_one();
+    let starting_hours: f32 = read_one();
+    let initial_dug: f32 = read_one();
+
+    let downsized_worker_count: f32 = read_one();
+    let downsized_worker_quota: f32 = read_one();
+
+    // Given the previous rate and the new downsized workers and quotas, how long will it take.
+    let dig_rate_per_worker: f32 = initial_dug / (starting_hours * starting_worker_count);
+    let downsized_dig_time = downsized_worker_quota / (dig_rate_per_worker * downsized_worker_count);
+    println!("{}", downsized_dig_time);
+}
+
+fn triangelfabriken() {
+    let mut angles: Vec<u16> = vec![
+        read_one(),
+        read_one(),
+        read_one(),
+    ];
+
+    let biggest_angle = *angles.iter().max().unwrap();
+    if biggest_angle > 90 {
+        println!("Trubbig Triangel");
+    } else if biggest_angle == 90 {
+        println!("Ratvinklig Triangel");
+    } else {
+        println!("Spetsig Triangel")
+    }
+}
+
+fn monopol() {
+    let _: usize = read_one();
+    let sorted_distances: Vec<usize> = read_vec();
+
+    let total_probability: f32 =sorted_distances.iter().map(|&x| {
+        let dice_sides = 6;
+        let chances_for_x = dice_sides - (dice_sides + 1 - x as i32).abs();
+        chances_for_x as f32 / (dice_sides * dice_sides) as f32
+    }).sum();
+
+    println!("{}", total_probability);
+}
+
+fn hakkari() {
+    let [rows, _]: [usize; 2] = read_array();
+    let mut answers = Vec::<(usize, usize)>::new();
+    for row in 0..rows {
+        let line = read_str();
+        for (column, symbol) in line.chars().enumerate() {
+            if symbol == '*' {
+                answers.push((row + 1, column + 1));
+            }
+        }
+    }
+    println!("{}", answers.len());
+    for (row, column) in answers {
+        println!("{} {}", row, column);
+    }
+}
+
+fn lastfactorialdigit() {
+    // The problem is silly and the input is limited to 10. Going with the ultra-naive solution.
+    let num_test_cases = read_one::<usize>();
+    // Okay I can't help but at least cache the results
+    struct FactHelper {
+        answers_cache: Vec<Option<usize>>
+    }
+    impl FactHelper {
+        fn new(max: usize) -> FactHelper {
+            FactHelper { answers_cache: vec![None; max] }
+        }
+
+        fn fact(&mut self, input: usize) -> usize {
+            if input == 1 {
+                return 1;
+            } else if let Some(answer) = self.answers_cache[input - 1] {
+                return answer;
+            }
+            input * self.fact(input - 1)
+        }
+    }
+
+    let mut fact = FactHelper::new(10);
+
+    for _ in 0..num_test_cases {
+        let fact_input = read_one::<usize>();
+        println!("{}", fact.fact(fact_input) % 10);
+    }
+}
+
+fn autori() {
+    let name_string = read_str();
+    println!("{}", name_string.split('-').map(|x| *x.as_bytes().first().unwrap() as char).collect::<String>());
+}
+
+fn r2() {
+    let [r1, mean] = read_array::<i32, 2, _>();
+
+    println!("{}", 2i32 * mean - r1);
 }
 
 fn vedurheidar() {

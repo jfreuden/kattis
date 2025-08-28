@@ -20,6 +20,7 @@ impl MediocreBigint {
         MediocreBigint { digits: segments }
     }
 
+    #[allow(unused)]
     fn is_normalized(&self) -> bool {
         self.digits.iter().fold(true, |normal, &digit| {
             normal && digit < LIMIT as MediocreDigitSize

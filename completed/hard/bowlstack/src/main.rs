@@ -69,6 +69,7 @@ impl From<[BowlFloat; 3]> for Bowl {
 }
 
 impl Bowl {
+    #[allow(unused)]
     fn new<T>(height: T, bottom_radius: T, top_radius: T) -> Self
     where
         f64: From<T>,
@@ -81,6 +82,7 @@ impl Bowl {
         }
     }
 
+    #[allow(unused)]
     fn new_labelled<T>(height: T, bottom_radius: T, top_radius: T, label: char) -> Self
     where
         f64: From<T>,
@@ -98,6 +100,7 @@ impl Bowl {
     }
 }
 
+#[allow(unused)]
 trait Solvable<T> {
     fn solve(bowls: T) -> BowlFloat;
 }
@@ -133,7 +136,7 @@ fn b(m1: BowlFloat, m2: BowlFloat, x: BowlFloat) -> BowlFloat {
     (m1 - m2) * x
 }
 
-#[allow(unused_variables)]
+#[allow(unused_variables, non_snake_case)]
 fn find_gap(bottom: &Bowl, top: &Bowl) -> BowlFloat {
     let h1 = bottom.height as BowlFloat;
     let h2 = top.height as BowlFloat;

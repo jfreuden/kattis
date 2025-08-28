@@ -124,8 +124,8 @@ trait UpgradedIterator: Iterator {
         + PartialEq
         + Clone,
     {
-        let zero = Self::Item::from(0u8);
-        let one = Self::Item::from(1u8);
+        let zero = <Self::Item as From<u8>>::from(0u8);
+        let one = <Self::Item as From<u8>>::from(1u8);
 
         let (sum, count) = self.fold((zero.clone(), zero.clone()), |(s, c), x| (s + x, c + one.clone()));
         if count == zero { None } else { Some(sum / count) }

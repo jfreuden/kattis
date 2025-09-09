@@ -3,7 +3,9 @@ fn calculate_k(penalty_value: u32, starting_k: f64) -> f64 {
     let mut k = starting_k;
 
     while left_side > k.ln() / (1.0f64 - k).ln() {
-        k -= 0.00000005f64;
+        k -= 0.0000000001f64;
+        // k -= (f32::MIN_POSITIVE * 4096.0f32) as f64;
+
     }
     k
 }

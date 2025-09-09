@@ -12,9 +12,12 @@ fn run_scenario(mattresses: u32, nights: u32, penalty: u32, pea_location: u32) -
         std::io::stdout(),
     );
 
-    while scenario.configuration.mattresses > 1 && scenario.configuration.nights > 0 {
+    while scenario.configuration.mattresses > 1 && scenario.configuration.nights > 0 && scenario.configuration.nights <= nights {
         scenario.autonomous_step(pea_location);
     }
+
+    println!("Mattresses remaining: {}, Nights remaining: {}", scenario.configuration.mattresses, scenario.configuration.nights);
+
     println!("! {}", scenario.configuration.offset);
 
     assert_eq!(pea_location, scenario.configuration.offset);

@@ -87,6 +87,10 @@ name = "placeholder"
 version = "0.1.0"
 
 [[package]]
+name = "princesse_LUT_calc"
+version = "0.1.0"
+
+[[package]]
 name = "prinsesse"
 version = "0.1.0"
 

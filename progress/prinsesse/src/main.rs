@@ -25,7 +25,6 @@ struct ScenarioConfiguration {
     penalty: u32,
     offset: u32,
     split_amount: u32,
-    next_split_amount: u32,
 }
 
 struct Scenario<B: std::io::BufRead, W: std::io::Write> {
@@ -47,7 +46,6 @@ impl<B: std::io::BufRead, W: std::io::Write> Scenario<B, W> {
                 penalty,
                 offset: 0,
                 split_amount: u32::MAX,
-                next_split_amount: u32::MAX,
             },
         }
     }
@@ -91,36 +89,16 @@ impl<B: std::io::BufRead, W: std::io::Write> Scenario<B, W> {
             self.configuration.split_amount = 1;
         } else if self.configuration.penalty <= 1 {
             self.configuration.split_amount = self.configuration.mattresses.div_ceil(2);
-        } else if self.configuration.split_amount > self.configuration.mattresses || self.configuration.split_amount < self.configuration.nights.saturating_sub(self.configuration.penalty) {
-            self.configuration.split_amount = 31;
         } else {
             let n = self.configuration.nights;
             let s = self.configuration.penalty;
-            let s2 = s.div_euclid(2);
-            //let modulo = (n - s2) % s;
-            //let mut magic = n - modulo + s2 + 2;
-            let mut magic = (n % (s+1)) + s;
+            let mut magic = (n.saturating_sub(1) % (s + 1)) + 2;
 
+            if (magic * (magic + 1)) + self.configuration.penalty < self.configuration.mattresses {
+                magic = (magic * (magic + 1)).div_euclid(2) + self.configuration.penalty;
+            }
 
-            // if (magic * (magic + 1)) < self.configuration.mattresses {
-            //     magic = (magic * (magic + 1)).div_euclid(2);
-            // }
-
-            self.configuration.split_amount = std::cmp::Ord::clamp(
-                self.configuration.split_amount - 1,
-                self.configuration.nights.saturating_sub(self.configuration.penalty),
-                1000
-            );
-            // if self.configuration.split_amount == 8 {
-            //     self.configuration.split_amount = 41
-            // }
-
-            // self.configuration.split_amount = std::cmp::max(
-            //     self.configuration.split_amount,
-            //     (firstpart * (firstpart + 1)).div_ceil(2) % self.configuration.mattresses
-            // );
-
-            // self.configuration.split_amount = (firstpart as f32 * 1.25f32).ceil() as u32 ;
+            self.configuration.split_amount = std::cmp::Ord::clamp(magic, 1, self.configuration.mattresses);
         }
 
         let min = self.configuration.offset;
@@ -167,7 +145,7 @@ fn main() {
     let mut scenario = Scenario::new(mattresses, nights, penalty, stdin, stdout);
     while scenario.configuration.mattresses > 1
         && scenario.configuration.nights > 0
-        && scenario.configuration.nights < nights
+        && scenario.configuration.nights <= nights
     {
         scenario.scenario_step();
     }

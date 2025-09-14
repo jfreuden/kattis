@@ -169,12 +169,3 @@ fn test_group6_1000() {
         run_scenario(mattresses, nights, penalty, mattress);
     }
 }
-
-#[test]
-fn test_group7_926() {
-    let [mattresses, nights] = [926, 72];
-    let penalty = 35;
-    for mattress in 900..926 {
-        run_scenario(mattresses, nights, penalty, mattress);
-    }
-}

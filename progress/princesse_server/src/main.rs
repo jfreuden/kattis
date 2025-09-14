@@ -24,7 +24,7 @@ fn main() {
             }
         }
 
-        if nights < 0 {
+        if line[0] != "#" && nights <= 0 {
             println!("Ran out of nights");
             std::process::exit(1);
         }
@@ -45,12 +45,10 @@ fn main() {
             for i in range_min..=range_max {
                 println!("? {}", i);
 
-                if nights < 0 {
+                if nights <= 0 {
                     println!("Ran out of nights");
                     std::process::exit(1);
-                }
-
-                if i == pea_location {
+                } else if i == pea_location {
                     nights -= 1 + penalty as i32;
                     println!("1");
                     break;

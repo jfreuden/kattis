@@ -1,7 +1,7 @@
 use super::*;
 
 
-fn run_scenario(mattresses: u32, nights: u32, penalty: u32, pea_location: u32) -> u32 {
+fn run_scenario(mattresses: u16, nights: u16, penalty: u16, pea_location: u16) -> u16 {
     println!("{} {} {} ({})", mattresses, nights, penalty, pea_location);
 
     let mut scenario = Scenario::new(
@@ -27,7 +27,7 @@ fn run_scenario(mattresses: u32, nights: u32, penalty: u32, pea_location: u32) -
 
 #[test]
 fn test_group1() {
-    let [mattresses, nights, penalty]: [u32; 3] = [2, 2, 1];
+    let [mattresses, nights, penalty]: [u16; 3] = [2, 2, 1];
     run_scenario(mattresses, nights, penalty, 0);
     run_scenario(mattresses, nights, penalty, 1);
 }
@@ -167,5 +167,19 @@ fn test_group6_1000() {
     let penalty = 31;
     for mattress in 900..1000 {
         run_scenario(mattresses, nights, penalty, mattress);
+    }
+}
+
+#[test]
+fn test_group6_26_somewhere() {
+    run_scenario(1000, 72, 26, 999);
+    run_scenario(1000, 60, 26, 999);
+
+
+    run_scenario(1000, 26, 5, 999);
+    run_scenario(1000, 26, 5, 874);
+
+    for mattress in (860..1000).step_by(9) {
+        run_scenario(1000, 26, 5, mattress);
     }
 }

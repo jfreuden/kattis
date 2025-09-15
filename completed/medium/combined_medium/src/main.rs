@@ -52,47 +52,55 @@ fn main() {
     remoatseating();
 }
 
+struct FactHelper {
+    answers_cache: Vec<Option<u64>>
+}
+impl FactHelper {
+    fn new(max: usize) -> FactHelper {
+        FactHelper { answers_cache: vec![None; max] }
+    }
+
+    fn fact(&mut self, input: u64) -> u64 {
+        if input == 1 || input == 0 {
+            return 1;
+        } else if let Some(answer) = self.answers_cache[(input - 1) as usize] {
+            return answer;
+        }
+        input * self.fact(input - 1)
+    }
+
+    fn nchoose(&mut self, n: u64, choose: u64) -> u64 {
+        self.fact(n)
+            .div_ceil(self.fact(choose) * self.fact(n.saturating_sub(choose)))
+    }
+}
+
+
+
 fn remoatseating() {
     const SUB_SMALL: u64 = 2;
     const SUB_BIG: u64 = 3;
     const FULL_TEAM: u64 = SUB_SMALL + SUB_BIG;
 
-    let team_count: u64 = read_one();
+    let _team_count: u64 = read_one();
     let teams = read_vec::<u64>();
 
     let sub_count = teams.iter().filter(|&&x| x == SUB_SMALL).count() as u32;
     let dom_count = teams.iter().filter(|&&x| x == FULL_TEAM).count() as u32;
-    let pairwise = if sub_count > 0 { 2u64 } else { 1 };
-
-    // 10! / 1050 = 3456 = 2^7 * 3^3 ~= (3*2*1)^3 * (2*1)^3 * 2
-
-    struct FactHelper {
-        answers_cache: Vec<Option<u64>>
-    }
-    impl FactHelper {
-        fn new(max: usize) -> FactHelper {
-            FactHelper { answers_cache: vec![None; max] }
-        }
-
-        fn fact(&mut self, input: u64) -> u64 {
-            if input == 1 || input == 0 {
-                return 1;
-            } else if let Some(answer) = self.answers_cache[(input - 1) as usize] {
-                return answer;
-            }
-            input * self.fact(input - 1)
-        }
-    }
 
     let mut fact = FactHelper::new(20);
-
-    let numerator = (fact.fact(SUB_SMALL).pow(sub_count) * fact.fact(SUB_BIG).pow(sub_count) * fact.fact(FULL_TEAM).pow(dom_count)) *
-        fact.fact((sub_count + dom_count) as u64) *
-        2 * // This and the "choose" below are wrong and need adjustment.
-        fact.fact((sub_count * 2) as u64)
-            .div_ceil(fact.fact(2) * fact.fact((2 * sub_count).saturating_sub(2) as u64));
+    let internal_permutations = fact.fact(SUB_SMALL).pow(sub_count) *
+        fact.fact(SUB_BIG).pow(sub_count) *
+        fact.fact(FULL_TEAM).pow(dom_count);
+    let numerator = (
+        internal_permutations
+    ) *
+        fact.fact((sub_count + dom_count) as u64) * 2u64.pow(sub_count) *
+        fact.nchoose((2 * sub_count) as u64, 2).div_ceil(2);
     let denominator = fact.fact(teams.iter().sum());
 
+    println!("internal_permutations: {}", internal_permutations);
+    println!("numerator/perm: {}", numerator.div_ceil(internal_permutations));
     println!("Numerator: {}", numerator);
     println!("Denominator: {}", denominator);
     //println!("Answer: 1/{}", denominator.div_euclid(numerator))

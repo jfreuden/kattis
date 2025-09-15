@@ -71,11 +71,13 @@ impl<B: std::io::BufRead, W: std::io::Write> Scenario<B, W> {
                 full
             })
             .unwrap_or_default();
-        writeln!(self.buf_writer, "? {}", mattress_stringlist).unwrap();
+        write!(self.buf_writer, "? ").unwrap();
+        writeln!(self.buf_writer, "{}",mattress_stringlist).unwrap();
         self.buf_writer.flush().unwrap();
     }
 
     /// A version of the `scenario_step` call that answers its own queries for testing purposes
+    #[allow(unused)]
     fn autonomous_step(&mut self, pea_location: u16) {
         let mattress_indices = self.get_split_range();
         self.print_mattress_query(mattress_indices.clone());
@@ -141,11 +143,10 @@ impl<B: std::io::BufRead, W: std::io::Write> Scenario<B, W> {
 
 fn main() {
     let mut stdin = std::io::BufReader::with_capacity(64, std::io::stdin().lock());
-    let stdout = std::io::BufWriter::with_capacity(64, std::io::stdout().lock());
 
     let [mattresses, nights, penalty]: [u16; 3] = read_vec(&mut stdin).try_into().unwrap();
 
-    let mut scenario = Scenario::new(mattresses, nights, penalty, stdin, stdout);
+    let mut scenario = Scenario::new(mattresses, nights, penalty, stdin, std::io::stdout().lock());
     while scenario.configuration.mattresses > 1
         && scenario.configuration.nights > 0
         && scenario.configuration.nights <= nights
@@ -153,7 +154,7 @@ fn main() {
         scenario.scenario_step();
     }
 
-    writeln!(scenario.buf_writer, "! {}", scenario.configuration.offset);
+    writeln!(scenario.buf_writer, "! {}", scenario.configuration.offset).unwrap();
     scenario.buf_writer.flush().unwrap();
 
 }

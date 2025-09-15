@@ -48,7 +48,77 @@ where
 }
 
 fn main() {
-    skener();
+    abovesealevel();
+}
+
+fn abovesealevel() {
+    let input: f64 = read_one();
+    println!("{}", input - 0.3f64);
+}
+
+fn equalshots() {
+    let [first_count, second_count] = read_array();
+    let mut first_milliliters = 0;
+    let mut second_milliliters = 0;
+    for _ in 0..first_count {
+        let [volume, percent]: [u16; 2] = read_array();
+        first_milliliters += volume * (100 - percent);
+    }
+
+    for _ in 0..second_count {
+        let [volume, percent]: [u16; 2] = read_array();
+        second_milliliters += volume * (100 - percent);
+    }
+
+    if first_milliliters == second_milliliters {
+        println!("same");
+    } else {
+        println!("different")
+    }
+}
+
+fn grading() {
+    let grade_boundaries = read_vec().iter().copied().take(5).collect::<Vec::<u16>>();
+    let grade_letter = ["A", "B", "C", "D", "E", "F"];
+    let grade = read_one::<u16>();
+
+    for (bound, letter) in grade_boundaries.iter().copied().zip(grade_letter) {
+        if bound <= grade {
+            println!("{}", letter);
+            break
+        }
+    }
+    if *grade_boundaries.last().unwrap() > grade {
+        println!("{}", grade_letter.last().unwrap());
+    }
+}
+
+fn knotknowledge() {
+    let knot_count = read_one::<u32>();
+    let knots_tested = read_vec::<u32>();
+    let mut knots_learned = std::collections::HashSet::<u32>::with_capacity(knot_count as usize);
+    for knot in read_vec::<u32>() {
+        knots_learned.insert(knot);
+    }
+    for knot in knots_tested {
+        if !knots_learned.contains(&knot) {
+            println!("{}", knot);
+        }
+    }
+}
+
+fn sumkindofproblem() {
+    /*
+    Compute:
+    The sum of the first N positive integers: N*(N+1)/2
+    The sum of the first N odd integers: N*N
+    The sum of the first N even integers: N*(N+1) or (N*N)+N
+     */
+    let datasets = read_one::<u64>();
+    for _ in 0..datasets {
+        let [dataset_id, n]: [u64; 2] = read_array();
+        println!("{dataset_id} {} {} {}", (n*n + n).div_euclid(2), n*n, n*n + n);
+    }
 }
 
 /// Replace each input character with a matrix that is "mag_rows & mag_cols" in dimension

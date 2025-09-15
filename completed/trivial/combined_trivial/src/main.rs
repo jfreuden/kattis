@@ -48,7 +48,61 @@ where
 }
 
 fn main() {
-    mclimb();
+    skener();
+}
+
+/// Replace each input character with a matrix that is "mag_rows & mag_cols" in dimension
+fn skener() {
+    let [rows, columns, row_magnification, column_magnification]: [u32; 4] = read_array();
+
+    let mut output_matrix = vec![vec![' '; (columns * column_magnification) as usize]; (rows * row_magnification) as usize];
+
+    let mut input_matrix = Vec::new();
+    for _ in 0..rows {
+        input_matrix.push(read_str().chars().take(columns as usize).collect::<Vec<char>>());
+    }
+
+    // Go through each "pixel" of the output and remap backward to the input
+    for (row, row_chars) in output_matrix.iter_mut().enumerate() {
+        for (column, char) in row_chars.iter_mut().enumerate() {
+            *char = input_matrix[row.div_euclid(row_magnification as usize)][column.div_euclid(column_magnification as usize)];
+        }
+    }
+
+    for line in output_matrix {
+        println!("{}", line.iter().collect::<String>());
+    }
+}
+
+fn parkingpandemonium() {
+    let circle_time: u32 = read_one();
+    let _irrelevant: u32 = read_one();
+    let circle_count: u32 = read_one();
+    println!("{}", circle_count * circle_time)
+}
+
+fn cosmicpathoptimization() {
+    let temp_count: u32 = read_one();
+    let temperatures = read_vec::<u32>();
+    println!("{}", temperatures.iter().sum::<u32>().div_euclid(temp_count))
+}
+
+fn fizzbuzz() {
+    let [fizz_div, buzz_div, count] = read_array::<u32, 3, _>();
+
+    for i in 1..=count {
+        if i.is_multiple_of(fizz_div) && i.is_multiple_of(buzz_div) {
+            print!("FizzBuzz")
+        } else if i.is_multiple_of(fizz_div) {
+            print!("Fizz")
+        } else if i.is_multiple_of(buzz_div) {
+            print!("Buzz")
+        } else {
+            print!("{}", i)
+        }
+        println!();
+    }
+
 }
 
 fn mclimb() {

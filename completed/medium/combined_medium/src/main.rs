@@ -49,7 +49,84 @@ where
 }
 
 fn main() {
-    remoatseating();
+    hastyhash();
+}
+
+fn extended_gcd(a: i64, b: i64) -> (i64, i64, i64) {
+    if b == 0 {
+        (a, 1, 0)
+    } else {
+        let (g, x1, y1) = extended_gcd(b, a % b);
+        (g, y1, x1 - (a / b) * y1)
+    }
+}
+
+/// Compute modular multiplicative inverse of `a` modulo `m`.
+/// Returns Some(inverse) if exists, otherwise None.
+/// Works for modulus m = 2^32 here with u32 wrapping arithmetic.
+fn modinv(a: u32) -> Option<u32> {
+    let m = 1u64 << 32;
+    let (g, x, _) = extended_gcd(a as i64, m as i64);
+    if g != 1 {
+        None // No inverse if a and m are not coprime
+    } else {
+        // x might be negative, so convert to positive modulo
+        Some(((x.rem_euclid(m as i64)) as u64) as u32)
+    }
+}
+
+/// Given wrapped multiply result `r` and known multiplier `m`,
+/// compute and return the "unmultiplied" original value.
+/// Returns None if modular inverse does not exist.
+fn unmultiply(r: u32, m: u32) -> Option<u32> {
+    modinv(m).map(|inv| inv.wrapping_mul(r))
+}
+
+fn hastyhash() {
+    const FNV_OFFSET_BASIS: u32 = 2166136261;
+    const FNV_PRIME: u32 = 2u32.pow(24) + 2u32.pow(8) + 147;
+
+    fn hash(chars: &[u8]) -> u32 {
+        let mut hash = FNV_OFFSET_BASIS;
+        println!("Starting: {:x}", FNV_OFFSET_BASIS);
+
+        for &char in chars {
+            print!("hash: {:x}, ", hash);
+            hash ^= char as u32;
+            print!("xor'd: {:x}, ", hash);
+            hash = hash.wrapping_mul(FNV_PRIME);
+            println!("mul'd: {:x}", hash);
+        }
+        hash
+    }
+
+    let hash_to_crack: u32 = read_one();
+    let mut valid_words = Vec::<String>::new();
+    for c0 in 'A'..='Z' {
+        print!("{}\r", c0);
+        for c1 in 'A'..='Z' {
+            for c2 in 'A'..='Z' {
+                for c3 in 'A'..='Z' {
+                    for c4 in 'A'..='Z' {
+                        let current_str = [c0, c1, c2, c3, c4].iter().collect::<String>();
+                        if hash(current_str.as_str().as_ref()) == hash_to_crack {
+                            valid_words.push([c0, c1, c2, c3, c4].iter().collect::<String>());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if valid_words.is_empty() {
+        println!("impossible");
+    } else {
+        valid_words.sort();
+        for word in valid_words {
+            println!("{}", word);
+        }
+    }
+
 }
 
 struct FactHelper {

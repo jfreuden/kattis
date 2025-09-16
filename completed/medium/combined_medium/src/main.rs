@@ -75,7 +75,14 @@ impl FactHelper {
     }
 }
 
-
+fn gcd(mut a: u64, mut b: u64) -> u64 {
+    while b != 0 {
+        let temp = b;
+        b = a % b;
+        a = temp;
+    }
+    a
+}
 
 fn remoatseating() {
     const SUB_SMALL: u64 = 2;
@@ -85,56 +92,18 @@ fn remoatseating() {
     let _team_count: u64 = read_one();
     let teams = read_vec::<u64>();
 
-    let sub_count = teams.iter().filter(|&&x| x == SUB_SMALL).count() as u32;
+    let mini_count = teams.iter().filter(|&&x| x == SUB_SMALL).count() as u32;
+    let sub_count = teams.iter().filter(|&&x| x == SUB_BIG).count() as u32;
     let dom_count = teams.iter().filter(|&&x| x == FULL_TEAM).count() as u32;
 
     let mut fact = FactHelper::new(20);
-    let internal_permutations = fact.fact(SUB_SMALL).pow(sub_count) *
+    let internal_permutations = fact.fact(SUB_SMALL).pow(mini_count) *
         fact.fact(SUB_BIG).pow(sub_count) *
         fact.fact(FULL_TEAM).pow(dom_count);
-    let numerator = (
-        internal_permutations
-    ) *
-        fact.fact((sub_count + dom_count) as u64) * 2u64.pow(sub_count) *
-        fact.nchoose((2 * sub_count) as u64, 2).div_ceil(2);
+    let team_configurations = fact.fact((mini_count + sub_count + dom_count) as u64);
+    let numerator = internal_permutations * team_configurations;
     let denominator = fact.fact(teams.iter().sum());
 
-    println!("internal_permutations: {}", internal_permutations);
-    println!("numerator/perm: {}", numerator.div_ceil(internal_permutations));
-    println!("Numerator: {}", numerator);
-    println!("Denominator: {}", denominator);
-    //println!("Answer: 1/{}", denominator.div_euclid(numerator))
-    println!("1/{}", denominator.div_euclid(numerator));
-
-
-
-
-    /*
-    Each subgroup has their own permutations of seating
-        each group of 2 has 2! permutations.
-        each group of 3 has 3! permutations.
-        each group of 5 has 5! permutations.
-
-    where each team block sits is a normal permutation.
-
-    there are 2 ways that each 2-3 pair can go together.
-
-    each subgroup has choices. I think this is the deal. it's like 4 choose 2 for the 2nd.
-    
-    
-    or it is a trick? are the 2's and 3's supposed to be joined?
-    Each group of 5 has 5! permutations; that's not possible in the second example, so it's not that kind of trick.
-
-
-    (2!)^(subcount) *
-    (3!)^(subcount) *
- {  (4 choose 2) *
- {  2 ways of fitting 2v3 together *
-    N! ways of fitting N full teams together.
-
-
-
-     */
-
-
+    let divisor = gcd(numerator, denominator);
+    println!("{}/{}", numerator / divisor , denominator / divisor);
 }

@@ -48,7 +48,62 @@ where
 }
 
 fn main() {
-    fastestestfunction();
+    matchstickmen();
+}
+
+fn matchstickmen() {
+    // Do I want to solve using the triangles or the rhombuses?
+    // I know how to get the triangle heights trivially. But then in the next layer, the bottom isn't parallel.
+    // i.e., the triangle is rotated. So then I need some way to generally solve where two circles of length l intersect.
+
+    // Draw a straight line from me to you, compute its vector and get distance d.
+    // Using hypotenuse t (matchstick_length) and d/2, you get the height of this (rotated) triangle h.
+    // make vector for this h, perpendicular to the other vector between me and you. The endpoint is the top of this triangle.
+
+    let [_number_of_bottom_row_matchsticks, matchstick_length] = read_array::<f64, 2, _>();
+    let foot_positions = read_vec::<f64>();
+
+    let mut tops = std::iter::once(0f64).chain(foot_positions).scan(
+        0f64,
+        |start, x| {
+            let out_x = x + *start;
+            *start = out_x;
+            Some((out_x, 0f64))
+        }).collect::<Vec<(f64, f64)>>();
+
+
+    while tops.len() > 1 {
+        let mut next_tops = Vec::<(f64, f64)>::with_capacity(tops.len() - 1);
+
+        for window in tops.windows(2) {
+            let [(me_x, me_y), (you_x, you_y)]: [(f64, f64); 2] = window.try_into().unwrap();
+            let dx = you_x - me_x;
+            let dy = you_y - me_y;
+            let d = (dx.powi(2) + dy.powi(2)).sqrt();
+            let d2_2 = (dx.powi(2) + dy.powi(2)) / 4f64; // d, but precomputed (d/ 2)^2 for precision reasons.
+            let h = (matchstick_length.powi(2) - d2_2).sqrt();
+
+            let middle_x = me_x + (dx / 2f64);
+            let middle_y = me_y + (dy / 2f64);
+            let norm_dx = dx / d;
+            let norm_dy = dy / d;
+            let perp_dx = -norm_dy;
+            let perp_dy = norm_dx;
+
+            let next_x = middle_x + h * perp_dx;
+            let next_y = middle_y + h * perp_dy;
+
+            // println!("\t{:?}", (next_x, next_y));
+            // println!("{:?}\t{:?}", (me_x, me_y), (you_x, you_y));
+
+            next_tops.push((next_x, next_y));
+        }
+
+        tops = next_tops;
+    }
+
+    let [_peak_x, tower_height]: [f64; 2] = tops[0].into();
+    println!("{}", tower_height);
 }
 
 fn fastestestfunction() {

@@ -49,7 +49,39 @@ where
 }
 
 fn main() {
-    hastyhash();
+    lotsofliquid();
+}
+
+fn lotsofliquid() {
+    // Precision test:
+    // println!("{} {}",
+    //          10f64.powi(9).powi(3) * 10f64.powi(5),
+    //          (10f64.powi(9).powi(3) * 10f64.powi(5)).powf(3f64.recip())
+    // );
+    let _container_count: u64 = read_one();
+    let containers: Vec<f64> = read_vec();
+    // a^3 + b^3 + c^3 + ... = sidelen^3
+
+    println!(
+        "{}",
+        containers.iter().map(|&x| x.powi(3)).sum::<f64>().powf(3f64.recip()),
+    );
+}
+
+fn atm_maintenance() {
+    let [_people, mut money]: [u32; 2] = read_array();
+    let withdrawals = read_vec::<u32>();
+
+    let mut result_string = String::new();
+    for request in withdrawals {
+        if request <= money {
+            money -= request;
+            result_string.push('1');
+        } else {
+            result_string.push('0');
+        }
+    }
+    println!("{}", result_string);
 }
 
 fn hastyhash() {
@@ -73,8 +105,8 @@ fn hastyhash() {
             for c2 in 'A'..='Z' {
                 for c3 in 'A'..='Z' {
                     for c4 in 'A'..='Z' {
-                        let current_str = [c0, c1, c2, c3, c4].iter().collect::<String>();
-                        if hash(current_str.as_str().as_ref()) == hash_to_crack {
+                        let current_str = &[c0 as u8, c1 as u8, c2 as u8, c3 as u8, c4 as u8];
+                        if hash(current_str) == hash_to_crack {
                             valid_words.push([c0, c1, c2, c3, c4].iter().collect::<String>());
                         }
                     }

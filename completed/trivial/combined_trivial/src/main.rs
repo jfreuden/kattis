@@ -48,7 +48,49 @@ where
 }
 
 fn main() {
-    abovesealevel();
+    fastestestfunction();
+}
+
+fn fastestestfunction() {
+    let [before_percent, after_percent]: [f64; 2] = read_array();
+    let before = before_percent / 100.0;
+    let after = after_percent / 100.0;
+    /*
+    foo + other = total
+    foo / total = A
+    new_foo + other = new_total
+    new_foo / new_total = B
+    ---
+    foo = A * total
+    new_foo = B * new_total
+
+    A * total + other = total
+    B * new_total + other = new_total
+
+    (1 - A) * total = other
+    (1 - B) * new_total = other
+
+    ANSWER: new_foo / foo = (B * new_total) / (A * total)
+
+    (B * new_total) / (A * total)
+
+    --
+
+    other = (1 - A) * total = (1 - B) * new_total
+
+    new_total = (1-A)/(1-B)*total;
+    (B * ((1-A)/(1-B))*total) / (A * total)
+    (B * ((1-A)/(1-B))) / (A)
+
+    B/A * (1-A)/(1-B)
+
+    Answer is actually inverse because speedup. so A/B * (1-B)/(1-A)
+     */
+
+    println!(
+        "{}",
+        (before / after) * ((1.0 - after) / (1.0 - before))
+    );
 }
 
 fn abovesealevel() {

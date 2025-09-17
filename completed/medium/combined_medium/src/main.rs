@@ -49,7 +49,27 @@ where
 }
 
 fn main() {
-    lotsofliquid();
+    alice();
+}
+
+fn alice() {
+    // This one looks complicated but is deceptively simple. The color is the value mod k.
+    // simply determine if the egg color at your desired position is equal to yours
+    // caveat: the number on the eggs aren't the end indices.
+
+    let [_number_of_eggs, k]: [u64; 2] = read_array();
+    let eggs = read_vec::<u64>();
+    let mut sorted_eggs = eggs.clone();
+    sorted_eggs.sort();
+
+    if sorted_eggs.iter().enumerate().all(|(index, &x)| {
+        let swap_candidate_color = eggs[index] % k;
+        swap_candidate_color == x % k
+    }) {
+        println!("YES");
+    } else {
+        println!("NO");
+    }
 }
 
 fn lotsofliquid() {

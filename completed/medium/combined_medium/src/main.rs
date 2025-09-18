@@ -66,6 +66,30 @@ fn repeatedsubsequence() {
     hash table with letters as keys? Then sorted vectors with indices?
     then the string is automatic from "look at the first character in this string", exit when there are fewer characters left in the string
 
+1
+11
+subsequence
+
+subseque
+    note that the "e" at the end is allowed to trade between second-to-last, dropping all the other characters between
+
+    s  u  b  s  e  q  u  e  n  c  e
+    0  1  2  3  4  5  6  7  8  9  10
+    s  u  b  s  e  q  u  e
+
+    subsequence
+    u, []   /        [1]    /        [6]
+    u, [1]  /        [6]    /        []
+    s, []   /        [0]    /        [3]
+    s, [0]  /        [3]    /        []
+    n, []   /        [8]    /        []
+    q, []   /        [5]    /        []
+    c, []   /        [9]    /        []
+    e, []   /        [4]    /        [7, 10]
+    e, [4]  /        [7]    /        [10]
+    e, [4, 7]       /        [10]   /        []
+    b, []   /        [2]    /        []
+
      */
 
     let test_cases: usize = read_one();

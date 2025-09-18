@@ -119,7 +119,34 @@ subseque
 
         // TODO: In theory if I iterate over the original string's chars (without dupes) paired with index info, I can greatly short-circuit when I already know I can't find a shorter string.
         // BONUS TODO: within the character search, can I short-circuit? Since it isn't technically making the string shorter I'm not sure.
-        for (_character, character_locations) in charmap {
+
+        // To iterate over the original string length while using the hashmap structure:
+        // Enumerate the string characters with indices, sort by the character part, dedup by character part, resort by the index part.
+        let mut enumerated_chars: Vec<(usize, char)> = input_string.chars().enumerate().collect();
+        println!("{:?}", enumerated_chars);
+
+        enumerated_chars.sort_by(|(i, a), (j, b)| a.cmp(b).then(i.cmp(j)));
+        println!("{:?}", enumerated_chars);
+
+        enumerated_chars.dedup_by(|(_, a), (_, b)| a.eq(&b));
+        println!("{:?}", enumerated_chars);
+
+
+        enumerated_chars.sort_by(|(i, _), (j, _)| i.cmp(j));
+        println!("{:?}", enumerated_chars);
+
+
+        for (index, character) in enumerated_chars {
+            if input_string.len() - index < longest_len {
+                // FIXME: This has proven flawed logic. Examine abcdefghiabcdefghiabcdefghijjjjjjjjjzaz.
+                // FIXME: when I get to z, I assume that because there are 3 chars left that I can't beat the half-size, but actually I can remove one "za" and get almost 100%
+                println!("index: {index} char: {character} longest_so_far: {longest_len}");
+                break;
+            }
+        let character_locations = charmap.entry(character).or_default();
+
+        // for (_character, character_locations) in charmap {
+            println!("{}, {:?}", character, character_locations);
             if character_locations.len() < 2 {
                 continue;
             }
@@ -132,7 +159,7 @@ subseque
                     continue;
                 }
                 // println!("{}, {:?} \t/\t {:?} \t/\t {:?}", _character, first_part, removed, second_part);
-                // println!("{}, {} + {}", _character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
+                // println!("{}, {} + {}", character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
                 // TODO: refactor the indexing gore to be less confusing.
                 let candidate_len = removed[0] + input_string.len() - *second_part.first().unwrap_or(&input_string.len());
                 if candidate_len > longest_len {

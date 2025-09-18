@@ -117,25 +117,36 @@ subseque
             charmap.entry(character).or_default().push(i);
         }
 
+        // TODO: In theory if I iterate over the original string's chars (without dupes) paired with index info, I can greatly short-circuit when I already know I can't find a shorter string.
+        // BONUS TODO: within the character search, can I short-circuit? Since it isn't technically making the string shorter I'm not sure.
+        for (_character, character_locations) in charmap {
+            if character_locations.len() < 2 {
+                continue;
+            }
 
-        // TODO: not terribly sure how to guarantee I'm picking the right strings
-        // TODO: this doesn't account for supporting holes in the ranges (like "aba {ccd, a, jji} asadka" -> "aba.asadka")
-        /*
-        Maybe I can account for it still by considering every possible hole and when that hole is there it would be 0..i then j..k
-         */
-        for (character, character_locations) in charmap {
-            // Thinking I do split slices or something to be able to get a handle on all the pieces
             for i in 0..character_locations.len() {
                 let (first_part, second_part) = character_locations.split_at(i + 1);
                 let (first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
-                println!("{}, {:?} \t/\t {:?} \t/\t {:?}", character, first_part, removed, second_part);
-                println!("{}, {} + {}", character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
-                println!("ALT: {}, {} + {} + {}", character,  &input_string[..*first_part.last().unwrap_or(&removed[0])], &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
 
+                if second_part.is_empty() {
+                    continue;
+                }
+                // println!("{}, {:?} \t/\t {:?} \t/\t {:?}", _character, first_part, removed, second_part);
+                // println!("{}, {} + {}", _character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
+                // TODO: refactor the indexing gore to be less confusing.
+                let candidate_len = removed[0] + input_string.len() - *second_part.first().unwrap_or(&input_string.len());
+                if candidate_len > longest_len {
+                    longest_len = candidate_len;
+                    longest_indices = (removed[0], *second_part.first().unwrap_or(&input_string.len()))
+                }
             }
         }
+        if longest_len > 0 {
+            println!("{}{}", &input_string[..longest_indices.0], &input_string[longest_indices.1..]);
+        } else {
+            println!("-1");
+        }
     }
-
 }
 
 fn rectsect() {

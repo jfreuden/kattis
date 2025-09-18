@@ -49,7 +49,108 @@ where
 }
 
 fn main() {
-    alice();
+    repeatedsubsequence();
+}
+
+// Note: this is technically a 2.4 point easy problem, but it seems tricky to me, so putting it in medium.
+fn repeatedsubsequence() {
+    // The goal is to find the longest "subsequence" where "subsequence" here means that you can form it from multiple sets of indices from the larger string
+    // note: the goal isn't to find the longest span of indices, but rather the longest subsequence itself.
+}
+
+fn rectsect() {
+    let test_case_count: usize = read_one();
+
+    for _ in 0..test_case_count {
+        let rectangle_count: usize = read_one();
+
+        let mut intersection_left = 0;
+        let mut intersection_top = u32::MAX;
+        let mut intersection_right = u32::MAX;
+        let mut intersection_bottom = 0;
+
+        for _ in 0..rectangle_count {
+            let [left, top, right, bottom]: [u32; 4] = read_array();
+
+            // println!("{} {} {} {}", intersection_left, intersection_top, intersection_right, intersection_bottom);
+
+            intersection_left = std::cmp::max(intersection_left, left);
+            intersection_top = std::cmp::min(intersection_top, top);
+            intersection_right = std::cmp::min(intersection_right, right);
+            intersection_bottom = std::cmp::max(intersection_bottom, bottom);
+        }
+
+        // println!("{} {} {} {}", intersection_left, intersection_top, intersection_right, intersection_bottom);
+
+        if intersection_top == u32::MAX ||
+            intersection_right == u32::MAX ||
+            intersection_left > intersection_right ||
+            intersection_bottom > intersection_top
+        {
+            println!("0");
+        } else {
+            let area = (intersection_right - intersection_left) * (intersection_top - intersection_bottom);
+            println!("{}", area);
+        }
+    }
+}
+
+
+fn brentering() {
+    const VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
+
+    let subject = read_str();
+    let vowel_splits = subject.trim_end_matches(|c: char| !VOWELS.contains(&c));
+    println!("{}ntry", vowel_splits);
+}
+
+fn wherehasmylittledoggone() {
+    let [ear_length, tail_length]: [f32; 2] = read_array();
+    let ear_tail_ratio = ear_length / tail_length;
+
+    let breed_count = read_one();
+
+    let mut match_found = false;
+
+    for _ in 0..breed_count {
+        let name = read_str();
+        let [ear_to_tail_length_ratio_low, ear_to_tail_length_ratio_high, ear_length_low, ear_length_high]: [f32; 4] = read_array();
+
+        if ear_to_tail_length_ratio_low <= ear_tail_ratio && ear_tail_ratio <= ear_to_tail_length_ratio_high &&
+            ear_length_low <= ear_length && ear_length <= ear_length_high {
+            println!("{}", name);
+            match_found = true;
+        }
+    }
+
+    if !match_found {
+        println!("Mutt");
+    }
+}
+
+fn everysecond() {
+    let time1 = read_str();
+    let time2 = read_str();
+
+    let first_time = time1.split(" : ").map(|x| x.parse::<u32>().unwrap());
+    let second_time = time2.split(" : ").map(|x| x.parse::<u32>().unwrap());
+
+    let mut offsets = vec![60, 60, 24];
+    let seconds = first_time.zip(second_time).fold(1u32, |accumulator, (first, second)| {
+        // Handle wrapping around the hour / time boundary
+        let block_size = offsets.pop().unwrap();
+        if second < first {
+            accumulator.saturating_sub(1) * block_size + (second + block_size - first)
+        } else {
+            accumulator * block_size + (second - first)
+        }
+    });
+
+    if seconds > 60u32 * 60u32 * 24u32 {
+        println!("{}", seconds - 60u32 * 60u32 * 24u32);
+    } else {
+        println!("{}", seconds);
+    }
 }
 
 fn alice() {

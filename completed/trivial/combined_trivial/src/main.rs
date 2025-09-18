@@ -48,7 +48,29 @@ where
 }
 
 fn main() {
-    matchstickmen();
+    threeblindmice();
+}
+
+fn threeblindmice() {
+    let initial_distance: u64 = read_one();
+    let speed_of_wife: u64 = read_one();
+    let speed_of_mouse_one: u64 = read_one();
+    let speed_of_mouse_two: u64 = read_one();
+    let speed_of_mouse_three: u64 = read_one();
+
+    // Solve the three pairs equations
+    // initial_distance - speed_of_wife * t = speed_of_mouse_one * t
+    // therefore it's the t = d / (sum of speeds), then distance is speed * t
+
+    let intercept_time_one = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_one as f32);
+    let intercept_time_two = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_two as f32);
+    let intercept_time_three = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_three as f32);
+
+    let intercept_point_one = (speed_of_mouse_one as f32) * intercept_time_one;
+    let intercept_point_two = (speed_of_mouse_two as f32) * intercept_time_two;
+    let intercept_point_three = (speed_of_mouse_three as f32) * intercept_time_three;
+
+    println!("{}", (2f32 * intercept_point_one + 2f32 * intercept_point_two + 2f32 * intercept_point_three).round() as u32);
 }
 
 fn matchstickmen() {

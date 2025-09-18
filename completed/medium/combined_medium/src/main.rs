@@ -90,6 +90,18 @@ subseque
     e, [4, 7]       /        [10]   /        []
     b, []   /        [2]    /        []
 
+    define this to be such that the center value is the letter we cut out / swap out.
+    Suppose indices i, j, k are indices for last of _this_ char that stays in, the first char to swap out, and the next char to swap with respectively.
+    With that in mind.
+    That means I should take `input_string[0..j] + input_string[k..]
+
+
+    alllllmost. I get this:
+    e, [4, 7]       /        [10]   /        []
+    e, subsequenc +
+
+    so it's not trimming away the 'nc' that we can't keep when the e moves over.
+
      */
 
     let test_cases: usize = read_one();
@@ -117,7 +129,8 @@ subseque
                 let (first_part, second_part) = character_locations.split_at(i + 1);
                 let (first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
                 println!("{}, {:?} \t/\t {:?} \t/\t {:?}", character, first_part, removed, second_part);
-
+                println!("{}, {} + {}", character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
+                println!("ALT: {}, {} + {} + {}", character,  &input_string[..*first_part.last().unwrap_or(&removed[0])], &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
 
             }
         }

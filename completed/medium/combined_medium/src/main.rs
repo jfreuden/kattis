@@ -56,6 +56,49 @@ fn main() {
 fn repeatedsubsequence() {
     // The goal is to find the longest "subsequence" where "subsequence" here means that you can form it from multiple sets of indices from the larger string
     // note: the goal isn't to find the longest span of indices, but rather the longest subsequence itself.
+    // Problem can be transformed into "longest string where a constituent character is repeated"
+    // remove the backmost character which is in the string multiple times... except not.
+    // It's specifically a string such that swapping one letter to another brings the rest of the pieces.
+
+    /*
+    I almost think that the plan should be to go off of distances between duplicate letters.
+
+    hash table with letters as keys? Then sorted vectors with indices?
+    then the string is automatic from "look at the first character in this string", exit when there are fewer characters left in the string
+
+     */
+
+    let test_cases: usize = read_one();
+    for _ in 0..test_cases {
+        let _string_len: usize = read_one();
+        let input_string = read_str();
+
+        let mut longest_indices: (usize, usize) = (0, 0);
+        let mut longest_len: usize = 0;
+
+        let mut charmap = std::collections::HashMap::<char, Vec<usize>>::new();
+        for (i, character) in input_string.chars().enumerate() {
+            charmap.entry(character).or_default().push(i);
+        }
+
+
+        // TODO: not terribly sure how to guarantee I'm picking the right strings
+        // TODO: this doesn't account for supporting holes in the ranges (like "aba {ccd, a, jji} asadka" -> "aba.asadka")
+        /*
+        Maybe I can account for it still by considering every possible hole and when that hole is there it would be 0..i then j..k
+         */
+        for (character, character_locations) in charmap {
+            // Thinking I do split slices or something to be able to get a handle on all the pieces
+            for i in 0..character_locations.len() {
+                let (first_part, second_part) = character_locations.split_at(i + 1);
+                let (first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
+                println!("{}, {:?} \t/\t {:?} \t/\t {:?}", character, first_part, removed, second_part);
+
+
+            }
+        }
+    }
+
 }
 
 fn rectsect() {

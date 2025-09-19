@@ -89,6 +89,36 @@ fn do_fenwick_operations(fenwick: &mut FenwickTree, operations_list: Vec<Op>) ->
     answers
 }
 
+fn parse_bytes(bytes: &[u8]) -> i64 {
+    let mut index = 0usize;
+    while index < bytes.len() {
+        let b = unsafe { *bytes.get_unchecked(index) };
+        if b > b' ' { break; }
+        index += 1;
+    }
+    let is_negative = if unsafe { *bytes.get_unchecked(index) } == b'-' {
+        index += 1;
+        true
+    } else {
+        false
+    };
+    let mut v: usize = 0;
+    while index < bytes.len() {
+        let b = unsafe { *bytes.get_unchecked(index) };
+        if b.is_ascii_digit() {
+            v = v * 10 + (b - b'0') as usize;
+            index += 1;
+        } else {
+            break;
+        }
+    }
+    if is_negative {
+        -(v as i64)
+    } else {
+        v as i64
+    }
+}
+
 fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source: W) {
     let mut bufreader = std::io::BufReader::new(read_source);
     let [array_len, operations_count]: [usize; 2] = read_vec(&mut bufreader).try_into().unwrap();
@@ -101,13 +131,13 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
         match op.len() {
             2 => {
                 // Query Operation
-                let query_index = op[1].parse::<IndexType>().unwrap();
+                let query_index = parse_bytes(op[1].as_bytes()) as IndexType;
                 operations_list.push(Op::new_query(query_index));
             }
             3 => {
                 // Increment Operation
-                let increment_index = op[1].parse::<IndexType>().unwrap();
-                let increment_value = op[2].parse::<ValueType>().unwrap();
+                let increment_index = parse_bytes(op[1].as_bytes()) as IndexType;
+                let increment_value = parse_bytes(op[2].as_bytes()) as ValueType;
                 operations_list.push(Op::new_increment(increment_index, increment_value));
             }
             _ => break,

@@ -48,8 +48,81 @@ where
     try_read_array().unwrap()
 }
 
+macro_rules! kattis_struct {
+    ($name:ident { $($field_name:ident : $field_type:ty),* }) => {
+        #[derive(Debug, PartialEq, Clone)]
+        pub struct $name {
+            $($field_name : $field_type),*
+        }
+        impl std::str::FromStr for $name {
+            type Err = &'static str;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let parts: Vec<&str> = s.split(' ').collect();
+                if parts.len() != macro_count_args!($($field_name),*) {
+                    return Err("wrong number of fields");
+                }
+                let mut iter = parts.into_iter();
+                Ok($name {
+                    $(
+                        $field_name: iter.next().unwrap().parse::<$field_type>().map_err(|_| "parse error")?
+                    ),*
+                })
+            }
+        }
+    };
+    }
+
+macro_rules! macro_count_args {
+    () => (0usize);
+    ($head:ident $(, $tail:ident)*) => (1usize + macro_count_args!($($tail),*));
+}
+
 fn main() {
-    repeatedsubsequence();
+    glitchingscreen();
+}
+
+fn glitchingscreen() {
+    kattis_struct!(Screen {
+        height: usize,
+        width: usize,
+        train_stop_count: u32
+    });
+
+    let screen: Screen = read_one();
+
+    let mut pixel_to_stop_mapping = vec![None; screen.height * screen.width as usize];
+    for train_stop in 0..screen.train_stop_count {
+        let mut perfect_pixels = String::with_capacity(screen.height * screen.width);
+        for _ in 0..screen.height {
+            perfect_pixels.push_str(read_str().as_str())
+        }
+
+        for (mapping, pixel) in pixel_to_stop_mapping.iter_mut().zip(perfect_pixels.chars()) {
+            if mapping.is_some() {
+                // non-unique, set pixel to ambiguous
+                *mapping = Some(-1);
+            }
+        }
+
+    }
+
+    // Using the screen info, read the incoming lines and infer which pixels uniquely belong to each train stop.
+    // Somehow determine how to see which pixels to check.
+
+    /*
+    Proposed algorithm. A grid of Option<something> or maybe i32. as you read the stops in, if bloom == None then set bloom to Some(index), if bloom > Some(0) set bloom to Some(-1)
+    when you read in the screen, if a pixel is on, check its bloom. iff 1, check match. if match == None, then set match, otherwise check if match is equal to index.
+
+    this algorithm is flawed: Consider A, B, C below:
+    XXX  XXX ...
+    XX.  .X. ...
+    X..  .X. XXX
+
+    observe the middle bar. we may not be able to tell for each pixel which stop is next, but we can use two pixels to infer and collectively rule out the wrong two.
+    :|
+    that means this will be longer, boo.
+
+     */
 }
 
 // Note: this is technically a 2.4 point easy problem, but it seems tricky to me, so putting it in medium.
@@ -61,48 +134,48 @@ fn repeatedsubsequence() {
     // It's specifically a string such that swapping one letter to another brings the rest of the pieces.
 
     /*
-    I almost think that the plan should be to go off of distances between duplicate letters.
+        I almost think that the plan should be to go off of distances between duplicate letters.
 
-    hash table with letters as keys? Then sorted vectors with indices?
-    then the string is automatic from "look at the first character in this string", exit when there are fewer characters left in the string
+        hash table with letters as keys? Then sorted vectors with indices?
+        then the string is automatic from "look at the first character in this string", exit when there are fewer characters left in the string
 
-1
-11
-subsequence
-
-subseque
-    note that the "e" at the end is allowed to trade between second-to-last, dropping all the other characters between
-
-    s  u  b  s  e  q  u  e  n  c  e
-    0  1  2  3  4  5  6  7  8  9  10
-    s  u  b  s  e  q  u  e
-
+    1
+    11
     subsequence
-    u, []   /        [1]    /        [6]
-    u, [1]  /        [6]    /        []
-    s, []   /        [0]    /        [3]
-    s, [0]  /        [3]    /        []
-    n, []   /        [8]    /        []
-    q, []   /        [5]    /        []
-    c, []   /        [9]    /        []
-    e, []   /        [4]    /        [7, 10]
-    e, [4]  /        [7]    /        [10]
-    e, [4, 7]       /        [10]   /        []
-    b, []   /        [2]    /        []
 
-    define this to be such that the center value is the letter we cut out / swap out.
-    Suppose indices i, j, k are indices for last of _this_ char that stays in, the first char to swap out, and the next char to swap with respectively.
-    With that in mind.
-    That means I should take `input_string[0..j] + input_string[k..]
+    subseque
+        note that the "e" at the end is allowed to trade between second-to-last, dropping all the other characters between
+
+        s  u  b  s  e  q  u  e  n  c  e
+        0  1  2  3  4  5  6  7  8  9  10
+        s  u  b  s  e  q  u  e
+
+        subsequence
+        u, []   /        [1]    /        [6]
+        u, [1]  /        [6]    /        []
+        s, []   /        [0]    /        [3]
+        s, [0]  /        [3]    /        []
+        n, []   /        [8]    /        []
+        q, []   /        [5]    /        []
+        c, []   /        [9]    /        []
+        e, []   /        [4]    /        [7, 10]
+        e, [4]  /        [7]    /        [10]
+        e, [4, 7]       /        [10]   /        []
+        b, []   /        [2]    /        []
+
+        define this to be such that the center value is the letter we cut out / swap out.
+        Suppose indices i, j, k are indices for last of _this_ char that stays in, the first char to swap out, and the next char to swap with respectively.
+        With that in mind.
+        That means I should take `input_string[0..j] + input_string[k..]
 
 
-    alllllmost. I get this:
-    e, [4, 7]       /        [10]   /        []
-    e, subsequenc +
+        alllllmost. I get this:
+        e, [4, 7]       /        [10]   /        []
+        e, subsequenc +
 
-    so it's not trimming away the 'nc' that we can't keep when the e moves over.
+        so it's not trimming away the 'nc' that we can't keep when the e moves over.
 
-     */
+         */
 
     let test_cases: usize = read_one();
     for _ in 0..test_cases {
@@ -126,7 +199,7 @@ subseque
 
             for i in 0..character_locations.len() {
                 let (first_part, second_part) = character_locations.split_at(i + 1);
-                let (first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
+                let (_first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
 
                 if second_part.is_empty() {
                     continue;
@@ -134,15 +207,23 @@ subseque
                 // println!("{}, {:?} \t/\t {:?} \t/\t {:?}", _character, first_part, removed, second_part);
                 // println!("{}, {} + {}", _character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
                 // TODO: refactor the indexing gore to be less confusing.
-                let candidate_len = removed[0] + input_string.len() - *second_part.first().unwrap_or(&input_string.len());
+                let candidate_len = removed[0] + input_string.len()
+                    - *second_part.first().unwrap_or(&input_string.len());
                 if candidate_len > longest_len {
                     longest_len = candidate_len;
-                    longest_indices = (removed[0], *second_part.first().unwrap_or(&input_string.len()))
+                    longest_indices = (
+                        removed[0],
+                        *second_part.first().unwrap_or(&input_string.len()),
+                    )
                 }
             }
         }
         if longest_len > 0 {
-            println!("{}{}", &input_string[..longest_indices.0], &input_string[longest_indices.1..]);
+            println!(
+                "{}{}",
+                &input_string[..longest_indices.0],
+                &input_string[longest_indices.1..]
+            );
         } else {
             println!("-1");
         }
@@ -173,19 +254,19 @@ fn rectsect() {
 
         // println!("{} {} {} {}", intersection_left, intersection_top, intersection_right, intersection_bottom);
 
-        if intersection_top == u32::MAX ||
-            intersection_right == u32::MAX ||
-            intersection_left > intersection_right ||
-            intersection_bottom > intersection_top
+        if intersection_top == u32::MAX
+            || intersection_right == u32::MAX
+            || intersection_left > intersection_right
+            || intersection_bottom > intersection_top
         {
             println!("0");
         } else {
-            let area = (intersection_right - intersection_left) * (intersection_top - intersection_bottom);
+            let area =
+                (intersection_right - intersection_left) * (intersection_top - intersection_bottom);
             println!("{}", area);
         }
     }
 }
-
 
 fn brentering() {
     const VOWELS: [char; 5] = ['a', 'e', 'i', 'o', 'u'];
@@ -205,10 +286,18 @@ fn wherehasmylittledoggone() {
 
     for _ in 0..breed_count {
         let name = read_str();
-        let [ear_to_tail_length_ratio_low, ear_to_tail_length_ratio_high, ear_length_low, ear_length_high]: [f32; 4] = read_array();
+        let [
+            ear_to_tail_length_ratio_low,
+            ear_to_tail_length_ratio_high,
+            ear_length_low,
+            ear_length_high,
+        ]: [f32; 4] = read_array();
 
-        if ear_to_tail_length_ratio_low <= ear_tail_ratio && ear_tail_ratio <= ear_to_tail_length_ratio_high &&
-            ear_length_low <= ear_length && ear_length <= ear_length_high {
+        if ear_to_tail_length_ratio_low <= ear_tail_ratio
+            && ear_tail_ratio <= ear_to_tail_length_ratio_high
+            && ear_length_low <= ear_length
+            && ear_length <= ear_length_high
+        {
             println!("{}", name);
             match_found = true;
         }
@@ -227,15 +316,17 @@ fn everysecond() {
     let second_time = time2.split(" : ").map(|x| x.parse::<u32>().unwrap());
 
     let mut offsets = vec![60, 60, 24];
-    let seconds = first_time.zip(second_time).fold(1u32, |accumulator, (first, second)| {
-        // Handle wrapping around the hour / time boundary
-        let block_size = offsets.pop().unwrap();
-        if second < first {
-            accumulator.saturating_sub(1) * block_size + (second + block_size - first)
-        } else {
-            accumulator * block_size + (second - first)
-        }
-    });
+    let seconds = first_time
+        .zip(second_time)
+        .fold(1u32, |accumulator, (first, second)| {
+            // Handle wrapping around the hour / time boundary
+            let block_size = offsets.pop().unwrap();
+            if second < first {
+                accumulator.saturating_sub(1) * block_size + (second + block_size - first)
+            } else {
+                accumulator * block_size + (second - first)
+            }
+        });
 
     if seconds > 60u32 * 60u32 * 24u32 {
         println!("{}", seconds - 60u32 * 60u32 * 24u32);
@@ -276,7 +367,11 @@ fn lotsofliquid() {
 
     println!(
         "{}",
-        containers.iter().map(|&x| x.powi(3)).sum::<f64>().powf(3f64.recip()),
+        containers
+            .iter()
+            .map(|&x| x.powi(3))
+            .sum::<f64>()
+            .powf(3f64.recip()),
     );
 }
 
@@ -338,11 +433,13 @@ fn hastyhash() {
 }
 
 struct FactHelper {
-    answers_cache: Vec<Option<u64>>
+    answers_cache: Vec<Option<u64>>,
 }
 impl FactHelper {
     fn new(max: usize) -> FactHelper {
-        FactHelper { answers_cache: vec![None; max] }
+        FactHelper {
+            answers_cache: vec![None; max],
+        }
     }
 
     fn fact(&mut self, input: u64) -> u64 {
@@ -382,13 +479,13 @@ fn remoatseating() {
     let dom_count = teams.iter().filter(|&&x| x == FULL_TEAM).count() as u32;
 
     let mut fact = FactHelper::new(20);
-    let internal_permutations = fact.fact(SUB_SMALL).pow(mini_count) *
-        fact.fact(SUB_BIG).pow(sub_count) *
-        fact.fact(FULL_TEAM).pow(dom_count);
+    let internal_permutations = fact.fact(SUB_SMALL).pow(mini_count)
+        * fact.fact(SUB_BIG).pow(sub_count)
+        * fact.fact(FULL_TEAM).pow(dom_count);
     let team_configurations = fact.fact((mini_count + sub_count + dom_count) as u64);
     let numerator = internal_permutations * team_configurations;
     let denominator = fact.fact(teams.iter().sum());
 
     let divisor = gcd(numerator, denominator);
-    println!("{}/{}", numerator / divisor , denominator / divisor);
+    println!("{}/{}", numerator / divisor, denominator / divisor);
 }

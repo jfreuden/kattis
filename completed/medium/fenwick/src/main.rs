@@ -119,7 +119,7 @@ fn parse_bytes(bytes: &[u8]) -> (i64, usize) {
     }
 }
 
-fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source: W) {
+fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, mut write_source: W) {
     let mut bufreader = std::io::BufReader::new(read_source);
     let [array_len, operations_count]: [usize; 2] = read_vec(&mut bufreader).try_into().unwrap();
     let mut operations_list = Vec::with_capacity(operations_count);
@@ -156,12 +156,36 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
     let mut fenwick = FenwickTree::new(array_len);
     let answers = do_fenwick_operations(&mut fenwick, operations_list);
 
-    let starting_cap = operations_count * 64;
-    let mut bufwriter = std::io::BufWriter::with_capacity(starting_cap, write_source);
+    let charholder = convert_answers_to_printbuffer(answers);
+    write_source.write_all(charholder.as_slice()).unwrap();
+    write_source.flush().unwrap();
+}
+
+fn convert_answers_to_printbuffer(answers: Vec<ValueType>) -> Vec<u8> {
+    let mut charholder = Vec::<u8>::with_capacity(1024 * 1024 * 64);
     for answer in answers {
-        use std::io::Write;
-        writeln!(&mut bufwriter, "{}", answer).unwrap();
+        let mut temp = if answer.is_negative() {
+            charholder.push(b'-');
+            -answer
+        } else {
+            answer
+        };
+        let mut tempchars = Vec::<u8>::with_capacity(20);
+        while temp > 0 {
+            let div = temp / 10;
+            let modulo = (temp % 10) as u8;
+            temp = div;
+            tempchars.push(b'0' + modulo);
+        }
+        if tempchars.is_empty() {
+            tempchars.push(b'0');
+        }
+        while !tempchars.is_empty() {
+            charholder.push(tempchars.pop().unwrap())
+        }
+        charholder.push(b'\n');
     }
+    charholder
 }
 
 fn main() {

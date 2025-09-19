@@ -89,7 +89,7 @@ fn do_fenwick_operations(fenwick: &mut FenwickTree, operations_list: Vec<Op>) ->
     answers
 }
 
-fn parse_bytes(bytes: &[u8]) -> i64 {
+fn parse_bytes(bytes: &[u8]) -> (i64, usize) {
     let mut index = 0usize;
     while index < bytes.len() {
         let b = unsafe { *bytes.get_unchecked(index) };
@@ -113,9 +113,9 @@ fn parse_bytes(bytes: &[u8]) -> i64 {
         }
     }
     if is_negative {
-        -(v as i64)
+        (-(v as i64), index)
     } else {
-        v as i64
+        (v as i64, index)
     }
 }
 
@@ -126,21 +126,30 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, write_source
 
     let mut all_lines = String::new();
     std::io::Read::read_to_string(&mut bufreader, &mut all_lines).unwrap();
-    for line in all_lines.split('\n') {
-        let op: Vec<&str> = line.split_ascii_whitespace().map(|tok| tok).collect();
-        match op.len() {
-            2 => {
-                // Query Operation
-                let query_index = parse_bytes(op[1].as_bytes()) as IndexType;
-                operations_list.push(Op::new_query(query_index));
+
+    let mut index = 0usize;
+    let bytes = all_lines.as_bytes();
+    'outer: while index < bytes.len() {
+        loop {
+            if index >= bytes.len() {
+                break 'outer;
             }
-            3 => {
-                // Increment Operation
-                let increment_index = parse_bytes(op[1].as_bytes()) as IndexType;
-                let increment_value = parse_bytes(op[2].as_bytes()) as ValueType;
-                operations_list.push(Op::new_increment(increment_index, increment_value));
-            }
-            _ => break,
+            let b = unsafe { *bytes.get_unchecked(index) };
+            if b > b' ' { break; }
+            index += 1;
+        }
+        let opchar = unsafe { *bytes.get_unchecked(index) };
+        index += 2;
+        let (op_index, offset) = parse_bytes(&bytes[index..]);
+        index += offset;
+        if opchar == b'?' {
+            operations_list.push(Op::new_query(op_index as IndexType));
+        } else if opchar == b'+' {
+            let (op_value, offset) = parse_bytes(&bytes[index..]);
+            index += offset;
+            operations_list.push(Op::new_increment(op_index as IndexType, op_value as ValueType));
+        } else {
+            break
         }
     }
 

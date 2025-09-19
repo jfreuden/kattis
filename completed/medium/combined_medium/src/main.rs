@@ -57,11 +57,7 @@ macro_rules! kattis_struct {
         impl std::str::FromStr for $name {
             type Err = &'static str;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let parts: Vec<&str> = s.split(' ').collect();
-                if parts.len() != macro_count_args!($($field_name),*) {
-                    return Err("wrong number of fields");
-                }
-                let mut iter = parts.into_iter();
+                let mut iter = s.split(' ');
                 Ok($name {
                     $(
                         $field_name: iter.next().unwrap().parse::<$field_type>().map_err(|_| "parse error")?
@@ -78,7 +74,72 @@ macro_rules! macro_count_args {
 }
 
 fn main() {
-    glitchingscreen();
+    pointcoloring();
+}
+
+fn pointcoloring() {
+    use std::io::{self, Read, Write};
+
+    // prototype FastReader: read entire stdin into a byte buffer and parse ASCII digits quickly
+    struct FastReader {
+        buf: Vec<u8>,
+        idx: usize,
+        len: usize,
+    }
+    impl FastReader {
+        fn new() -> Self {
+            let mut buf = Vec::with_capacity(1 << 20);
+            io::stdin().read_to_end(&mut buf).unwrap();
+            let len = buf.len();
+            FastReader { buf, idx: 0, len }
+        }
+        #[inline]
+        fn skip_ws(&mut self) {
+            while self.idx < self.len {
+                let b = unsafe { *self.buf.get_unchecked(self.idx) };
+                if b > b' ' { break; }
+                self.idx += 1;
+            }
+        }
+        #[inline]
+        fn next_usize(&mut self) -> usize {
+            self.skip_ws();
+            let mut v: usize = 0;
+            while self.idx < self.len {
+                let b = unsafe { *self.buf.get_unchecked(self.idx) };
+                if b.is_ascii_digit() {
+                    v = v * 10 + (b - b'0') as usize;
+                    self.idx += 1;
+                } else {
+                    break;
+                }
+            }
+            v
+        }
+    }
+
+    let mut rdr = FastReader::new();
+    let t = rdr.next_usize();
+
+    let mut out = String::with_capacity(t * 3);
+    for _ in 0..t {
+        let x: usize = rdr.next_usize();
+        let y: usize = rdr.next_usize();
+
+        // For each (x, y), color points (x+2^i, y) and (x, y+2^i) with color i+1, all other points -1
+        let xor = x ^ y;
+        let trailing = xor.trailing_ones();
+        let total = xor.count_ones();
+        if trailing != total || xor < x || xor < y {
+            out.push_str("-1\n");
+        } else {
+            use core::fmt::Write as _;
+            let _ = write!(&mut out, "{}\n", trailing);
+        }
+    }
+
+    let mut stdout = io::BufWriter::new(io::stdout());
+    let _ = stdout.write_all(out.as_bytes());
 }
 
 fn glitchingscreen() {
@@ -90,39 +151,40 @@ fn glitchingscreen() {
 
     let screen: Screen = read_one();
 
-    let mut pixel_to_stop_mapping = vec![None; screen.height * screen.width as usize];
+    let mut pixel_to_stop_mapping = vec![vec![]; screen.height * screen.width as usize];
     for train_stop in 0..screen.train_stop_count {
         let mut perfect_pixels = String::with_capacity(screen.height * screen.width);
         for _ in 0..screen.height {
-            perfect_pixels.push_str(read_str().as_str())
+            perfect_pixels.push_str(read_str().as_str());
         }
 
         for (mapping, pixel) in pixel_to_stop_mapping.iter_mut().zip(perfect_pixels.chars()) {
-            if mapping.is_some() {
-                // non-unique, set pixel to ambiguous
-                *mapping = Some(-1);
+            if pixel == 'x' {
+                mapping.push(train_stop);
             }
         }
-
     }
 
-    // Using the screen info, read the incoming lines and infer which pixels uniquely belong to each train stop.
-    // Somehow determine how to see which pixels to check.
+    let mut actual_pixels = String::with_capacity(screen.height * screen.width);
+    for _ in 0..screen.height {
+        actual_pixels.push_str(read_str().as_str());
+    }
 
-    /*
-    Proposed algorithm. A grid of Option<something> or maybe i32. as you read the stops in, if bloom == None then set bloom to Some(index), if bloom > Some(0) set bloom to Some(-1)
-    when you read in the screen, if a pixel is on, check its bloom. iff 1, check match. if match == None, then set match, otherwise check if match is equal to index.
+    let mut possibilities: Vec<u32> = (0..screen.train_stop_count).collect();
+    for (mapping, pixel) in pixel_to_stop_mapping.iter().zip(actual_pixels.chars()) {
+        if pixel == 'x' {
+            possibilities.retain(|x| mapping.contains(x));
+            if possibilities.is_empty() {
+                break;
+            }
+        }
+    }
 
-    this algorithm is flawed: Consider A, B, C below:
-    XXX  XXX ...
-    XX.  .X. ...
-    X..  .X. XXX
-
-    observe the middle bar. we may not be able to tell for each pixel which stop is next, but we can use two pixels to infer and collectively rule out the wrong two.
-    :|
-    that means this will be longer, boo.
-
-     */
+    if possibilities.len() == 1 {
+        println!("yes");
+    } else {
+        println!("no");
+    }
 }
 
 // Note: this is technically a 2.4 point easy problem, but it seems tricky to me, so putting it in medium.

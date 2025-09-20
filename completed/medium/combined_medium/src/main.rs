@@ -244,42 +244,7 @@ fn repeatedsubsequence() {
         let _string_len: usize = read_one();
         let input_string = read_str();
 
-        let mut longest_indices: (usize, usize) = (0, 0);
-        let mut longest_len: usize = 0;
-
-        let mut charmap = std::collections::HashMap::<char, Vec<usize>>::new();
-        for (i, character) in input_string.chars().enumerate() {
-            charmap.entry(character).or_default().push(i);
-        }
-
-        // TODO: In theory if I iterate over the original string's chars (without dupes) paired with index info, I can greatly short-circuit when I already know I can't find a shorter string.
-        // BONUS TODO: within the character search, can I short-circuit? Since it isn't technically making the string shorter I'm not sure.
-        for (_character, character_locations) in charmap {
-            if character_locations.len() < 2 {
-                continue;
-            }
-
-            for i in 0..character_locations.len() {
-                let (first_part, second_part) = character_locations.split_at(i + 1);
-                let (_first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
-
-                if second_part.is_empty() {
-                    continue;
-                }
-                // println!("{}, {:?} \t/\t {:?} \t/\t {:?}", _character, first_part, removed, second_part);
-                // println!("{}, {} + {}", _character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
-                // TODO: refactor the indexing gore to be less confusing.
-                let candidate_len = removed[0] + input_string.len()
-                    - *second_part.first().unwrap_or(&input_string.len());
-                if candidate_len > longest_len {
-                    longest_len = candidate_len;
-                    longest_indices = (
-                        removed[0],
-                        *second_part.first().unwrap_or(&input_string.len()),
-                    )
-                }
-            }
-        }
+        let (longest_len, longest_indices) = find_longest_subsequence(input_string.as_str());
         if longest_len > 0 {
             println!(
                 "{}{}",
@@ -290,6 +255,46 @@ fn repeatedsubsequence() {
             println!("-1");
         }
     }
+}
+
+fn find_longest_subsequence(input_string: &str) -> (usize, (usize, usize)) {
+    let mut longest_len: usize = 0;
+    let mut longest_indices: (usize, usize) = (0, 0);
+
+    let mut charmap = std::collections::HashMap::<char, Vec<usize>>::new();
+    for (i, character) in input_string.chars().enumerate() {
+        charmap.entry(character).or_default().push(i);
+    }
+
+    // TODO: In theory if I iterate over the original string's chars (without dupes) paired with index info, I can greatly short-circuit when I already know I can't find a shorter string.
+    // BONUS TODO: within the character search, can I short-circuit? Since it isn't technically making the string shorter I'm not sure.
+    for (_character, character_locations) in charmap {
+        if character_locations.len() < 2 {
+            continue;
+        }
+
+        for i in 0..character_locations.len() {
+            let (first_part, second_part) = character_locations.split_at(i + 1);
+            let (_first_part, removed) = first_part.split_at(first_part.len().saturating_sub(1));
+
+            if second_part.is_empty() {
+                continue;
+            }
+            // println!("{}, {:?} \t/\t {:?} \t/\t {:?}", _character, first_part, removed, second_part);
+            // println!("{}, {} + {}", _character, &input_string[..removed[0]], &input_string[*second_part.first().unwrap_or(&input_string.len())..]);
+            // TODO: refactor the indexing gore to be less confusing.
+            let candidate_len = removed[0] + input_string.len()
+                - *second_part.first().unwrap_or(&input_string.len());
+            if candidate_len > longest_len {
+                longest_len = candidate_len;
+                longest_indices = (
+                    removed[0],
+                    *second_part.first().unwrap_or(&input_string.len()),
+                )
+            }
+        }
+    }
+    (longest_len, longest_indices)
 }
 
 fn rectsect() {

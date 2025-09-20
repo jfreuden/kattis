@@ -68,13 +68,92 @@ macro_rules! kattis_struct {
     };
     }
 
-macro_rules! macro_count_args {
-    () => (0usize);
-    ($head:ident $(, $tail:ident)*) => (1usize + macro_count_args!($($tail),*));
+fn main() {
+    dnasimilarity();
 }
 
-fn main() {
-    pointcoloring();
+/*
+1
+abcdehahaha
+hahahayouiscool
+
+is a failing input.
+ */
+fn dnasimilarity() {
+    let test_cases: usize = read_one();
+    for _ in 0..test_cases {
+        let first = read_str();
+        let mut first_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
+        for (i, character) in first.chars().enumerate() {
+            first_charmap.entry(character).or_default().push(i);
+        }
+        for (_, entry) in first_charmap.iter_mut() {
+            entry.reverse();
+        }
+
+
+        let second = read_str();
+        let mut second_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
+        for (i, character) in second.chars().enumerate() {
+            second_charmap.entry(character).or_default().push(i);
+        }
+        for (_, entry) in second_charmap.iter_mut() {
+            entry.reverse();
+        }
+
+        // Until there are no more left:
+        let mut subset_string = String::new();
+        while !first_charmap.is_empty() && !second_charmap.is_empty() {
+            // Shrink each charmap down to shared letters
+            first_charmap.retain(|letter, _| second_charmap.contains_key(letter));
+            second_charmap.retain(|letter, _| first_charmap.contains_key(letter));
+
+            if first_charmap.is_empty() || second_charmap.is_empty() {
+                break;
+            }
+
+            // Use a canonical key ordering to enable zipping.
+            let key_letters: Vec<char> = first_charmap.keys().copied().collect();
+            let comparison_pairs =
+                key_letters.iter().map(|letter|
+                    (letter, (
+                        *first_charmap.get(letter).unwrap().last().unwrap(),
+                        *second_charmap.get(letter).unwrap().last().unwrap()
+                    ))
+                );
+
+            // for each letter, find which pair of indices is earliest (min of max of the two first indices)
+            let (selected_letter, (first_index, second_index)) = comparison_pairs.min_by(|(_, (first_a, second_a)), (_, (first_b, second_b))| {
+                std::cmp::max(
+                    first_a,
+                    second_a,
+                ).cmp(
+                std::cmp::max(
+                    first_b,
+                    second_b,
+                ))
+            }).unwrap();
+
+            subset_string.push(*selected_letter);
+            println!("{selected_letter}, first[{first_index}], second[{second_index}]");
+
+            // cull letters from the charmaps that are before the indices
+            first_charmap.retain(|_, indices| {
+                while !indices.is_empty() && *indices.last().unwrap() <= first_index {
+                    indices.pop();
+                }
+                !indices.is_empty()
+            });
+            second_charmap.retain(|_, indices| {
+                while !indices.is_empty() && *indices.last().unwrap() <= second_index {
+                    indices.pop();
+                }
+                !indices.is_empty()
+            });
+        }
+        println!("Longest Subsequence: {} of length {}", subset_string, subset_string.len());
+        println!("{}", subset_string.len());
+    }
 }
 
 fn pointcoloring() {

@@ -30,7 +30,7 @@ impl FenwickTree {
         let max_index = self.data_fenwick.len();
         let mut working_index = index as ValueType + 1;
 
-        while working_index <= max_index as i64 {
+        while working_index <= max_index as ValueType {
             self.data_fenwick[working_index as usize - 1] += value;
             working_index = working_index + (working_index & -working_index);
         }
@@ -164,24 +164,25 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, mut write_so
 fn convert_answers_to_printbuffer(answers: Vec<ValueType>) -> Vec<u8> {
     let mut charholder = Vec::<u8>::with_capacity(1024 * 1024 * 64);
     for answer in answers {
-        let mut temp = if answer.is_negative() {
+        if answer.is_negative() {
             charholder.push(b'-');
-            -answer
-        } else {
-            answer
-        };
-        let mut tempchars = Vec::<u8>::with_capacity(20);
+        } else if answer == 0 {
+            charholder.push(b'0');
+            charholder.push(b'\n');
+            continue;
+        }
+
+        let mut temp = answer.unsigned_abs() as IndexType;
+
+        let digit_count = (temp.checked_ilog10().unwrap() + 1) as usize;
+        let mut offset = 1usize;
+        charholder.append(&mut vec![b' '; digit_count]);
+        let end = charholder.len();
         while temp > 0 {
-            let div = temp / 10;
             let modulo = (temp % 10) as u8;
-            temp = div;
-            tempchars.push(b'0' + modulo);
-        }
-        if tempchars.is_empty() {
-            tempchars.push(b'0');
-        }
-        while !tempchars.is_empty() {
-            charholder.push(tempchars.pop().unwrap())
+            temp /= 10;
+            charholder[end - offset] = b'0' + modulo;
+            offset += 1;
         }
         charholder.push(b'\n');
     }
@@ -257,7 +258,7 @@ mod fenwick_tests {
 
     fn generate_test_ops(array_len: usize, operations_count: usize) -> Vec<Op> {
         let calc_increment_index = |i: usize| (i * i) % array_len;
-        let calc_increment_value = |i: i64| (i * i - 7893 * i) % array_len as i64;
+        let calc_increment_value = |i: ValueType| (i * i - 7893 * i) % array_len as ValueType;
         let calc_query_index =
             |i: usize| (17 * i % array_len * i % array_len * i + 209) % array_len;
 
@@ -267,7 +268,7 @@ mod fenwick_tests {
                 0 | 1 | 7 | 8 | 14 | 16 | 17 => {
                     operation_list.push(Op::new_increment(
                         calc_increment_index(i),
-                        calc_increment_value(i as i64),
+                        calc_increment_value(i as ValueType),
                     ));
                 }
                 _ => {

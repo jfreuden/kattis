@@ -80,79 +80,85 @@ hahahayouiscool
 is a failing input.
  */
 fn dnasimilarity() {
+    fn find_largest_shared_substring(memo: &mut std::collections::HashMap::<(String, String), usize>, first: &str, second: &str) -> usize {
+        let mut subsequence_length = 0usize;
+
+        if let Some(&existing_length) = memo.get(&(first.to_string(), second.to_string())) {
+            return existing_length;
+        }
+
+        let mut index_i = 0usize;
+        let mut index_j = 0usize;
+
+        while index_i < first.len() && index_j < second.len() {
+            let (a, a_rest) = first.split_at(index_i + 1);
+            let (b, b_rest) = second.split_at(index_j + 1);
+            if a == b {
+                subsequence_length += 1;
+                index_i += 1;
+                index_j += 1;
+            } else {
+                let (_, new_first) = first.split_at(index_i);
+                let (_, new_second) = second.split_at(index_j);
+                subsequence_length += std::cmp::max(
+                    find_largest_shared_substring(memo, a_rest, new_second),
+                    find_largest_shared_substring(memo, new_first, b_rest)
+                );
+                break
+            }
+        }
+
+        memo.insert((first.to_string(), second.to_string()), subsequence_length);
+        memo.insert((second.to_string(), first.to_string()), subsequence_length);
+
+        subsequence_length
+    }
+/*
+11
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
+acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
+
+ */
+    //
+    //
+
     let test_cases: usize = read_one();
+    let mut memo = std::collections::HashMap::<(String, String), usize>::new();
     for _ in 0..test_cases {
         let first = read_str();
-        let mut first_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
-        for (i, character) in first.chars().enumerate() {
-            first_charmap.entry(character).or_default().push(i);
-        }
-        for (_, entry) in first_charmap.iter_mut() {
-            entry.reverse();
-        }
-
-
         let second = read_str();
-        let mut second_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
-        for (i, character) in second.chars().enumerate() {
-            second_charmap.entry(character).or_default().push(i);
-        }
-        for (_, entry) in second_charmap.iter_mut() {
-            entry.reverse();
-        }
 
-        // Until there are no more left:
-        let mut subset_string = String::new();
-        while !first_charmap.is_empty() && !second_charmap.is_empty() {
-            // Shrink each charmap down to shared letters
-            first_charmap.retain(|letter, _| second_charmap.contains_key(letter));
-            second_charmap.retain(|letter, _| first_charmap.contains_key(letter));
+        let (first, second) = if first.len() > second.len() {
+            (first, second)
+        } else {
+            (second, first)
+        };
 
-            if first_charmap.is_empty() || second_charmap.is_empty() {
-                break;
-            }
-
-            // Use a canonical key ordering to enable zipping.
-            let key_letters: Vec<char> = first_charmap.keys().copied().collect();
-            let comparison_pairs =
-                key_letters.iter().map(|letter|
-                    (letter, (
-                        *first_charmap.get(letter).unwrap().last().unwrap(),
-                        *second_charmap.get(letter).unwrap().last().unwrap()
-                    ))
-                );
-
-            // for each letter, find which pair of indices is earliest (min of max of the two first indices)
-            let (selected_letter, (first_index, second_index)) = comparison_pairs.min_by(|(_, (first_a, second_a)), (_, (first_b, second_b))| {
-                std::cmp::max(
-                    first_a,
-                    second_a,
-                ).cmp(
-                std::cmp::max(
-                    first_b,
-                    second_b,
-                ))
-            }).unwrap();
-
-            subset_string.push(*selected_letter);
-            println!("{selected_letter}, first[{first_index}], second[{second_index}]");
-
-            // cull letters from the charmaps that are before the indices
-            first_charmap.retain(|_, indices| {
-                while !indices.is_empty() && *indices.last().unwrap() <= first_index {
-                    indices.pop();
-                }
-                !indices.is_empty()
-            });
-            second_charmap.retain(|_, indices| {
-                while !indices.is_empty() && *indices.last().unwrap() <= second_index {
-                    indices.pop();
-                }
-                !indices.is_empty()
-            });
-        }
-        println!("Longest Subsequence: {} of length {}", subset_string, subset_string.len());
-        println!("{}", subset_string.len());
+        // let used = (1..first.len()).rev().map(|i| {
+        //     // println!("used call: {}", &first.as_str()[i..]);
+        //     find_largest_shared_substring(&mut memo, &first.as_str()[i..], second.as_str())
+        // }).max().unwrap();
+        println!("{}", find_largest_shared_substring(&mut memo, first.as_str(), second.as_str()));
     }
 }
 

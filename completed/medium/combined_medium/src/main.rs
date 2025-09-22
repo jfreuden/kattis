@@ -72,125 +72,59 @@ fn main() {
     dnasimilarity();
 }
 
-/*
-1
-abcdehahaha
-hahahayouiscool
-
-
-11
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaa
-aaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaa
-aaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc
-acatcgatcgatcatctactacgtacggcgcgcgataaaaaa
-aaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatga
-
-
-1
-ababababz
-aaazbbbbccc
-
-1
-ababababz
-aaazabbbccc
-
-is a failing input.
- */
 fn dnasimilarity() {
     let test_cases: usize = read_one();
+
+    let mut buffer = Vec::<u8>::with_capacity(5192 * 4);
+    use std::io::Read;
+    std::io::stdin().read_to_end(&mut buffer).unwrap();
+
+    let mut lines = buffer.split(|&x| x == b'\n').take(test_cases * 2);
     for _ in 0..test_cases {
-        let first = read_str();
-        let mut first_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
-        for (i, character) in first.char_indices() {
-            first_charmap.entry(character).or_default().push(i);
-        }
-        for (_, entry) in first_charmap.iter_mut() {
-            entry.reverse();
-        }
+        let a = lines.next().unwrap();
+        let b = lines.next().unwrap();
 
-
-        let second = read_str();
-        let mut second_charmap = std::collections::HashMap::<char, Vec<usize>>::new();
-        for (i, character) in second.char_indices() {
-            second_charmap.entry(character).or_default().push(i);
-        }
-        for (_, entry) in second_charmap.iter_mut() {
-            entry.reverse();
-        }
-
-        // Until there are no more left:
-        let mut subset_string = String::new();
-        while !first_charmap.is_empty() && !second_charmap.is_empty() {
-            // Shrink each charmap down to shared letters
-            first_charmap.retain(|letter, _| second_charmap.contains_key(letter));
-            second_charmap.retain(|letter, _| first_charmap.contains_key(letter));
-
-            if first_charmap.is_empty() || second_charmap.is_empty() {
-                break;
-            }
-
-            // Use a canonical key ordering to enable zipping.
-            let key_letters: Vec<char> = first_charmap.keys().copied().collect();
-            let comparison_pairs =
-                key_letters.iter().map(|letter|
-                    (letter, (
-                        *first_charmap.get(letter).unwrap().last().unwrap(),
-                        *second_charmap.get(letter).unwrap().last().unwrap()
-                    ))
-                );
-
-            // for each letter, find which pair of indices is earliest (min of max of the two first indices)
-            let (selected_letter, (first_index, second_index)) = comparison_pairs.min_by(|(_, (first_a, second_a)), (_, (first_b, second_b))| {
-                std::cmp::max(
-                    first_a,
-                    second_a,
-                ).cmp(
-                std::cmp::max(
-                    first_b,
-                    second_b,
-                ))
-            }).unwrap();
-
-            subset_string.push(*selected_letter);
-            println!("{selected_letter}, first[{first_index}], second[{second_index}]");
-
-            // cull letters from the charmaps that are before the indices
-            first_charmap.retain(|_, indices| {
-                while !indices.is_empty() && *indices.last().unwrap() <= first_index {
-                    indices.pop();
-                }
-                !indices.is_empty()
-            });
-            second_charmap.retain(|_, indices| {
-                while !indices.is_empty() && *indices.last().unwrap() <= second_index {
-                    indices.pop();
-                }
-                !indices.is_empty()
-            });
-        }
-        println!("Longest Subsequence: {} of length {}", subset_string, subset_string.len());
-        println!("{}", subset_string.len());
+        let lcs_length = longest_common_subsequence(a, b);
+        println!("{}", lcs_length);
     }
+}
+
+#[test]
+fn test_longest_common_subsequence() {
+    let string_a = b"aaaacaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgataaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagagatagatgatgatgatgaatagtaggtagttgatgagaatagtaggtagttgatgaaaaaaaaaactgctcgatcgcgcgcggacaaaaaaaaaactgctcgatcgcgcgcggacatgctagctgatccgtacgtcagctgactgcagctgatcgtacgtacgtacgtagctgatcgatgatgagagagagagctcggcgcggggggtataatgaagag";
+    let string_b = b"gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc";
+
+    for i in 0..100000 {
+        let longest = longest_common_subsequence(std::hint::black_box(&string_a[..(i % string_a.len())]), std::hint::black_box(string_b));
+        println!("{}", longest);
+    }
+}
+
+fn longest_common_subsequence(a: &[u8], b: &[u8]) -> usize {
+    let (longer, shorter) = {
+        if a.len() >= b.len() {
+            (a, b)
+        } else {
+            (b, a)
+        }
+    };
+
+    let mut table_row = vec![0usize; longer.len() + 1];
+    let mut next_row = vec![0usize; longer.len() + 1];
+    for search_letter in shorter {
+        let mut last_value = 0usize;
+        for (i, candidate_letter) in longer.iter().enumerate(){
+            last_value = if search_letter == candidate_letter {
+                table_row[i] + 1
+            } else {
+                std::cmp::max(last_value, table_row[i + 1])
+            };
+            next_row[i + 1] = last_value;
+        }
+        table_row.copy_from_slice(next_row.as_slice());
+    }
+
+    *table_row.last().unwrap()
 }
 
 fn pointcoloring() {

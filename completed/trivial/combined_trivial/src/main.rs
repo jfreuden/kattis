@@ -70,7 +70,20 @@ where
 }
 
 fn main() {
-    shatteredcake();
+    rollingthedice();
+}
+
+fn rollingthedice() {
+    let input = read_str();
+
+    let mut offset_splitter = input.split_terminator('+');
+    let dice_string = offset_splitter.next().unwrap();
+    let mut d_splitter = dice_string.split('d');
+    let dice_count = d_splitter.next().unwrap().parse::<u64>().unwrap();
+    let dice_sides = d_splitter.next().unwrap().parse::<u64>().unwrap();
+    let offset = offset_splitter.next().unwrap_or("0").parse().unwrap_or(0u64);
+    let roll_expected_value: f64 = (dice_count as f64) * ((dice_sides + 1) as f64 / 2f64) + (offset as f64);
+    println!("{}", roll_expected_value)
 }
 
 fn shatteredcake() {

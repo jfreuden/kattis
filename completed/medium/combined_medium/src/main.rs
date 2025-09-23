@@ -69,7 +69,115 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    dnasimilarity();
+    longestcommonsubsequence();
+}
+
+fn longestcommonsubsequence() {
+    let [number_of_strings, alphabet_size]: [usize; 2] = read_array();
+
+    let mut letter_indices: Vec<Vec<usize>> = vec![vec![0usize; number_of_strings]; alphabet_size];
+    const OFFSET: u8 = b'A';
+    for string_index in 0..number_of_strings {
+        let string = read_str();
+        for (i, letter) in string.char_indices() {
+            letter_indices[(letter as u8 - OFFSET) as usize][string_index] = i;
+        }
+    }
+
+    let mut precedes = vec![vec![false; alphabet_size]; alphabet_size];
+    let mut follows = vec![false; alphabet_size];
+    for i in 0..alphabet_size {
+        for j in 0..alphabet_size {
+            // don't check yourself
+            if i == j || precedes[j][i] {
+                continue
+            }
+
+            if letter_indices[i].iter().zip(&letter_indices[j]).all(|(a, b)| a < b) {
+                precedes[i][j] = true;
+                follows[j] = true;
+            }
+        }
+    }
+
+    let mut visit_stack: Vec<(usize, usize)> = (0..alphabet_size)
+        .filter_map(|i| if !follows[i] {
+            Some((0usize, i))
+        } else {
+            None
+        }).collect();
+
+    let mut max_path_len = 0usize;
+    while let Some((path_len, index)) = visit_stack.pop() {
+        let decendents = precedes[index]
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &x)| if x {
+                Some(i)
+            } else {
+                None
+            });
+
+        let new_path_len = path_len + 1;
+        max_path_len = max_path_len.max(new_path_len);
+
+        for decendent in decendents {
+            visit_stack.push((new_path_len, decendent));
+        }
+    }
+
+    println!("{max_path_len}");
+}
+
+/// 5.2 point subsequence of N strings, but the catch is all strings are permutations of the same alphabet
+fn longestcommonsubsequence_wrong() {
+    let [number_of_strings, alphabet_size]: [usize; 2] = read_array();
+    const PRIMES: [usize; 26] = [
+        2 , 3 , 5 , 7 , 11 , 13 , 17 , 19 , 23 , 29 , 31 , 37 , 41 ,
+        43 , 47 , 53 , 59 , 61 , 67 , 71 , 73 , 79 , 83 , 89 , 97 , 101
+    ];
+
+    let mut strings: Vec<String> = vec![];
+    let mut letter_indices: Vec<Vec<usize>> = vec![vec![0usize; number_of_strings]; alphabet_size];
+    const OFFSET: u8 = b'A';
+    for string_index in 0..number_of_strings {
+        let string = read_str();
+        for (i, letter) in string.char_indices() {
+            letter_indices[(letter as u8 - OFFSET) as usize][string_index] = i;
+        }
+        strings.push(string);
+    }
+
+    // Sort all the letters ordered by the sum of indices.
+    let mut presorted: Vec<(usize, usize)> = letter_indices
+        .iter()
+        .enumerate()
+        .map(|(i, indices)| (i, indices.iter().sum::<usize>()))
+        .collect();
+    presorted.sort_by(|(i, sum_i), (j, sum_j)| sum_i.cmp(sum_j));
+    presorted.reverse();
+
+    println!("{presorted:?}");
+
+    let mut extents = vec![0usize; number_of_strings];
+    let mut subsequence_len = 0usize;
+    while let Some((letter_index, _sum)) = presorted.pop() {
+        let indices = &letter_indices[letter_index];
+
+        // if any index is before the already-taken extents, skip along; this letter lost its chance.
+        if indices.iter().zip(&extents).any(|(i, extent)| i < extent) {
+            continue
+        } else {
+            subsequence_len += 1;
+            extents = indices.iter().zip(&extents).map(|(&i, &extent)| std::cmp::max(extent, i)).collect()
+        }
+    }
+
+    if subsequence_len == 0 {
+        subsequence_len = 1;
+    }
+
+    println!("{subsequence_len}");
 }
 
 fn dnasimilarity() {

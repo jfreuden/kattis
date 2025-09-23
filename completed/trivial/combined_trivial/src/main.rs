@@ -3,6 +3,28 @@
 /// The top of the file will be the active space and will remain with a fn main() method.
 /// Once complete, the subroutine will be renamed to the problem title.
 /// This will allow the top to contain the helper methods, with the main method up top for copying
+
+#[allow(unused)]
+macro_rules! kattis_struct {
+    ($name:ident { $($field_name:ident : $field_type:ty),* }) => {
+        #[derive(Debug, PartialEq, Clone)]
+        pub struct $name {
+            $($field_name : $field_type),*
+        }
+        impl std::str::FromStr for $name {
+            type Err = &'static str;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                let mut iter = s.split(' ');
+                Ok($name {
+                    $(
+                        $field_name: iter.next().unwrap().parse::<$field_type>().map_err(|_| "parse error")?
+                    ),*
+                })
+            }
+        }
+    };
+    }
+
 fn read_str() -> String {
     let mut response = String::new();
     std::io::stdin()
@@ -48,7 +70,95 @@ where
 }
 
 fn main() {
-    veci();
+    shatteredcake();
+}
+
+fn shatteredcake() {
+    use std::io::{Read};
+
+    struct FastReader {
+        buf: Vec<u8>,
+        idx: usize,
+        len: usize,
+    }
+    impl FastReader {
+        fn new() -> Self {
+            let mut buf = Vec::with_capacity(1 << 20);
+            std::io::stdin().read_to_end(&mut buf).unwrap();
+            let len = buf.len();
+            FastReader { buf, idx: 0, len }
+        }
+        #[inline]
+        fn skip_ws(&mut self) {
+            while self.idx < self.len {
+                let b = unsafe { self.buf.get_unchecked(self.idx) };
+                if *b > b' ' { break; }
+                self.idx += 1;
+            }
+        }
+        #[inline]
+        fn next_usize(&mut self) -> usize {
+            self.skip_ws();
+            let mut v: usize = 0;
+            while self.idx < self.len {
+                let b = unsafe { self.buf.get_unchecked(self.idx) };
+                if !b.is_ascii_digit() {
+                    break;
+                }
+                v = v * 10 + (b - b'0') as usize;
+                self.idx += 1;
+            }
+            v
+        }
+    }
+    let mut rdr = FastReader::new();
+
+    let cake_width = rdr.next_usize();
+    let cake_pieces = rdr.next_usize();
+
+    let mut total_area = 0;
+
+    for _ in 0..cake_pieces {
+        let shard_width = rdr.next_usize();
+        let shard_height = rdr.next_usize();
+        total_area += shard_width * shard_height;
+    }
+    println!("{}", total_area.div_euclid(cake_width));
+}
+
+fn numberreduction() {
+    let mut number_of_items: u64 = read_one();
+
+    let mut iterations = 0usize;
+    while number_of_items > 1 {
+        iterations += 1;
+        if number_of_items % 2 == 0 {
+            number_of_items /= 2;
+        } else {
+            number_of_items *= 3;
+            number_of_items += 1;
+        }
+    }
+    println!("{iterations}");
+}
+
+//Print a digit between 1 and 9 the result of repeatedly multiplying the nonzero digits of x
+fn sifferprodukt() {
+    let input_number: u64 = read_one();
+    let mut temp = input_number;
+    while temp >= 10 {
+        let mut multiple = 1u64;
+        while temp > 0 {
+            let modulo = temp % 10;
+            temp /= 10;
+            if modulo != 0 {
+                multiple *= modulo;
+            }
+        }
+        temp = multiple;
+    }
+
+    println!("{}", temp);
 }
 
 fn veci() {
@@ -63,7 +173,7 @@ fn veci() {
     }
     digits.reverse();
 
-    let mut new_number = 0u64;
+    let mut new_number;
 
     let mut best_number = u64::MAX;
 

@@ -48,7 +48,109 @@ where
 }
 
 fn main() {
-    threeblindmice();
+    veci();
+}
+
+fn veci() {
+    let input_number: u64 = read_one();
+    let mut digits = Vec::<u64>::with_capacity(7);
+
+    let mut temp = input_number;
+    while temp > 0 {
+        let modulo = temp % 10;
+        temp /= 10;
+        digits.push(modulo);
+    }
+    digits.reverse();
+
+    let mut new_number = 0u64;
+
+    let mut best_number = u64::MAX;
+
+    for i in (0..digits.len()).rev() {
+        let (high, low) = digits.split_at(i);
+        let mut low_sorted = low.to_vec();
+        low_sorted.sort();
+
+        new_number = 0u64;
+        for entry in high {
+            new_number *= 10;
+            new_number += *entry;
+        }
+
+        if let Some(relevant_digit) = low_sorted.extract_if(.., |x| *x > digits[i]).next() {
+            new_number *= 10;
+            new_number += relevant_digit;
+        } else {
+            continue
+        }
+
+        for entry in low_sorted {
+            new_number *= 10;
+            new_number += entry;
+        }
+
+        eprintln!("{high:?}, {low:?}, {new_number}");
+
+
+        if new_number > input_number {
+            best_number = best_number.min(new_number);
+        }
+    }
+
+    if best_number <= input_number || best_number == u64::MAX {
+        println!("0");
+    } else {
+        println!("{best_number}");
+    }
+}
+
+fn karte() {
+    const CARDS_PER_SUIT: usize = 13;
+    const NUMBER_OF_SUITS: usize = 4;
+    const ERROR_TEXT: &str = "GRESKA";
+
+    let card_string = read_str();
+    let mut index = 0usize;
+
+    let mut set = std::collections::HashSet::<&str>::new();
+    let mut counts = [0usize; NUMBER_OF_SUITS];
+
+    while index + 3 <= card_string.len() {
+        let temp = &card_string[index..index+3];
+        index += 3;
+
+        match temp.chars().next().unwrap() {
+            'P' => counts[0] += 1,
+            'K' => counts[1] += 1,
+            'H' => counts[2] += 1,
+            'T' => counts[3] += 1,
+            _ => panic!()
+        }
+
+        if !set.insert(temp) {
+            println!("{}", ERROR_TEXT);
+            std::process::exit(0);
+        }
+    }
+
+    let missing_cards_output = counts.iter().map(|&count| CARDS_PER_SUIT.saturating_sub(count).to_string()).collect::<Vec<String>>().join(" ");
+    print!("{}", missing_cards_output);
+
+}
+
+fn modulo() {
+    let mut set = std::collections::HashSet::<u64>::with_capacity(42);
+    const DIVISOR: u64 = 42;
+    for _ in 0..10 {
+        set.insert(read_one::<u64>() % DIVISOR);
+    }
+    println!("{}", set.len());
+}
+
+fn bitteeinbit() {
+    let input = read_str();
+    println!("{}", input.chars().next().unwrap());
 }
 
 fn threeblindmice() {

@@ -70,7 +70,65 @@ where
 }
 
 fn main() {
-    rollingthedice();
+    dartscores();
+}
+
+fn dartscores() {
+    kattis_struct!(Point{ x: f32, y: f32});
+    let test_case_count = read_one();
+
+    fn score_throw(point: Point) -> u32 {
+        let distance = (point.x.powi(2) + point.y.powi(2)).sqrt();
+        (11f32 - (distance / 20f32).ceil()).clamp(0f32, 10f32) as u32
+    }
+
+    for _ in 0..test_case_count {
+        let throw_count = read_one();
+
+        let mut score = 0;
+        for _ in 0..throw_count {
+            let point: Point = read_one();
+            score += score_throw(point);
+        }
+        println!("{}", score);
+    }
+}
+
+fn zyxab() {
+    let suggestion_count: u64 = read_one();
+    let mut names = Vec::with_capacity(suggestion_count as usize);
+
+    for _ in 0..suggestion_count {
+        names.push(read_str());
+    }
+
+    fn valid_name(name: &str) -> bool {
+        if name.len() < 5 {
+            return false;
+        }
+
+        let mut letter_set = std::collections::HashSet::<char>::with_capacity(name.len());
+        for letter in name.chars() {
+            if !letter_set.insert(letter) {
+                return false;
+            }
+        }
+        true
+    }
+
+    fn better_name(a: &str, b: &str) -> std::cmp::Ordering {
+        a.len().cmp(&b.len())
+            .then(a.cmp(b).reverse())
+    }
+
+    names.retain(|name| valid_name(name));
+    names.sort_by(|a, b| better_name(a, b));
+
+    if names.is_empty() {
+        println!("Neibb");
+    } else {
+        println!("{}", names.first().unwrap())
+    }
 }
 
 fn rollingthedice() {

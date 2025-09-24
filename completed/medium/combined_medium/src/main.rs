@@ -69,7 +69,11 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    longestcommonsubsequence();
+    powerstrings();
+}
+
+fn powerstrings() {
+
 }
 
 fn longestcommonsubsequence() {

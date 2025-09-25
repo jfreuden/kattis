@@ -61,7 +61,7 @@ where
 }
 
 fn main() {
-    canadianseh();
+    blueberrywaffle();
 }
 
 fn canadianseh() {
@@ -75,8 +75,8 @@ fn canadianseh() {
 }
 
 fn blueberrywaffle() {
-    let [flip_time, cook_duration] = read_array::<u32, 2>();
-    if ((cook_duration % (2 * flip_time)) as f32 / (flip_time as f32)).round() == 0f32 {
+    let [flip_time, cook_duration] = read_array::<f32, 2>();
+    if (cook_duration / flip_time).round() as u32 % 2 == 0 {
         println!("up");
     } else {
         println!("down");

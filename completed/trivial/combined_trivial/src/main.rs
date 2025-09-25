@@ -70,7 +70,7 @@ fn vajningsplikt() {
         North,
         South,
         East,
-        West
+        West,
     }
 
     impl std::str::FromStr for Direction {
@@ -81,16 +81,16 @@ fn vajningsplikt() {
                 "South" => Ok(Direction::South),
                 "East" => Ok(Direction::East),
                 "West" => Ok(Direction::West),
-                _ => Err(())
+                _ => Err(()),
             }
         }
     }
 
     fn going_straight(from: Direction, to: Direction) -> bool {
-        (from == Direction::North && to == Direction::South) ||
-            (from == Direction::South && to == Direction::North) ||
-                (from == Direction::East && to == Direction::West) ||
-                    (from == Direction::West && to == Direction::East)
+        (from == Direction::North && to == Direction::South)
+            || (from == Direction::South && to == Direction::North)
+            || (from == Direction::East && to == Direction::West)
+            || (from == Direction::West && to == Direction::East)
     }
 
     fn opposite_direction(from: Direction, other: Direction) -> bool {
@@ -98,10 +98,10 @@ fn vajningsplikt() {
     }
 
     fn on_my_right(from: Direction, other: Direction) -> bool {
-        (from == Direction::North && other == Direction::West) ||
-            (from == Direction::East && other == Direction::North) ||
-                (from == Direction::South && other == Direction::East) ||
-                (from == Direction::West && other == Direction::South)
+        (from == Direction::North && other == Direction::West)
+            || (from == Direction::East && other == Direction::North)
+            || (from == Direction::South && other == Direction::East)
+            || (from == Direction::West && other == Direction::South)
     }
 
     let [from, to, other_vehicle_from] = read_array::<Direction, 3>();
@@ -112,8 +112,9 @@ fn vajningsplikt() {
     // Note that it is not important in which direction the other vehicle wants to leave the intersection.
     // Write a program that decides if your car should yield the right-of-way to the other vehicle.
 
-    let have_to_yield = (going_straight(from, to) && on_my_right(from, other_vehicle_from)) ||
-        (on_my_right(to, from) && (going_straight(from ,other_vehicle_from) || on_my_right(from, other_vehicle_from)));
+    let have_to_yield = (going_straight(from, to) && on_my_right(from, other_vehicle_from))
+        || (on_my_right(to, from)
+            && (going_straight(from, other_vehicle_from) || on_my_right(from, other_vehicle_from)));
 
     if have_to_yield {
         println!("Yes");
@@ -123,13 +124,18 @@ fn vajningsplikt() {
 }
 
 fn moscowdream() {
-    let [easy_problems, medium_problems, hard_problems, total_required] = read_array::<u8, 4>();
+    let [
+        easy_problems,
+        medium_problems,
+        hard_problems,
+        total_required,
+    ] = read_array::<u8, 4>();
 
-    if easy_problems < 1 ||
-        medium_problems < 1 ||
-        hard_problems < 1 ||
-        easy_problems + medium_problems + hard_problems < total_required ||
-        total_required < 3
+    if easy_problems < 1
+        || medium_problems < 1
+        || hard_problems < 1
+        || easy_problems + medium_problems + hard_problems < total_required
+        || total_required < 3
     {
         println!("NO");
     } else {
@@ -149,7 +155,9 @@ fn mork() {
     let goals_scored: u64 = read_one();
     let scoring_pattern: ScoringPattern = unsafe { std::mem::transmute(read_one::<u32>()) };
 
-    if scoring_pattern == ScoringPattern::NeitherTeam || (scoring_pattern == ScoringPattern::BothTeams && goals_scored == 2) {
+    if scoring_pattern == ScoringPattern::NeitherTeam
+        || (scoring_pattern == ScoringPattern::BothTeams && goals_scored == 2)
+    {
         println!("Jebb");
     } else {
         println!("Neibb");
@@ -166,7 +174,12 @@ fn mergjadmal() {
 }
 
 fn laptopsticker() {
-    let [computer_width, computer_height, sticker_width, sticker_height] = read_array::<u32, 4>();
+    let [
+        computer_width,
+        computer_height,
+        sticker_width,
+        sticker_height,
+    ] = read_array::<u32, 4>();
     if computer_width >= sticker_width + 2 && computer_height >= sticker_height + 2 {
         println!("1");
     } else {
@@ -198,7 +211,8 @@ fn ginfizz() {
 fn conteststruggles() {
     let [total_problems, solved_so_far] = read_array::<f64, 2>();
     let [average_difficulty_all, estimate_difficulty_solved] = read_array::<f64, 2>();
-    let remaining_points = average_difficulty_all * total_problems - estimate_difficulty_solved * solved_so_far;
+    let remaining_points =
+        average_difficulty_all * total_problems - estimate_difficulty_solved * solved_so_far;
     let estimated_remaining_difficulty = remaining_points / (total_problems - solved_so_far);
     if !(0.0f64..=100.0f64).contains(&estimated_remaining_difficulty) || remaining_points < 0f64 {
         println!("impossible");
@@ -209,11 +223,7 @@ fn conteststruggles() {
 
 fn chardonnay() {
     let deciliters_required: u64 = read_one();
-    let tax = if deciliters_required % 7 > 0 {
-        1
-    } else {
-        0
-    };
+    let tax = if deciliters_required % 7 > 0 { 1 } else { 0 };
 
     println!("{}", deciliters_required + tax);
 }
@@ -240,7 +250,11 @@ fn blueberrywaffle() {
 fn titlecost() {
     let entry = read_vec::<String>();
 
-    let cost = f64::clamp(entry[0].len() as f64, 0f64, entry[1].parse::<f64>().unwrap());
+    let cost = f64::clamp(
+        entry[0].len() as f64,
+        0f64,
+        entry[1].parse::<f64>().unwrap(),
+    );
     println!("{cost}");
 }
 
@@ -253,7 +267,11 @@ fn shandy() {
 fn gcvwr() {
     let [gcvwr, truck_weight, _number_of_items]: [u32; 3] = read_vec().try_into().unwrap();
     let random_kram_weight = read_vec::<u32>().iter().sum::<u32>();
-    let remaining_budget = gcvwr.saturating_sub(truck_weight).wrapping_mul(9).div_euclid(10).saturating_sub(random_kram_weight);
+    let remaining_budget = gcvwr
+        .saturating_sub(truck_weight)
+        .wrapping_mul(9)
+        .div_euclid(10)
+        .saturating_sub(random_kram_weight);
     println!("{remaining_budget}");
 }
 
@@ -267,8 +285,11 @@ fn ekkidaudi() {
         split_two.next(),
         Some(" "),
         split_one.next(),
-        split_two.next()
-    ].iter().copied().collect::<Option<String>>();
+        split_two.next(),
+    ]
+    .iter()
+    .copied()
+    .collect::<Option<String>>();
 
     println!("{}", human_text.unwrap());
 }
@@ -291,7 +312,7 @@ fn romans() {
 
 fn planina() {
     let input: u32 = read_one();
-    println!("{}", (2u64.pow(input) + 1).pow(2) );
+    println!("{}", (2u64.pow(input) + 1).pow(2));
 }
 
 fn heroesofvelmar() {
@@ -301,37 +322,37 @@ fn heroesofvelmar() {
                 name: "Shadow",
                 energy_cost: 4,
                 power_level: 6,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Gale",
                 energy_cost: 3,
                 power_level: 5,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Ranger",
                 energy_cost: 2,
                 power_level: 4,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Anvil",
                 energy_cost: 5,
                 power_level: 7,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Vexia",
                 energy_cost: 2,
                 power_level: 3,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Guardian",
                 energy_cost: 6,
                 power_level: 8,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Thunderheart",
@@ -345,25 +366,25 @@ fn heroesofvelmar() {
                     } else {
                         0
                     }
-                })
+                }),
             },
             Card {
                 name: "Frostwhisper",
                 energy_cost: 1,
                 power_level: 2,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Voidclaw",
                 energy_cost: 1,
                 power_level: 3,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Ironwood",
                 energy_cost: 1,
                 power_level: 3,
-                ability: None
+                ability: None,
             },
             Card {
                 name: "Zenith",
@@ -371,12 +392,13 @@ fn heroesofvelmar() {
                 power_level: 4,
                 ability: Some(|location, _| {
                     // "Centered Focus - If this card is played at the center location, +5 power."
-                    if location == 1 { // Could use Enum here to denote center statt index.
+                    if location == 1 {
+                        // Could use Enum here to denote center statt index.
                         5
                     } else {
                         0
                     }
-                })
+                }),
             },
             Card {
                 name: "Seraphina",
@@ -390,9 +412,11 @@ fn heroesofvelmar() {
                     // The ambiguous wording means I need to try this too:
                     location_cards.len().saturating_sub(1) as PowerValue
                     // figures it's this one. Dumb. so dumb.
-                })
+                }),
             },
-        ].map(|card| (card.name, card)));
+        ]
+        .map(|card| (card.name, card)),
+    );
 
     type LocationValue = u32;
     type EnergyValue = i32;
@@ -403,7 +427,7 @@ fn heroesofvelmar() {
         name: &'static str,
         energy_cost: EnergyValue,
         power_level: PowerValue,
-        ability: Option<fn(LocationValue, &Vec<Card>)->PowerValue>, // An ability looks at the location and all (friendly) cards at said location and returns a total effect power.
+        ability: Option<fn(LocationValue, &Vec<Card>) -> PowerValue>, // An ability looks at the location and all (friendly) cards at said location and returns a total effect power.
     }
 
     // Gameplay goes by resolving each location and awarding a point to each won location
@@ -414,8 +438,14 @@ fn heroesofvelmar() {
     for location in 0..=2 {
         let player_one_card_names: &[String] = &read_vec()[1..];
         let player_two_card_names: &[String] = &read_vec()[1..];
-        let player_one_cards: Vec<Card> = player_one_card_names.iter().map(|name| *heroes.get(name.as_str()).unwrap()).collect();
-        let player_two_cards: Vec<Card> = player_two_card_names.iter().map(|name| *heroes.get(name.as_str()).unwrap()).collect();
+        let player_one_cards: Vec<Card> = player_one_card_names
+            .iter()
+            .map(|name| *heroes.get(name.as_str()).unwrap())
+            .collect();
+        let player_two_cards: Vec<Card> = player_two_card_names
+            .iter()
+            .map(|name| *heroes.get(name.as_str()).unwrap())
+            .collect();
 
         let mut player_one_location_power = 0;
         for card in &player_one_cards {
@@ -440,12 +470,15 @@ fn heroesofvelmar() {
 
         match player_one_location_power.cmp(&player_two_location_power) {
             std::cmp::Ordering::Less => player_two_score += 1,
-            std::cmp::Ordering::Equal => {},
+            std::cmp::Ordering::Equal => {}
             std::cmp::Ordering::Greater => player_one_score += 1,
         }
     }
 
-    match player_one_score.cmp(&player_two_score).then(player_one_total_power.cmp(&player_two_total_power)) {
+    match player_one_score
+        .cmp(&player_two_score)
+        .then(player_one_total_power.cmp(&player_two_total_power))
+    {
         std::cmp::Ordering::Less => println!("Player 2"),
         std::cmp::Ordering::Equal => println!("Tie"),
         std::cmp::Ordering::Greater => println!("Player 1"),
@@ -478,7 +511,7 @@ fn fimmtudagstilbod() {
 }
 
 fn dartscores() {
-    kattis_struct!(Point{ x: f32, y: f32});
+    kattis_struct!(Point { x: f32, y: f32 });
     let test_case_count = read_one();
 
     fn score_throw(point: Point) -> u32 {
@@ -521,8 +554,7 @@ fn zyxab() {
     }
 
     fn better_name(a: &str, b: &str) -> std::cmp::Ordering {
-        a.len().cmp(&b.len())
-            .then(a.cmp(b).reverse())
+        a.len().cmp(&b.len()).then(a.cmp(b).reverse())
     }
 
     names.retain(|name| valid_name(name));
@@ -543,13 +575,18 @@ fn rollingthedice() {
     let mut d_splitter = dice_string.split('d');
     let dice_count = d_splitter.next().unwrap().parse::<u64>().unwrap();
     let dice_sides = d_splitter.next().unwrap().parse::<u64>().unwrap();
-    let offset = offset_splitter.next().unwrap_or("0").parse().unwrap_or(0u64);
-    let roll_expected_value: f64 = (dice_count as f64) * ((dice_sides + 1) as f64 / 2f64) + (offset as f64);
+    let offset = offset_splitter
+        .next()
+        .unwrap_or("0")
+        .parse()
+        .unwrap_or(0u64);
+    let roll_expected_value: f64 =
+        (dice_count as f64) * ((dice_sides + 1) as f64 / 2f64) + (offset as f64);
     println!("{}", roll_expected_value)
 }
 
 fn shatteredcake() {
-    use std::io::{Read};
+    use std::io::Read;
 
     struct FastReader {
         buf: Vec<u8>,
@@ -567,7 +604,9 @@ fn shatteredcake() {
         fn skip_ws(&mut self) {
             while self.idx < self.len {
                 let b = unsafe { self.buf.get_unchecked(self.idx) };
-                if *b > b' ' { break; }
+                if *b > b' ' {
+                    break;
+                }
                 self.idx += 1;
             }
         }
@@ -667,7 +706,7 @@ fn veci() {
             new_number *= 10;
             new_number += relevant_digit;
         } else {
-            continue
+            continue;
         }
 
         for entry in low_sorted {
@@ -676,7 +715,6 @@ fn veci() {
         }
 
         eprintln!("{high:?}, {low:?}, {new_number}");
-
 
         if new_number > input_number {
             best_number = best_number.min(new_number);
@@ -702,7 +740,7 @@ fn karte() {
     let mut counts = [0usize; NUMBER_OF_SUITS];
 
     while index + 3 <= card_string.len() {
-        let temp = &card_string[index..index+3];
+        let temp = &card_string[index..index + 3];
         index += 3;
 
         match temp.chars().next().unwrap() {
@@ -710,7 +748,7 @@ fn karte() {
             'K' => counts[1] += 1,
             'H' => counts[2] += 1,
             'T' => counts[3] += 1,
-            _ => panic!()
+            _ => panic!(),
         }
 
         if !set.insert(temp) {
@@ -719,9 +757,12 @@ fn karte() {
         }
     }
 
-    let missing_cards_output = counts.iter().map(|&count| CARDS_PER_SUIT.saturating_sub(count).to_string()).collect::<Vec<String>>().join(" ");
+    let missing_cards_output = counts
+        .iter()
+        .map(|&count| CARDS_PER_SUIT.saturating_sub(count).to_string())
+        .collect::<Vec<String>>()
+        .join(" ");
     print!("{}", missing_cards_output);
-
 }
 
 fn modulo() {
@@ -749,15 +790,22 @@ fn threeblindmice() {
     // initial_distance - speed_of_wife * t = speed_of_mouse_one * t
     // therefore it's the t = d / (sum of speeds), then distance is speed * t
 
-    let intercept_time_one = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_one as f32);
-    let intercept_time_two = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_two as f32);
-    let intercept_time_three = (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_three as f32);
+    let intercept_time_one =
+        (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_one as f32);
+    let intercept_time_two =
+        (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_two as f32);
+    let intercept_time_three =
+        (initial_distance as f32) / (speed_of_wife as f32 + speed_of_mouse_three as f32);
 
     let intercept_point_one = (speed_of_mouse_one as f32) * intercept_time_one;
     let intercept_point_two = (speed_of_mouse_two as f32) * intercept_time_two;
     let intercept_point_three = (speed_of_mouse_three as f32) * intercept_time_three;
 
-    println!("{}", (2f32 * intercept_point_one + 2f32 * intercept_point_two + 2f32 * intercept_point_three).round() as u32);
+    println!(
+        "{}",
+        (2f32 * intercept_point_one + 2f32 * intercept_point_two + 2f32 * intercept_point_three)
+            .round() as u32
+    );
 }
 
 fn matchstickmen() {
@@ -772,14 +820,14 @@ fn matchstickmen() {
     let [_number_of_bottom_row_matchsticks, matchstick_length] = read_array::<f64, 2>();
     let foot_positions = read_vec::<f64>();
 
-    let mut tops = std::iter::once(0f64).chain(foot_positions).scan(
-        0f64,
-        |start, x| {
+    let mut tops = std::iter::once(0f64)
+        .chain(foot_positions)
+        .scan(0f64, |start, x| {
             let out_x = x + *start;
             *start = out_x;
             Some((out_x, 0f64))
-        }).collect::<Vec<(f64, f64)>>();
-
+        })
+        .collect::<Vec<(f64, f64)>>();
 
     while tops.len() > 1 {
         let mut next_tops = Vec::<(f64, f64)>::with_capacity(tops.len() - 1);
@@ -851,10 +899,7 @@ fn fastestestfunction() {
     Answer is actually inverse because speedup. so A/B * (1-B)/(1-A)
      */
 
-    println!(
-        "{}",
-        (before / after) * ((1.0 - after) / (1.0 - before))
-    );
+    println!("{}", (before / after) * ((1.0 - after) / (1.0 - before)));
 }
 
 fn abovesealevel() {
@@ -884,14 +929,14 @@ fn equalshots() {
 }
 
 fn grading() {
-    let grade_boundaries = read_vec().iter().copied().take(5).collect::<Vec::<u16>>();
+    let grade_boundaries = read_vec().iter().copied().take(5).collect::<Vec<u16>>();
     let grade_letter = ["A", "B", "C", "D", "E", "F"];
     let grade = read_one::<u16>();
 
     for (bound, letter) in grade_boundaries.iter().copied().zip(grade_letter) {
         if bound <= grade {
             println!("{}", letter);
-            break
+            break;
         }
     }
     if *grade_boundaries.last().unwrap() > grade {
@@ -923,7 +968,12 @@ fn sumkindofproblem() {
     let datasets = read_one::<u64>();
     for _ in 0..datasets {
         let [dataset_id, n]: [u64; 2] = read_array();
-        println!("{dataset_id} {} {} {}", (n*n + n).div_euclid(2), n*n, n*n + n);
+        println!(
+            "{dataset_id} {} {} {}",
+            (n * n + n).div_euclid(2),
+            n * n,
+            n * n + n
+        );
     }
 }
 
@@ -931,17 +981,26 @@ fn sumkindofproblem() {
 fn skener() {
     let [rows, columns, row_magnification, column_magnification]: [u32; 4] = read_array();
 
-    let mut output_matrix = vec![vec![' '; (columns * column_magnification) as usize]; (rows * row_magnification) as usize];
+    let mut output_matrix = vec![
+        vec![' '; (columns * column_magnification) as usize];
+        (rows * row_magnification) as usize
+    ];
 
     let mut input_matrix = Vec::new();
     for _ in 0..rows {
-        input_matrix.push(read_str().chars().take(columns as usize).collect::<Vec<char>>());
+        input_matrix.push(
+            read_str()
+                .chars()
+                .take(columns as usize)
+                .collect::<Vec<char>>(),
+        );
     }
 
     // Go through each "pixel" of the output and remap backward to the input
     for (row, row_chars) in output_matrix.iter_mut().enumerate() {
         for (column, char) in row_chars.iter_mut().enumerate() {
-            *char = input_matrix[row.div_euclid(row_magnification as usize)][column.div_euclid(column_magnification as usize)];
+            *char = input_matrix[row.div_euclid(row_magnification as usize)]
+                [column.div_euclid(column_magnification as usize)];
         }
     }
 
@@ -960,7 +1019,10 @@ fn parkingpandemonium() {
 fn cosmicpathoptimization() {
     let temp_count: u32 = read_one();
     let temperatures = read_vec::<u32>();
-    println!("{}", temperatures.iter().sum::<u32>().div_euclid(temp_count))
+    println!(
+        "{}",
+        temperatures.iter().sum::<u32>().div_euclid(temp_count)
+    )
 }
 
 fn fizzbuzz() {
@@ -978,7 +1040,6 @@ fn fizzbuzz() {
         }
         println!();
     }
-
 }
 
 fn mclimb() {
@@ -1049,16 +1110,22 @@ trait UpgradedIterator: Iterator {
     where
         Self: Sized,
         Self::Item: std::ops::Add<Output = Self::Item>
-        + std::ops::Div<Output = Self::Item>
-        + From<u8>
-        + PartialEq
-        + Clone,
+            + std::ops::Div<Output = Self::Item>
+            + From<u8>
+            + PartialEq
+            + Clone,
     {
         let zero = <Self::Item as From<u8>>::from(0u8);
         let one = <Self::Item as From<u8>>::from(1u8);
 
-        let (sum, count) = self.fold((zero.clone(), zero.clone()), |(s, c), x| (s + x, c + one.clone()));
-        if count == zero { None } else { Some(sum / count) }
+        let (sum, count) = self.fold((zero.clone(), zero.clone()), |(s, c), x| {
+            (s + x, c + one.clone())
+        });
+        if count == zero {
+            None
+        } else {
+            Some(sum / count)
+        }
     }
 }
 
@@ -1082,10 +1149,7 @@ fn filip() {
     let [mut str_a, mut str_b]: [String; 2] = read_array();
     str_a = str_a.chars().rev().collect::<String>();
     str_b = str_b.chars().rev().collect::<String>();
-    let nums: Vec<u16> = vec![
-        str_a.parse().unwrap(),
-        str_b.parse().unwrap()
-    ];
+    let nums: Vec<u16> = vec![str_a.parse().unwrap(), str_b.parse().unwrap()];
 
     println!("{}", nums.iter().max().unwrap());
 }
@@ -1151,7 +1215,6 @@ fn cetvrta() {
     let [x2, y2] = read_array::<u16, 2>();
     let [x3, y3] = read_array::<u16, 2>();
 
-
     let initial_xs = [x1];
     let initial_ys = [y1];
 
@@ -1211,16 +1274,13 @@ fn grafaholur() {
 
     // Given the previous rate and the new downsized workers and quotas, how long will it take.
     let dig_rate_per_worker: f32 = initial_dug / (starting_hours * starting_worker_count);
-    let downsized_dig_time = downsized_worker_quota / (dig_rate_per_worker * downsized_worker_count);
+    let downsized_dig_time =
+        downsized_worker_quota / (dig_rate_per_worker * downsized_worker_count);
     println!("{}", downsized_dig_time);
 }
 
 fn triangelfabriken() {
-    let angles: Vec<u16> = vec![
-        read_one(),
-        read_one(),
-        read_one(),
-    ];
+    let angles: Vec<u16> = vec![read_one(), read_one(), read_one()];
 
     let biggest_angle = *angles.iter().max().unwrap();
     if biggest_angle > 90 {
@@ -1236,11 +1296,14 @@ fn monopol() {
     let _: usize = read_one();
     let sorted_distances: Vec<usize> = read_vec();
 
-    let total_probability: f32 =sorted_distances.iter().map(|&x| {
-        let dice_sides = 6;
-        let chances_for_x = dice_sides - (dice_sides + 1 - x as i32).abs();
-        chances_for_x as f32 / (dice_sides * dice_sides) as f32
-    }).sum();
+    let total_probability: f32 = sorted_distances
+        .iter()
+        .map(|&x| {
+            let dice_sides = 6;
+            let chances_for_x = dice_sides - (dice_sides + 1 - x as i32).abs();
+            chances_for_x as f32 / (dice_sides * dice_sides) as f32
+        })
+        .sum();
 
     println!("{}", total_probability);
 }
@@ -1267,11 +1330,13 @@ fn lastfactorialdigit() {
     let num_test_cases = read_one::<usize>();
     // Okay I can't help but at least cache the results
     struct FactHelper {
-        answers_cache: Vec<Option<usize>>
+        answers_cache: Vec<Option<usize>>,
     }
     impl FactHelper {
         fn new(max: usize) -> FactHelper {
-            FactHelper { answers_cache: vec![None; max] }
+            FactHelper {
+                answers_cache: vec![None; max],
+            }
         }
 
         fn fact(&mut self, input: usize) -> usize {
@@ -1294,7 +1359,13 @@ fn lastfactorialdigit() {
 
 fn autori() {
     let name_string = read_str();
-    println!("{}", name_string.split('-').map(|x| *x.as_bytes().first().unwrap() as char).collect::<String>());
+    println!(
+        "{}",
+        name_string
+            .split('-')
+            .map(|x| *x.as_bytes().first().unwrap() as char)
+            .collect::<String>()
+    );
 }
 
 fn r2() {

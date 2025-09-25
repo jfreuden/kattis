@@ -61,7 +61,52 @@ where
 }
 
 fn main() {
-    vajningsplikt();
+    onechicken();
+}
+
+fn onechicken() {
+    let [attendees, amount_present] = read_array::<i32, 2>();
+
+    let leftover = amount_present - attendees;
+    if leftover == 1 {
+        println!("Dr. Chaz will have 1 piece of chicken left over!");
+    } else if leftover == -1 {
+        println!("Dr. Chaz needs 1 more piece of chicken!");
+    } else if leftover < 0 {
+        println!("Dr. Chaz needs {} more pieces of chicken!", -leftover);
+    } else {
+        println!("Dr. Chaz will have {leftover} pieces of chicken left over!");
+    }
+}
+
+fn judgingmoose() {
+    let [left, right] = read_array::<u8, 2>();
+
+    if left == 0 && right == 0 {
+        println!("Not a moose");
+    } else {
+        if left != right {
+            print!("Odd ");
+        } else {
+            print!("Even ");
+        }
+        print!("{}", std::cmp::max(left, right) * 2);
+    }
+}
+
+fn internationaldates() {
+    let date_string = read_str();
+    let mut split = date_string.split('/');
+    let first: u8 = split.next().unwrap().parse().unwrap();
+    let second: u8 = split.next().unwrap().parse().unwrap();
+
+    if first > 12 {
+        println!("EU");
+    } else if second > 12 {
+        println!("US");
+    } else {
+        println!("either");
+    }
 }
 
 fn vajningsplikt() {

@@ -73,7 +73,19 @@ fn main() {
 }
 
 fn powerstrings() {
+    loop {
+        let input = read_str();
+        if input.starts_with('.') {
+            break;
+        }
 
+        // Double the string.
+        // Then remove the first char.
+        // The first match in this new frankenstring is where the smallest repeat ends.
+        // Index math from there.
+        let (index, _) = input.repeat(2)[1..].match_indices(&input).next().unwrap();
+        println!("{}", input.len().div_euclid(index + 1));
+    }
 }
 
 fn longestcommonsubsequence() {
@@ -94,10 +106,14 @@ fn longestcommonsubsequence() {
         for j in 0..alphabet_size {
             // don't check yourself
             if i == j || precedes[j][i] {
-                continue
+                continue;
             }
 
-            if letter_indices[i].iter().zip(&letter_indices[j]).all(|(a, b)| a < b) {
+            if letter_indices[i]
+                .iter()
+                .zip(&letter_indices[j])
+                .all(|(a, b)| a < b)
+            {
                 precedes[i][j] = true;
                 follows[j] = true;
             }
@@ -105,22 +121,15 @@ fn longestcommonsubsequence() {
     }
 
     let mut visit_stack: Vec<(usize, usize)> = (0..alphabet_size)
-        .filter_map(|i| if !follows[i] {
-            Some((0usize, i))
-        } else {
-            None
-        }).collect();
+        .filter_map(|i| if !follows[i] { Some((0usize, i)) } else { None })
+        .collect();
 
     let mut max_path_len = 0usize;
     while let Some((path_len, index)) = visit_stack.pop() {
         let decendents = precedes[index]
             .iter()
             .enumerate()
-            .filter_map(|(i, &x)| if x {
-                Some(i)
-            } else {
-                None
-            });
+            .filter_map(|(i, &x)| if x { Some(i) } else { None });
 
         let new_path_len = path_len + 1;
         max_path_len = max_path_len.max(new_path_len);
@@ -137,8 +146,8 @@ fn longestcommonsubsequence() {
 fn longestcommonsubsequence_wrong() {
     let [number_of_strings, alphabet_size]: [usize; 2] = read_array();
     const PRIMES: [usize; 26] = [
-        2 , 3 , 5 , 7 , 11 , 13 , 17 , 19 , 23 , 29 , 31 , 37 , 41 ,
-        43 , 47 , 53 , 59 , 61 , 67 , 71 , 73 , 79 , 83 , 89 , 97 , 101
+        2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89,
+        97, 101,
     ];
 
     let mut strings: Vec<String> = vec![];
@@ -170,10 +179,14 @@ fn longestcommonsubsequence_wrong() {
 
         // if any index is before the already-taken extents, skip along; this letter lost its chance.
         if indices.iter().zip(&extents).any(|(i, extent)| i < extent) {
-            continue
+            continue;
         } else {
             subsequence_len += 1;
-            extents = indices.iter().zip(&extents).map(|(&i, &extent)| std::cmp::max(extent, i)).collect()
+            extents = indices
+                .iter()
+                .zip(&extents)
+                .map(|(&i, &extent)| std::cmp::max(extent, i))
+                .collect()
         }
     }
 
@@ -207,25 +220,22 @@ fn test_longest_common_subsequence() {
     let string_b = b"gggggggtagtattagagggggcgcgcgcgagctagctgactgatcgtacgtagctgactgatcgtacgtagctagctgactgatcgatcgtacgcgcgcgcgccgcgcgcgagttgctagctagctgatcgtacgtggctgctcgtacgctagtcgatatatagtcgtcgtcgtcgctgcatcagtagtagctgcgcgatgatatagtagagagagagagagagagagtagatgatgatgagagagatcgtcgctgctgctcgctgctgctagagaggatagatatatatatatagggggatgatgcgcgcgcgaaatgc";
 
     for i in 0..100000 {
-        let longest = longest_common_subsequence(std::hint::black_box(&string_a[..(i % string_a.len())]), std::hint::black_box(string_b));
+        let longest = longest_common_subsequence(
+            std::hint::black_box(&string_a[..(i % string_a.len())]),
+            std::hint::black_box(string_b),
+        );
         println!("{}", longest);
     }
 }
 
 fn longest_common_subsequence(a: &[u8], b: &[u8]) -> usize {
-    let (longer, shorter) = {
-        if a.len() >= b.len() {
-            (a, b)
-        } else {
-            (b, a)
-        }
-    };
+    let (longer, shorter) = { if a.len() >= b.len() { (a, b) } else { (b, a) } };
 
     let mut table_row = vec![0usize; longer.len() + 1];
     let mut next_row = vec![0usize; longer.len() + 1];
     for search_letter in shorter {
         let mut last_value = 0usize;
-        for (i, candidate_letter) in longer.iter().enumerate(){
+        for (i, candidate_letter) in longer.iter().enumerate() {
             last_value = if search_letter == candidate_letter {
                 table_row[i] + 1
             } else {
@@ -259,7 +269,9 @@ fn pointcoloring() {
         fn skip_ws(&mut self) {
             while self.idx < self.len {
                 let b = unsafe { *self.buf.get_unchecked(self.idx) };
-                if b > b' ' { break; }
+                if b > b' ' {
+                    break;
+                }
                 self.idx += 1;
             }
         }

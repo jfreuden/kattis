@@ -64,6 +64,28 @@ fn main() {
     blueberrywaffle();
 }
 
+fn blueberrywaffle() {
+    let [flip_time, cook_duration] = read_array::<u32, 2>();
+    if ((cook_duration % (2 * flip_time)) as f32 / (flip_time as f32)).round() == 0f32 {
+        println!("up");
+    } else {
+        println!("down");
+    }
+}
+
+fn titlecost() {
+    let entry = read_vec::<String>();
+
+    let cost = f64::clamp(entry[0].len() as f64, 0f64, entry[1].parse::<f64>().unwrap());
+    println!("{cost}");
+}
+
+fn shandy() {
+    let beer_bottles: u64 = read_one();
+    let lemonade_bottles: u64 = read_one();
+    println!("{}", std::cmp::min(beer_bottles * 2, lemonade_bottles * 2));
+}
+
 fn gcvwr() {
     let [gcvwr, truck_weight, _number_of_items]: [u32; 3] = read_vec().try_into().unwrap();
     let random_kram_weight = read_vec::<u32>().iter().sum::<u32>();

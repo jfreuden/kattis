@@ -61,7 +61,17 @@ where
 }
 
 fn main() {
-    blueberrywaffle();
+    canadianseh();
+}
+
+fn canadianseh() {
+    let suspect_sentence = read_str();
+
+    if suspect_sentence.strip_suffix("eh?").is_some() {
+        println!("Canadian!");
+    } else {
+        println!("Imposter!");
+    }
 }
 
 fn blueberrywaffle() {

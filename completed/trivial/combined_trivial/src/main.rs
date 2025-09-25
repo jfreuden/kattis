@@ -70,7 +70,234 @@ where
 }
 
 fn main() {
-    dartscores();
+    gcvwr();
+}
+
+fn gcvwr() {
+    let [gcvwr, truck_weight, _number_of_items]: [u32; 3] = read_array();
+    let random_kram_weight = read_vec::<u32>().iter().sum::<u32>();
+    let remaining_budget = gcvwr.saturating_sub(truck_weight).wrapping_mul(9).div_euclid(10).saturating_sub(random_kram_weight);
+    println!("{remaining_budget}");
+}
+
+fn ekkidaudi() {
+    let line_one = read_str();
+    let line_two = read_str();
+    let mut split_one = line_one.split('|');
+    let mut split_two = line_two.split('|');
+    let human_text = [
+        split_one.next(),
+        split_two.next(),
+        Some(" "),
+        split_one.next(),
+        split_two.next()
+    ].iter().copied().collect::<Option<String>>();
+
+    println!("{}", human_text.unwrap());
+}
+
+fn betting() {
+    let input: u32 = read_one();
+    println!("{}", (input as f64 / 100.0).recip());
+    println!("{}", ((100.0 - input as f64) / 100.0).recip());
+}
+
+fn thelastproblem() {
+    let name = read_str();
+    println!("Thank you, {name}, and farewell!");
+}
+
+fn romans() {
+    let miles: f64 = read_one();
+    println!("{}", (miles * 1000.0 * 5280.0 / 4854.0).round());
+}
+
+fn planina() {
+    let input: u32 = read_one();
+    println!("{}", (2u64.pow(input) + 1).pow(2) );
+}
+
+fn heroesofvelmar() {
+    let heroes = std::collections::HashMap::<&str, Card>::from(
+        [
+            Card {
+                name: "Shadow",
+                energy_cost: 4,
+                power_level: 6,
+                ability: None
+            },
+            Card {
+                name: "Gale",
+                energy_cost: 3,
+                power_level: 5,
+                ability: None
+            },
+            Card {
+                name: "Ranger",
+                energy_cost: 2,
+                power_level: 4,
+                ability: None
+            },
+            Card {
+                name: "Anvil",
+                energy_cost: 5,
+                power_level: 7,
+                ability: None
+            },
+            Card {
+                name: "Vexia",
+                energy_cost: 2,
+                power_level: 3,
+                ability: None
+            },
+            Card {
+                name: "Guardian",
+                energy_cost: 6,
+                power_level: 8,
+                ability: None
+            },
+            Card {
+                name: "Thunderheart",
+                energy_cost: 5,
+                power_level: 6,
+                ability: Some(|_, location_cards| {
+                    // "Phalanx - If the location this card is played at has 4 friendly cards, including this one, then its power is doubled.
+                    // Note that other buffs the card receives are not doubled."
+                    if location_cards.len() >= 4 {
+                        6 // This card's power is doubled when 4 friendlies in this spot.
+                    } else {
+                        0
+                    }
+                })
+            },
+            Card {
+                name: "Frostwhisper",
+                energy_cost: 1,
+                power_level: 2,
+                ability: None
+            },
+            Card {
+                name: "Voidclaw",
+                energy_cost: 1,
+                power_level: 3,
+                ability: None
+            },
+            Card {
+                name: "Ironwood",
+                energy_cost: 1,
+                power_level: 3,
+                ability: None
+            },
+            Card {
+                name: "Zenith",
+                energy_cost: 6,
+                power_level: 4,
+                ability: Some(|location, _| {
+                    // "Centered Focus - If this card is played at the center location, +5 power."
+                    if location == 1 { // Could use Enum here to denote center statt index.
+                        5
+                    } else {
+                        0
+                    }
+                })
+            },
+            Card {
+                name: "Seraphina",
+                energy_cost: 1,
+                power_level: 1,
+                ability: Some(|_, location_cards| {
+                    // "Celestial Healing - Seraphina grants +1 power to each friendly card at this location, other than itself.
+                    // This includes other Seraphina cards."
+                    // location_cards.iter().filter(|card| card.name != "Seraphina").count() as PowerValue
+
+                    // The ambiguous wording means I need to try this too:
+                    location_cards.len().saturating_sub(1) as PowerValue
+                    // figures it's this one. Dumb. so dumb.
+                })
+            },
+        ].map(|card| (card.name, card)));
+
+    type LocationValue = u32;
+    type EnergyValue = i32;
+    type PowerValue = i32;
+
+    #[derive(Debug, Default, Copy, Clone)]
+    struct Card {
+        name: &'static str,
+        energy_cost: EnergyValue,
+        power_level: PowerValue,
+        ability: Option<fn(LocationValue, &Vec<Card>)->PowerValue>, // An ability looks at the location and all (friendly) cards at said location and returns a total effect power.
+    }
+
+    // Gameplay goes by resolving each location and awarding a point to each won location
+    let mut player_one_total_power = 0;
+    let mut player_two_total_power = 0;
+    let mut player_one_score = 0;
+    let mut player_two_score = 0;
+    for location in 0..=2 {
+        let player_one_card_names: &[String] = &read_vec()[1..];
+        let player_two_card_names: &[String] = &read_vec()[1..];
+        let player_one_cards: Vec<Card> = player_one_card_names.iter().map(|name| *heroes.get(name.as_str()).unwrap()).collect();
+        let player_two_cards: Vec<Card> = player_two_card_names.iter().map(|name| *heroes.get(name.as_str()).unwrap()).collect();
+
+        let mut player_one_location_power = 0;
+        for card in &player_one_cards {
+            player_one_location_power += card.power_level;
+            if let Some(closure) = card.ability {
+                player_one_location_power += closure(location, &player_one_cards);
+            }
+        }
+
+        let mut player_two_location_power = 0;
+        for card in &player_two_cards {
+            player_two_location_power += card.power_level;
+            if let Some(closure) = card.ability {
+                player_two_location_power += closure(location, &player_two_cards);
+            }
+        }
+
+        player_one_total_power += player_one_location_power;
+        player_two_total_power += player_two_location_power;
+
+        // eprintln!("round {location} power {player_one_location_power} / {player_two_location_power}");
+
+        match player_one_location_power.cmp(&player_two_location_power) {
+            std::cmp::Ordering::Less => player_two_score += 1,
+            std::cmp::Ordering::Equal => {},
+            std::cmp::Ordering::Greater => player_one_score += 1,
+        }
+    }
+
+    match player_one_score.cmp(&player_two_score).then(player_one_total_power.cmp(&player_two_total_power)) {
+        std::cmp::Ordering::Less => println!("Player 2"),
+        std::cmp::Ordering::Equal => println!("Tie"),
+        std::cmp::Ordering::Greater => println!("Player 1"),
+    }
+}
+
+fn greetings2() {
+    let greeting = read_str();
+    // Greeting guaranteed to be of the form `h[e]+y`
+    let e_count = greeting.len() - 2;
+    let mut reply = "h".to_string();
+    for _ in 0..e_count * 2 {
+        reply.push('e');
+    }
+    reply.push('y');
+
+    println!("{reply}");
+}
+
+fn fimmtudagstilbod() {
+    let year: u32 = read_one();
+    if year < 1993 {
+        panic!("Mahjong Pizza doesn't exist yet.")
+    } else if year <= 2020 {
+        println!("1000");
+    } else {
+        let new_price = 1000 + 100 * (year - 2020);
+        println!("{new_price}");
+    }
 }
 
 fn dartscores() {

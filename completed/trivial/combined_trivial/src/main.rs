@@ -53,19 +53,11 @@ where
         .collect()
 }
 
-fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
-where
-    T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
-{
-    read_vec::<T>().try_into().unwrap()
-}
-
 fn read_array<T: std::str::FromStr + std::fmt::Debug, const K: usize>() -> [T; K]
 where
     T::Err: std::fmt::Debug,
 {
-    try_read_array()
+    read_vec::<T>().try_into().unwrap()
 }
 
 fn main() {

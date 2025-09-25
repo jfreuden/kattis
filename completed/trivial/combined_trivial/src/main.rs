@@ -61,7 +61,161 @@ where
 }
 
 fn main() {
-    blueberrywaffle();
+    vajningsplikt();
+}
+
+fn vajningsplikt() {
+    #[derive(PartialOrd, PartialEq, Debug, Copy, Clone)]
+    enum Direction {
+        North,
+        South,
+        East,
+        West
+    }
+
+    impl std::str::FromStr for Direction {
+        type Err = ();
+        fn from_str(s: &str) -> Result<Self, Self::Err> {
+            match s {
+                "North" => Ok(Direction::North),
+                "South" => Ok(Direction::South),
+                "East" => Ok(Direction::East),
+                "West" => Ok(Direction::West),
+                _ => Err(())
+            }
+        }
+    }
+
+    fn going_straight(from: Direction, to: Direction) -> bool {
+        (from == Direction::North && to == Direction::South) ||
+            (from == Direction::South && to == Direction::North) ||
+                (from == Direction::East && to == Direction::West) ||
+                    (from == Direction::West && to == Direction::East)
+    }
+
+    fn opposite_direction(from: Direction, other: Direction) -> bool {
+        going_straight(from, other)
+    }
+
+    fn on_my_right(from: Direction, other: Direction) -> bool {
+        (from == Direction::North && other == Direction::West) ||
+            (from == Direction::East && other == Direction::North) ||
+                (from == Direction::South && other == Direction::East) ||
+                (from == Direction::West && other == Direction::South)
+    }
+
+    let [from, to, other_vehicle_from] = read_array::<Direction, 3>();
+
+    // You want to pass straight through the intersection; another vehicle is approaching from your right.
+    // You want to turn left at the intersection; another vehicle is approaching from the opposite direction or from your right.
+    //
+    // Note that it is not important in which direction the other vehicle wants to leave the intersection.
+    // Write a program that decides if your car should yield the right-of-way to the other vehicle.
+
+    let have_to_yield = (going_straight(from, to) && on_my_right(from, other_vehicle_from)) ||
+        (on_my_right(to, from) && (going_straight(from ,other_vehicle_from) || on_my_right(from, other_vehicle_from)));
+
+    if have_to_yield {
+        println!("Yes");
+    } else {
+        println!("No");
+    }
+}
+
+fn moscowdream() {
+    let [easy_problems, medium_problems, hard_problems, total_required] = read_array::<u8, 4>();
+
+    if easy_problems < 1 ||
+        medium_problems < 1 ||
+        hard_problems < 1 ||
+        easy_problems + medium_problems + hard_problems < total_required ||
+        total_required < 3
+    {
+        println!("NO");
+    } else {
+        println!("YES");
+    }
+}
+
+fn mork() {
+    #[repr(u32)]
+    #[derive(PartialOrd, PartialEq)]
+    enum ScoringPattern {
+        NeitherTeam = 0,
+        SingleTeam = 1,
+        BothTeams = 2,
+    }
+
+    let goals_scored: u64 = read_one();
+    let scoring_pattern: ScoringPattern = unsafe { std::mem::transmute(read_one::<u32>()) };
+
+    if scoring_pattern == ScoringPattern::NeitherTeam || (scoring_pattern == ScoringPattern::BothTeams && goals_scored == 2) {
+        println!("Jebb");
+    } else {
+        println!("Neibb");
+    }
+}
+
+fn mergjadmal() {
+    let input = read_str();
+    if input.contains("69") || input.contains("420") {
+        println!("Mergjad!");
+    } else {
+        println!("Leim!");
+    }
+}
+
+fn laptopsticker() {
+    let [computer_width, computer_height, sticker_width, sticker_height] = read_array::<u32, 4>();
+    if computer_width >= sticker_width + 2 && computer_height >= sticker_height + 2 {
+        println!("1");
+    } else {
+        println!("0");
+    }
+}
+
+fn hvertskalmaeta() {
+    let attendee_home = read_str();
+    if ["Fjardabyggd", "Mulathing", "Akureyri"].contains(&attendee_home.as_str()) {
+        println!("Akureyri");
+    } else {
+        println!("Reykjavik");
+    }
+}
+
+fn ginfizz() {
+    let i: u32 = read_one();
+    println!("{} ml gin", 45 * i);
+    println!("{} ml fresh lemon juice", 30 * i);
+    println!("{} ml simple syrup", 10 * i);
+    if i == 1 {
+        println!("{} slice of lemon", i);
+    } else {
+        println!("{} slices of lemon", i);
+    }
+}
+
+fn conteststruggles() {
+    let [total_problems, solved_so_far] = read_array::<f64, 2>();
+    let [average_difficulty_all, estimate_difficulty_solved] = read_array::<f64, 2>();
+    let remaining_points = average_difficulty_all * total_problems - estimate_difficulty_solved * solved_so_far;
+    let estimated_remaining_difficulty = remaining_points / (total_problems - solved_so_far);
+    if !(0.0f64..=100.0f64).contains(&estimated_remaining_difficulty) || remaining_points < 0f64 {
+        println!("impossible");
+    } else {
+        println!("{estimated_remaining_difficulty}");
+    }
+}
+
+fn chardonnay() {
+    let deciliters_required: u64 = read_one();
+    let tax = if deciliters_required % 7 > 0 {
+        1
+    } else {
+        0
+    };
+
+    println!("{}", deciliters_required + tax);
 }
 
 fn canadianseh() {

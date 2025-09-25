@@ -53,28 +53,27 @@ where
         .collect()
 }
 
-fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> Result<[T; K], E>
+fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
 where
     T::Err: std::fmt::Debug,
     [T; K]: TryFrom<Vec<T>, Error = E>,
 {
-    read_vec::<T>().try_into()
+    read_vec::<T>().try_into().unwrap()
 }
 
-fn read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
+fn read_array<T: std::str::FromStr + std::fmt::Debug, const K: usize>() -> [T; K]
 where
     T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
 {
-    try_read_array().unwrap()
+    try_read_array()
 }
 
 fn main() {
-    gcvwr();
+    blueberrywaffle();
 }
 
 fn gcvwr() {
-    let [gcvwr, truck_weight, _number_of_items]: [u32; 3] = read_array();
+    let [gcvwr, truck_weight, _number_of_items]: [u32; 3] = read_vec().try_into().unwrap();
     let random_kram_weight = read_vec::<u32>().iter().sum::<u32>();
     let remaining_budget = gcvwr.saturating_sub(truck_weight).wrapping_mul(9).div_euclid(10).saturating_sub(random_kram_weight);
     println!("{remaining_budget}");
@@ -592,7 +591,7 @@ fn matchstickmen() {
     // Using hypotenuse t (matchstick_length) and d/2, you get the height of this (rotated) triangle h.
     // make vector for this h, perpendicular to the other vector between me and you. The endpoint is the top of this triangle.
 
-    let [_number_of_bottom_row_matchsticks, matchstick_length] = read_array::<f64, 2, _>();
+    let [_number_of_bottom_row_matchsticks, matchstick_length] = read_array::<f64, 2>();
     let foot_positions = read_vec::<f64>();
 
     let mut tops = std::iter::once(0f64).chain(foot_positions).scan(
@@ -787,7 +786,7 @@ fn cosmicpathoptimization() {
 }
 
 fn fizzbuzz() {
-    let [fizz_div, buzz_div, count] = read_array::<u32, 3, _>();
+    let [fizz_div, buzz_div, count] = read_array::<u32, 3>();
 
     for i in 1..=count {
         if i.is_multiple_of(fizz_div) && i.is_multiple_of(buzz_div) {
@@ -832,7 +831,7 @@ fn hackaholics() {
 }
 
 fn catinabox() {
-    let [height, width, length, cat_volume] = read_array::<u64, 4, _>();
+    let [height, width, length, cat_volume] = read_array::<u64, 4>();
     match cat_volume.cmp(&(height * width * length)) {
         std::cmp::Ordering::Equal => println!("COZY"),
         std::cmp::Ordering::Less => println!("SO MUCH SPACE"),
@@ -927,7 +926,7 @@ fn grassseed() {
     let mut total_lawn_area = 0f32;
 
     for _ in 0..num_lawns {
-        let [length, width] = read_array::<f32, 2, _>();
+        let [length, width] = read_array::<f32, 2>();
         total_lawn_area += length * width;
     }
 
@@ -970,9 +969,9 @@ fn reversebinary() {
 }
 
 fn cetvrta() {
-    let [x1, y1] = read_array::<u16, 2, _>();
-    let [x2, y2] = read_array::<u16, 2, _>();
-    let [x3, y3] = read_array::<u16, 2, _>();
+    let [x1, y1] = read_array::<u16, 2>();
+    let [x2, y2] = read_array::<u16, 2>();
+    let [x3, y3] = read_array::<u16, 2>();
 
 
     let initial_xs = [x1];
@@ -998,7 +997,7 @@ fn cetvrta() {
 }
 
 fn sibice() {
-    let [num_matches, box_w, box_h] = read_array::<u16, 3, _>();
+    let [num_matches, box_w, box_h] = read_array::<u16, 3>();
     let box_diag = (box_h * box_h + box_w * box_w).isqrt();
     for _ in 0..num_matches {
         let match_len: u16 = read_one();
@@ -1121,7 +1120,7 @@ fn autori() {
 }
 
 fn r2() {
-    let [r1, mean] = read_array::<i32, 2, _>();
+    let [r1, mean] = read_array::<i32, 2>();
 
     println!("{}", 2i32 * mean - r1);
 }
@@ -1131,7 +1130,7 @@ fn vedurheidar() {
     let number_roads: u64 = read_one();
     let mut road_limits: Vec<(String, u64)> = Vec::new();
     for _ in 0..number_roads {
-        let [name, limit_str] = read_array::<String, 2, _>();
+        let [name, limit_str] = read_array::<String, 2>();
         road_limits.push((name, limit_str.parse().unwrap()))
     }
     for (name, limit) in road_limits {
@@ -1255,7 +1254,7 @@ fn isyavowel() {
 }
 
 fn addingtrouble() {
-    let [a, b, c] = read_array::<i64, 3, _>();
+    let [a, b, c] = read_array::<i64, 3>();
     match a + b == c {
         true => println!("correct!"),
         false => println!("wrong!"),
@@ -1263,7 +1262,7 @@ fn addingtrouble() {
 }
 
 fn whichisgreater() {
-    let [a, b] = read_array::<u64, 2, _>();
+    let [a, b] = read_array::<u64, 2>();
     println!("{}", a.gt(&b) as u8)
 }
 
@@ -1283,7 +1282,7 @@ fn twosum() {
 }
 
 fn triarea() {
-    let [height, base] = read_array::<u64, 2, _>().try_into().unwrap();
+    let [height, base] = read_array::<u64, 2>().try_into().unwrap();
     println!("{}", base as f32 * height as f32 / 2.0);
 }
 
@@ -1307,12 +1306,12 @@ fn echoechoecho() {
 }
 
 fn addtwonumbers() {
-    let [a, b] = read_array::<u64, 2, _>();
+    let [a, b] = read_array::<u64, 2>();
     println!("{}", a + b);
 }
 
 fn jackolanternjuxtaposition() {
-    let [eyes, noses, mouths] = read_array::<u64, 3, _>();
+    let [eyes, noses, mouths] = read_array::<u64, 3>();
     println!("{}", eyes * noses * mouths);
 }
 
@@ -1320,7 +1319,7 @@ fn qaly() {
     let count = read_one::<u64>();
     let mut quality_sum: f32 = 0.0;
     for _ in 0..count {
-        let [quality, years] = read_array::<f32, 2, _>();
+        let [quality, years] = read_array::<f32, 2>();
         quality_sum += quality * years;
     }
     println!("{:.3}", quality_sum);
@@ -1399,7 +1398,7 @@ fn bestagjofin() {
     let mut best_guest = String::new();
     let mut best_gift_score: u64 = 0;
     for _ in 0..guests {
-        let [name, gift_score_str] = read_array::<String, 2, _>();
+        let [name, gift_score_str] = read_array::<String, 2>();
         let gift_score: u64 = gift_score_str.parse().unwrap();
         if gift_score > best_gift_score {
             best_gift_score = gift_score;

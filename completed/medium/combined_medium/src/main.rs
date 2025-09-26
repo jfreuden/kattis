@@ -73,8 +73,13 @@ fn main() {
 }
 
 fn powerstrings() {
+    use std::io::BufRead;
+    let mut reader = std::io::BufReader::new(std::io::stdin());
     loop {
-        let input = read_str();
+        let mut unpolished_input = String::new();
+        reader.read_line(&mut unpolished_input).unwrap();
+        let input = unpolished_input.trim_end();
+        // let input = read_str();
         if input.starts_with('.') {
             break;
         }

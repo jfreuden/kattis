@@ -61,7 +61,54 @@ where
 }
 
 fn main() {
-    averagecharacter();
+    tolower();
+}
+
+fn tolower() {
+    let [problems, testcases_per_problem] = read_array::<u32, 2>();
+    let mut solved_problems = 0;
+    'problems_loop: for _ in 0..problems {
+        let mut testcases = Vec::new();
+        for _ in 0..testcases_per_problem {
+            let input = read_str();
+            testcases.push(input);
+        }
+        for case in testcases {
+            if case[1..] != case[1..].to_ascii_lowercase() {
+                continue 'problems_loop;
+            }
+        }
+        solved_problems += 1;
+    }
+    println!("{solved_problems}");
+}
+
+fn buka() {
+    // BigInt not required. A and B are powers of ten. String lengths can be standins.
+    let a = read_str();
+    let sign = read_str();
+    let b = read_str();
+
+    if sign == "*" {
+        let count = a.len() - 1 + b.len() - 1;
+        println!("1{}", "0".repeat(count));
+    } else if sign == "+" {
+        // The tricky case. Ones adding in different digits means simply determining which goes where
+        // Ones adding in the same digits means handling flipping to a two.
+        if a.len() == b.len() {
+            println!("2{}", "0".repeat(a.len() - 1));
+        } else {
+            let longer_zerocount = std::cmp::max(a.len() - 1, b.len() - 1);
+            let shorter_zerocount = std::cmp::min(a.len() - 1, b.len() - 1);
+            println!(
+                "1{}1{}",
+                "0".repeat(longer_zerocount - shorter_zerocount - 1),
+                "0".repeat(shorter_zerocount)
+            );
+        }
+    } else {
+        unreachable!("You promised only addition or multiplication!");
+    }
 }
 
 fn averagecharacter() {

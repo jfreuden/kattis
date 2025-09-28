@@ -61,7 +61,171 @@ where
 }
 
 fn main() {
-    onechicken();
+    averagecharacter();
+}
+
+fn averagecharacter() {
+    let mut input = String::new();
+    std::io::stdin()
+        .read_line(&mut input)
+        .expect("Failed to get input");
+
+    let mut sum = 0;
+    let mut count = 0;
+    for char in input.chars() {
+        if (' '..='~').contains(&char) {
+            sum += char as u8 as usize;
+            count += 1;
+        }
+    }
+    let average_char = sum.div_euclid(count) as u8 as char;
+    println!("{}", average_char);
+}
+
+fn undeadoralive() {
+    const SMILEY: &str = ":)";
+    const SADFACE: &str = ":(";
+    //If the line contains only smiley faces and no frowny faces, then output alive.
+    // If the line contains only frowny faces and no smiley faces, then output undead.
+    // If the line contains both smiley faces and frowny faces, then output double agent.
+    // Otherwise, output machine.
+    let input = read_str();
+    if input.contains(SMILEY) && input.contains(SADFACE) {
+        println!("double agent");
+    } else if input.contains(SMILEY) {
+        println!("alive");
+    } else if input.contains(SADFACE) {
+        println!("undead");
+    } else {
+        println!("machine");
+    }
+}
+
+fn testdrive() {
+    let [a, b, c] = read_array::<f32, 3>();
+    let ab = b - a;
+    let bc = c - b;
+    let abs_ab = ab.abs();
+    let abs_bc = bc.abs();
+    if (ab.is_sign_positive() && bc.is_sign_negative())
+        || (ab.is_sign_negative() && bc.is_sign_positive())
+    {
+        println!("turned");
+    } else if ab == bc {
+        println!("cruised");
+    } else if abs_ab > abs_bc {
+        println!("braked");
+    } else {
+        println!("accelerated");
+    }
+}
+
+fn temperature() {
+    let [zero, dx] = read_array::<f32, 2>();
+    let diff_dx = 1f32 - dx;
+
+    if diff_dx == 0f32 {
+        if zero == 0f32 {
+            println!("ALL GOOD");
+        } else {
+            println!("IMPOSSIBLE");
+        }
+    } else {
+        println!("{}", zero / diff_dx);
+    }
+}
+
+fn stafur() {
+    let letter = read_str();
+
+    if ["A", "E", "I", "O", "U"].contains(&letter.as_str()) {
+        println!("Jebb");
+    } else if letter == "Y" {
+        println!("Kannski");
+    } else {
+        println!("Neibb");
+    }
+}
+
+fn helpaphd() {
+    let count_cases = read_one();
+
+    for _ in 0..count_cases {
+        let line = read_str();
+
+        if line.contains("P=NP") {
+            println!("skipped");
+        } else {
+            let [a, b] = line
+                .split('+')
+                .map(|s| s.parse::<i32>().unwrap())
+                .collect::<Vec<i32>>()
+                .try_into()
+                .unwrap();
+            println!("{}", a + b);
+        }
+    }
+}
+
+fn sith() {
+    let _name = read_str();
+    let a: i32 = read_one();
+    let b: i32 = read_one();
+    let c: i32 = read_one();
+
+    if a - b >= 0 {
+        println!("VEIT EKKI");
+    } else if c < 0 {
+        println!("JEDI");
+    } else {
+        println!("SITH");
+    }
+}
+
+fn provincesandgold() {
+    /*
+    Province (costs 8, worth 6 victory points)
+    Duchy (costs 5, worth 3 VP)
+    Estate (costs 2, worth 1 VP)
+
+    Gold (cost 6, worth 3)
+    Silver (cost 3, worth 2)
+    Copper (cost 0, worth 1)
+    */
+    const VP_PROVINCE_COST: usize = 8;
+    const VP_DUCHY_COST: usize = 5;
+    const VP_ESTATE_COST: usize = 2;
+    const TREASURE_GOLD_COST: usize = 6;
+    const TREASURE_SILVER_COST: usize = 3;
+    const TREASURE_COPPER_COST: usize = 0;
+    const TREASURE_GOLD_POWER: usize = 3;
+    const TREASURE_SILVER_POWER: usize = 2;
+    const TREASURE_COPPER_POWER: usize = 1;
+
+    let [golds, silvers, coppers] = read_array::<usize, 3>();
+    let hand_buying_power = golds * TREASURE_GOLD_POWER
+        + silvers * TREASURE_SILVER_POWER
+        + coppers * TREASURE_COPPER_POWER;
+
+    if hand_buying_power >= VP_PROVINCE_COST {
+        print!("Province");
+    } else if hand_buying_power >= VP_DUCHY_COST {
+        print!("Duchy");
+    } else if hand_buying_power >= VP_ESTATE_COST {
+        print!("Estate");
+    }
+
+    if hand_buying_power >= VP_ESTATE_COST {
+        print!(" or ");
+    }
+
+    if hand_buying_power >= TREASURE_GOLD_COST {
+        println!("Gold");
+    } else if hand_buying_power >= TREASURE_SILVER_COST {
+        println!("Silver");
+    } else {
+        println!("Copper");
+    }
 }
 
 fn onechicken() {

@@ -61,7 +61,105 @@ where
 }
 
 fn main() {
-    tolower();
+    brokencalculator();
+}
+
+fn brokencalculator() {
+    let opcount = read_str().parse::<usize>().unwrap();
+
+    let mut result = 1;
+    for _ in 0..opcount {
+        let opstr = read_str();
+        let mut opsplit = opstr.split(' ');
+        let a = opsplit.next().unwrap().parse::<i64>().unwrap();
+        let opchar = opsplit.next().unwrap();
+        let b = opsplit.next().unwrap().parse::<i64>().unwrap();
+
+        /*
+        When it performs “addition” it adds the two numbers entered, then subtracts the result from the previous operation.
+        When it performs “subtraction” it subtracts the two numbers entered, then multiplies the result by the previous operation’s result.
+        When it performs “multiplication” it squares its answer after multiplying the two numbers entered.
+        When it performs “division” it divides the first number by 2 if it is even, otherwise it adds 1 to the first number and divides it by 2.
+         */
+        match opchar {
+            "+" => {
+                result = (a + b) - result;
+            }
+            "-" => {
+                result *= a - b;
+            }
+            "*" => {
+                result = (a * b).pow(2);
+            }
+            "/" => {
+                if a % 2 == 0 {
+                    result = a / 2;
+                } else {
+                    result = (a + 1) / 2;
+                }
+            }
+            _ => unreachable!("Unknown operator"),
+        }
+        println!("{result}");
+    }
+}
+
+fn lostlineup() {
+    let _friend_count: usize = read_one();
+    let separations = read_vec::<usize>();
+
+    let mut intermediate = separations
+        .iter()
+        .copied()
+        .enumerate()
+        .collect::<Vec<(usize, usize)>>();
+    intermediate.sort_by(|(_, separation_a), (_, separation_b)| separation_a.cmp(separation_b));
+
+    print!("1");
+    for (index, _) in intermediate {
+        let friend_id = index + 2;
+        print!(" {friend_id}");
+    }
+    println!();
+}
+
+fn eligibility() {
+    let count: u32 = read_one();
+    for _ in 0..count {
+        let [name, college_date, birth_date, courses] = read_array::<String, 4>();
+        let college_year = college_date
+            .split('/')
+            .next()
+            .unwrap()
+            .parse::<u32>()
+            .unwrap();
+        let birth_year = birth_date
+            .split('/')
+            .next()
+            .unwrap()
+            .parse::<u32>()
+            .unwrap();
+        let course_count = courses.parse::<u32>().unwrap();
+
+        let classification = if college_year >= 2010 || birth_year >= 1991 {
+            "eligible"
+        } else if course_count >= 41 {
+            "ineligible"
+        } else {
+            "coach petitions"
+        };
+
+        println!("{name} {classification}");
+    }
+}
+
+fn inputscandal() {
+    use std::io::{Read, Write};
+    let mut buffer = Vec::with_capacity(1_200_000);
+    std::io::stdin().read_to_end(&mut buffer).unwrap();
+    let linecount = buffer.iter().filter(|&&x| x == b'\n').count();
+    println!("{linecount}");
+    std::io::stdout().write_all(&buffer).unwrap();
 }
 
 fn tolower() {

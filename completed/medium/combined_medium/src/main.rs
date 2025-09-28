@@ -69,7 +69,23 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    powerstrings();
+    simplearithmetic();
+}
+
+fn simplearithmetic() {
+    let [a, b, c] = read_array::<u128, 3, _>();
+    let mult = a * b;
+
+    let div = mult / c;
+    let modulo = mult % c;
+
+    // Observe:
+    // println!("a * b -> {a} * {b} -> {mult}");
+    // println!("{mult} / c -> {mult} / {c} = {div}");
+    // println!("{mult} % c -> {mult} % {c} = {modulo}");
+
+    let post_decimal = &(modulo as f64 / c as f64).to_string()[1..];
+    println!("{div}{}", post_decimal);
 }
 
 fn powerstrings() {

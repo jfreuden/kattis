@@ -1,3 +1,6 @@
+mod fenwick_tree;
+use fenwick_tree::*;
+
 fn read_vec<T: std::str::FromStr, R: std::io::Read>(
     buf_reader: &mut std::io::BufReader<R>,
 ) -> Vec<T>
@@ -10,47 +13,6 @@ where
     line.split_whitespace()
         .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
         .collect()
-}
-
-type IndexType = usize;
-type ValueType = i64;
-
-struct FenwickTree {
-    data_fenwick: Vec<ValueType>,
-}
-
-impl FenwickTree {
-    fn new(array_len: usize) -> Self {
-        FenwickTree {
-            data_fenwick: vec![0 as ValueType; array_len],
-        }
-    }
-
-    fn increment(&mut self, index: usize, value: ValueType) {
-        let max_index = self.data_fenwick.len();
-        let mut working_index = index as ValueType + 1;
-
-        while working_index <= max_index as ValueType {
-            self.data_fenwick[working_index as usize - 1] += value;
-            working_index = working_index + (working_index & -working_index);
-        }
-    }
-
-    fn query(&self, index: usize) -> ValueType {
-        let query_index = index;
-        if query_index == 0 {
-            0
-        } else {
-            let mut sum = 0;
-
-            let mut working_index = query_index as ValueType;
-            while working_index > 0 {
-                sum += self.data_fenwick[working_index as usize - 1];
-                working_index = working_index - (working_index & (-working_index));
-            }
-            sum
-        }
-    }
 }
 
 struct Op {

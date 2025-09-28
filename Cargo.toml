@@ -5,7 +5,7 @@ members = [
     "completed/trivial/*",
     "completed/medium/*",
     "progress/*"
-]
+, "libfreuden"]
 
 [profile.release]
 debug = true

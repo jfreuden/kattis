@@ -67,6 +67,10 @@ name = "leggjasaman"
 version = "0.1.0"
 
 [[package]]
+name = "libfreuden"
+version = "0.1.0"
+
+[[package]]
 name = "lubbilaerir"
 version = "0.1.0"
 

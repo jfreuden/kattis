@@ -61,7 +61,84 @@ where
 }
 
 fn main() {
-    findingana();
+    quiteaproblem();
+}
+
+fn quiteaproblem() {
+    use std::io::Read;
+    let mut buffer = String::new();
+    std::io::stdin().read_to_string(&mut buffer).unwrap();
+    for line in buffer.split_terminator('\n') {
+        let clean = line.trim_ascii().to_ascii_lowercase();
+        if clean.contains("problem") {
+            println!("yes");
+        } else {
+            println!("no");
+        }
+    }
+}
+
+fn simon() {
+    let count = read_one();
+
+    for _ in 0..count {
+        let input = read_str();
+
+        if let Some((_, command)) = input.split_once("simon says ") {
+            println!("{command}");
+        } else {
+            println!();
+        }
+    }
+}
+
+fn quickbrownfox() {
+    let mut charmap = std::collections::HashMap::<char, bool>::new();
+
+    let count = read_one();
+
+    for _ in 0..count {
+        let input = read_str();
+        charmap.clear();
+        // an inefficient approach is okay, given the input sized.
+        for ch in input.chars().filter(|character| character.is_alphabetic()) {
+            charmap.insert(ch.to_ascii_lowercase(), true);
+        }
+
+        let mut missing = Vec::new();
+        for candidate in 'a'..='z' {
+            if !charmap.contains_key(&candidate) {
+                missing.push(candidate);
+            }
+        }
+
+        if missing.is_empty() {
+            println!("pangram");
+        } else {
+            print!("missing ");
+            for missing_char in missing {
+                print!("{}", missing_char);
+            }
+            println!();
+        }
+    }
+}
+
+fn rectanglearea() {
+    let [x1, y1, x2, y2] = read_array::<f32, 4>();
+    println!("{}", ((y2 - y1) * (x2 - x1)).abs());
+}
+
+fn counting() {
+    let input: u64 = read_one();
+    for i in 1..=12 {
+        println!("{}", input * i);
+    }
+}
+
+fn popcount() {
+    let binary = u128::from_str_radix(read_str().as_str(), 2).unwrap();
+    println!("{}", binary.count_ones());
 }
 
 fn findingana() {

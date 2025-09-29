@@ -69,7 +69,40 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    expeditiouscubing();
+    digits();
+}
+
+fn digits() {
+    fn print_index_of_lowest_duplicate(x0: &str) {
+        let mut last_digits = x0.len() as u64;
+        let mut i = 1;
+
+        if x0 == "1" {
+            println!("1");
+            return;
+        }
+
+        loop {
+            let next_digits = (last_digits.ilog10() + 1) as u64;
+            // println!("i: {i}: {last_digits} -> {next_digits}");
+            i += 1;
+            if next_digits != last_digits {
+                last_digits = next_digits;
+            } else {
+                break;
+            }
+        }
+        println!("{i}");
+    }
+
+    loop {
+        let x0 = read_str();
+        if x0 != "END" {
+            print_index_of_lowest_duplicate(x0.as_str());
+        } else {
+            break;
+        }
+    }
 }
 
 fn expeditiouscubing() {

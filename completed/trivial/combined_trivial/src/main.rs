@@ -61,7 +61,13 @@ where
 }
 
 fn main() {
-    brokencalculator();
+    findingana();
+}
+
+fn findingana() {
+    let input = read_str();
+    let starting_place = input.find('a').unwrap();
+    println!("{}", &input[starting_place..]);
 }
 
 fn brokencalculator() {

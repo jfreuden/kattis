@@ -69,7 +69,26 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    simplearithmetic();
+    expeditiouscubing();
+}
+
+fn expeditiouscubing() {
+    let mut times = read_vec::<f32>();
+    times.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let time_to_beat = read_one::<f32>();
+
+    let window_size = times.len() - 1;
+    let low_avg = times[..window_size].iter().sum::<f32>() / window_size as f32;
+    let high_average = times[1..].iter().sum::<f32>() / window_size as f32;
+
+    if high_average <= time_to_beat {
+        println!("infinite");
+    } else if low_avg > time_to_beat {
+        println!("impossible");
+    } else {
+        let missing_time = time_to_beat * 3f32 - times[1] - times[2];
+        println!("{missing_time:.2}");
+    }
 }
 
 fn simplearithmetic() {

@@ -74,79 +74,94 @@ fn main() {
 
 fn europeantrip() {
     kattis_struct!(Point { x: f64, y: f64 });
-    impl Point {
-        pub fn new(x: f64, y: f64) -> Point {
-            Point { x, y }
-        }
-
-        pub fn mid(&self, other: &Point) -> Point {
-            Point {
-                x: (other.x + self.x) / 2.,
-                y: (other.y + self.y) / 2.,
-            }
-        }
-        fn sub(&self, point_b: &Point) -> Point {
-            Point {
-                x: point_b.x - self.x,
-                y: point_b.y - self.y,
-            }
-        }
-        pub fn add(self, point_b: &Point) -> Point {
-            Point {
-                x: point_b.x + self.x,
-                y: point_b.y + self.y,
-            }
-        }
-    }
 
     let point_a: Point = read_one();
     let point_b: Point = read_one();
     let point_c: Point = read_one();
 
-    let mid_ab = point_a.mid(&point_b);
-    let mid_bc = point_b.mid(&point_c);
+    #[inline]
+    fn geometric_median(a: &Point, b: &Point, c: &Point) -> Point {
+        // If the optimal point is at any vertex (angle >= 120 degrees), return that vertex.
+        #[inline]
+        fn angle_ge_120(at: &Point, p1: &Point, p2: &Point) -> bool {
+            let v1x = p1.x - at.x;
+            let v1y = p1.y - at.y;
+            let v2x = p2.x - at.x;
+            let v2y = p2.y - at.y;
+            let l1 = (v1x * v1x + v1y * v1y).sqrt();
+            let l2 = (v2x * v2x + v2y * v2y).sqrt();
+            if l1 == 0.0 || l2 == 0.0 {
+                // Degenerate (points coincide) — consider as a candidate vertex.
+                return true;
+            }
+            let dot = v1x * v2x + v1y * v2y;
+            let cos_theta = dot / (l1 * l2);
+            // cos(theta) <= cos(120°) = -0.5
+            cos_theta <= -0.5
+        }
 
-    // let ab = point_a.sub(&point_b);
-    // let ac = point_a.sub(&point_c);
-    // let bc = point_b.sub(&point_c);
-    //
-    // println!("{ab:?} {ac:?} {bc:?}");
-    //
-    // let alpha = Point { x: ab.x + bc.x / 2., y: ab.y + bc.y / 2. };
-    // println!("{alpha:?}");
+        // Degenerate cases: if two or more points coincide, geometric median is that point
+        if a == b && b == c {
+            return a.clone();
+        }
 
-    println!("{:?} {:?}", mid_ab, mid_bc);
+        if angle_ge_120(a, b, c) {
+            return a.clone();
+        }
+        if angle_ge_120(b, a, c) {
+            return b.clone();
+        }
+        if angle_ge_120(c, a, b) {
+            return c.clone();
+        }
 
-    // m1x+b1 = m2x+b2
+        // Otherwise, use Weiszfeld's algorithm to find the geometric median (Fermat point)
+        let mut x = (a.x + b.x + c.x) / 3.0;
+        let mut y = (a.y + b.y + c.y) / 3.0;
+        let eps = 1e-12;
+        for _ in 0..200 {
+            let dx_a = x - a.x;
+            let dy_a = y - a.y;
+            let d_a = (dx_a * dx_a + dy_a * dy_a).sqrt();
+            if d_a < eps {
+                return a.clone();
+            }
+            let dx_b = x - b.x;
+            let dy_b = y - b.y;
+            let d_b = (dx_b * dx_b + dy_b * dy_b).sqrt();
+            if d_b < eps {
+                return b.clone();
+            }
+            let dx_c = x - c.x;
+            let dy_c = y - c.y;
+            let d_c = (dx_c * dx_c + dy_c * dy_c).sqrt();
+            if d_c < eps {
+                return c.clone();
+            }
 
-    // mid_ab goes to c
-    // mid_bc goes to a
-    // intersect where?
+            let w_a = 1.0 / d_a;
+            let w_b = 1.0 / d_b;
+            let w_c = 1.0 / d_c;
 
-    // (m2 - m1) x + b2 = b1
-    // (b1 - b2) / (m2 - m1)
+            let sum_w = w_a + w_b + w_c;
+            let new_x = (w_a * a.x + w_b * b.x + w_c * c.x) / sum_w;
+            let new_y = (w_a * a.y + w_b * b.y + w_c * c.y) / sum_w;
 
-    /// Given two points, get the slope between them
-    fn get_slope(a: &Point, b: &Point) -> f64 {
-        (b.y - a.y) / (b.x - a.x)
+            let move_dx = new_x - x;
+            let move_dy = new_y - y;
+            if (move_dx * move_dx + move_dy * move_dy).sqrt() < eps {
+                x = new_x;
+                y = new_y;
+                break;
+            }
+            x = new_x;
+            y = new_y;
+        }
+        Point { x, y }
     }
 
-    /// Given a point and a slope, return the intercept
-    fn get_intercept(a: &Point, m: f64) -> f64 {
-        // y = m*x + b where x = 0
-        // find b for some y and x
-        a.y - m * a.x
-    }
-
-    fn get_vector_slope_intercept(a: &Point, b: &Point) -> (f64, f64) {
-        let m = get_slope(a, b);
-        (m, get_intercept(a, m))
-    }
-
-    let (m1, b1) = get_vector_slope_intercept(&mid_ab, &point_c);
-    let (m2, b2) = get_vector_slope_intercept(&mid_bc, &point_a);
-
-    println!("{}", (b1 - b2) / (m2 - m1));
+    let median = geometric_median(&point_a, &point_b, &point_c);
+    println!("{} {}", median.x, median.y);
 }
 
 fn digits() {

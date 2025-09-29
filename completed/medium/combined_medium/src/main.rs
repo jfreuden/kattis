@@ -69,7 +69,84 @@ macro_rules! kattis_struct {
     }
 
 fn main() {
-    digits();
+    europeantrip();
+}
+
+fn europeantrip() {
+    kattis_struct!(Point { x: f64, y: f64 });
+    impl Point {
+        pub fn new(x: f64, y: f64) -> Point {
+            Point { x, y }
+        }
+
+        pub fn mid(&self, other: &Point) -> Point {
+            Point {
+                x: (other.x + self.x) / 2.,
+                y: (other.y + self.y) / 2.,
+            }
+        }
+        fn sub(&self, point_b: &Point) -> Point {
+            Point {
+                x: point_b.x - self.x,
+                y: point_b.y - self.y,
+            }
+        }
+        pub fn add(self, point_b: &Point) -> Point {
+            Point {
+                x: point_b.x + self.x,
+                y: point_b.y + self.y,
+            }
+        }
+    }
+
+    let point_a: Point = read_one();
+    let point_b: Point = read_one();
+    let point_c: Point = read_one();
+
+    let mid_ab = point_a.mid(&point_b);
+    let mid_bc = point_b.mid(&point_c);
+
+    // let ab = point_a.sub(&point_b);
+    // let ac = point_a.sub(&point_c);
+    // let bc = point_b.sub(&point_c);
+    //
+    // println!("{ab:?} {ac:?} {bc:?}");
+    //
+    // let alpha = Point { x: ab.x + bc.x / 2., y: ab.y + bc.y / 2. };
+    // println!("{alpha:?}");
+
+    println!("{:?} {:?}", mid_ab, mid_bc);
+
+    // m1x+b1 = m2x+b2
+
+    // mid_ab goes to c
+    // mid_bc goes to a
+    // intersect where?
+
+    // (m2 - m1) x + b2 = b1
+    // (b1 - b2) / (m2 - m1)
+
+    /// Given two points, get the slope between them
+    fn get_slope(a: &Point, b: &Point) -> f64 {
+        (b.y - a.y) / (b.x - a.x)
+    }
+
+    /// Given a point and a slope, return the intercept
+    fn get_intercept(a: &Point, m: f64) -> f64 {
+        // y = m*x + b where x = 0
+        // find b for some y and x
+        a.y - m * a.x
+    }
+
+    fn get_vector_slope_intercept(a: &Point, b: &Point) -> (f64, f64) {
+        let m = get_slope(a, b);
+        (m, get_intercept(a, m))
+    }
+
+    let (m1, b1) = get_vector_slope_intercept(&mid_ab, &point_c);
+    let (m2, b2) = get_vector_slope_intercept(&mid_bc, &point_a);
+
+    println!("{}", (b1 - b2) / (m2 - m1));
 }
 
 fn digits() {

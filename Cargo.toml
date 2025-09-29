@@ -7,5 +7,8 @@ members = [
     "progress/*"
 , "libfreuden"]
 
+[workspace.dependencies]
+libfreuden = { path = "./libfreuden", package = "libfreuden"}
+
 [profile.release]
 debug = true

@@ -73,18 +73,19 @@ fn main() {
 }
 
 fn digits() {
-    fn print_index_of_lowest_duplicate(x0: &str) {
-        let mut last_digits = x0.len() as u64;
+    use std::io::{BufRead, StdoutLock, Write};
+
+    fn print_index_of_lowest_duplicate(x0: &str, lock: &mut StdoutLock) {
+        let mut last_digits = x0.len() as u32;
         let mut i = 1;
 
         if x0 == "1" {
-            println!("1");
+            writeln!(lock, "1").unwrap();
             return;
         }
 
         loop {
-            let next_digits = (last_digits.ilog10() + 1) as u64;
-            // println!("i: {i}: {last_digits} -> {next_digits}");
+            let next_digits = last_digits.ilog10() + 1;
             i += 1;
             if next_digits != last_digits {
                 last_digits = next_digits;
@@ -92,17 +93,21 @@ fn digits() {
                 break;
             }
         }
-        println!("{i}");
+        writeln!(lock, "{i}").unwrap();
     }
-
+    let mut lock = std::io::stdout().lock();
+    let mut stdin = std::io::stdin().lock();
     loop {
-        let x0 = read_str();
+        let mut buffer = String::new();
+        stdin.read_line(&mut buffer).unwrap();
+        let x0 = buffer.trim_ascii_end();
         if x0 != "END" {
-            print_index_of_lowest_duplicate(x0.as_str());
+            print_index_of_lowest_duplicate(x0, &mut lock);
         } else {
             break;
         }
     }
+    lock.flush().unwrap();
 }
 
 fn expeditiouscubing() {

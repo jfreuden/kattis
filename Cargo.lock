@@ -29,6 +29,9 @@ version = "0.1.0"
 [[package]]
 name = "fenwick"
 version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "fifa"

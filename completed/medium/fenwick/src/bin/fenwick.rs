@@ -1,5 +1,16 @@
-mod fenwick_tree;
-use fenwick_tree::*;
+// noinspection
+macro_rules! import {($name:ident) => {
+    #[cfg(not(feature="libfreuden"))]
+    mod $name;
+    #[cfg(not(feature="libfreuden"))]
+    use $name::*;
+
+    #[cfg(feature="libfreuden")]
+    use libfreuden::$name::*;
+    };
+    }
+
+import!(fenwick_tree);
 
 fn read_vec<T: std::str::FromStr, R: std::io::Read>(
     buf_reader: &mut std::io::BufReader<R>,

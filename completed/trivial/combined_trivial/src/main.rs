@@ -61,7 +61,31 @@ where
 }
 
 fn main() {
-    quiteaproblem();
+    leftbeehind();
+}
+
+fn leftbeehind() {
+    /*
+    If Bill has more jars of sour honey than sweet, he will be left “beehind”.
+    If Bill has more jars of sweet honey than sour he will go to the convention.
+    If Bill has the same number of sweet and sour jars, his friends are undecided.
+    Lastly, Bill’s friends are superstitious, if he has exactly 13 jars they will never speak to him again. Bill needs new friends.
+     */
+    loop {
+        let [sweet, sour] = read_array::<u32, 2>();
+
+        if sweet == 0 && sour == 0 {
+            break;
+        } else if sweet + sour == 13 {
+            println!("Never speak again.");
+        } else if sweet == sour {
+            println!("Undecided.");
+        } else if sweet < sour {
+            println!("Left beehind.");
+        } else {
+            println!("To the convention.");
+        }
+    }
 }
 
 fn quiteaproblem() {

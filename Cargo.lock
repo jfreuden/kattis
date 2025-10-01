@@ -90,6 +90,13 @@ name = "millifaersla"
 version = "0.1.0"
 
 [[package]]
+name = "new_crate"
+version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
+
+[[package]]
 name = "ovissa"
 version = "0.1.0"
 

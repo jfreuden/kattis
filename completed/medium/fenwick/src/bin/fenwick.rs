@@ -1,30 +1,19 @@
 // noinspection
+#[allow(unused)]
 macro_rules! import {($name:ident) => {
     #[cfg(not(feature="libfreuden"))]
     mod $name;
     #[cfg(not(feature="libfreuden"))]
+    #[allow(unused_imports)]
     use $name::*;
 
     #[cfg(feature="libfreuden")]
+    #[allow(unused_imports)]
     use libfreuden::$name::*;
-    };
-    }
+    };}
 
+import!(input);
 import!(fenwick_tree);
-
-fn read_vec<T: std::str::FromStr, R: std::io::Read>(
-    buf_reader: &mut std::io::BufReader<R>,
-) -> Vec<T>
-where
-    T::Err: std::fmt::Debug,
-{
-    use std::io::BufRead;
-    let mut line = String::new();
-    buf_reader.read_line(&mut line).unwrap();
-    line.split_whitespace()
-        .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
-        .collect()
-}
 
 struct Op {
     index: IndexType,

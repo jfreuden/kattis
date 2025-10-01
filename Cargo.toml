@@ -5,7 +5,7 @@ members = [
     "completed/trivial/*",
     "completed/medium/*",
     "progress/*"
-, "libfreuden"]
+, "libfreuden", "templates/new_crate"]
 
 [workspace.dependencies]
 libfreuden = { path = "./libfreuden", package = "libfreuden"}

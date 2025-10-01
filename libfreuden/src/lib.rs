@@ -14,3 +14,4 @@ mod tests {
 }
 
 pub mod fenwick_tree;
+pub mod input;

@@ -17,10 +17,16 @@ version = "0.1.0"
 [[package]]
 name = "combined_medium"
 version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "combined_trivial"
 version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "dragafra"

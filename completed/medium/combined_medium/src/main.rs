@@ -4,49 +4,23 @@
 /// The top of the file will be the active space and will remain with a fn main() method.
 /// Once complete, the subroutine will be renamed to the problem title.
 /// This will allow the top to contain the helper methods, with the main method up top for copying
-fn read_str() -> String {
-    let mut response = String::new();
-    std::io::stdin()
-        .read_line(&mut response)
-        .expect("Failed to get input");
-    response.trim_end().to_string()
+
+// noinspection
+#[allow(unused)]
+macro_rules! import {
+    ($name:ident) => {
+        #[cfg(not(feature = "libfreuden"))]
+        mod $name;
+        #[cfg(not(feature = "libfreuden"))]
+        use $name::*;
+
+        #[cfg(feature = "libfreuden")]
+        #[allow(unused_imports)]
+        use libfreuden::$name::*;
+    };
 }
 
-fn read_one<T: std::str::FromStr>() -> T
-where
-    T::Err: std::fmt::Debug,
-{
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.trim().parse::<T>().unwrap()
-}
-
-fn read_vec<T: std::str::FromStr>() -> Vec<T>
-where
-    T::Err: std::fmt::Debug,
-{
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.split_whitespace()
-        .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
-        .collect()
-}
-
-fn try_read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> Result<[T; K], E>
-where
-    T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
-{
-    read_vec::<T>().try_into()
-}
-
-fn read_array<T: std::str::FromStr, const K: usize, E: std::fmt::Debug>() -> [T; K]
-where
-    T::Err: std::fmt::Debug,
-    [T; K]: TryFrom<Vec<T>, Error = E>,
-{
-    try_read_array().unwrap()
-}
+import!(input);
 
 macro_rules! kattis_struct {
     ($name:ident { $($field_name:ident : $field_type:ty),* }) => {
@@ -222,7 +196,7 @@ fn expeditiouscubing() {
 }
 
 fn simplearithmetic() {
-    let [a, b, c] = read_array::<u128, 3, _>();
+    let [a, b, c] = read_array::<u128, 3>();
     let mult = a * b;
 
     let div = mult / c;
@@ -337,7 +311,7 @@ fn longestcommonsubsequence_wrong() {
         .enumerate()
         .map(|(i, indices)| (i, indices.iter().sum::<usize>()))
         .collect();
-    presorted.sort_by(|(i, sum_i), (j, sum_j)| sum_i.cmp(sum_j));
+    presorted.sort_by(|(_, sum_i), (_, sum_j)| sum_i.cmp(sum_j));
     presorted.reverse();
 
     println!("{presorted:?}");

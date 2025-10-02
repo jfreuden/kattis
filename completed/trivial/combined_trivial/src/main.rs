@@ -4,61 +4,22 @@
 /// Once complete, the subroutine will be renamed to the problem title.
 /// This will allow the top to contain the helper methods, with the main method up top for copying
 
+// noinspection
 #[allow(unused)]
-macro_rules! kattis_struct {
-    ($name:ident { $($field_name:ident : $field_type:ty),* }) => {
-        #[derive(Debug, PartialEq, Clone)]
-        pub struct $name {
-            $($field_name : $field_type),*
-        }
-        impl std::str::FromStr for $name {
-            type Err = &'static str;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                let mut iter = s.split(' ');
-                Ok($name {
-                    $(
-                        $field_name: iter.next().unwrap().parse::<$field_type>().map_err(|_| "parse error")?
-                    ),*
-                })
-            }
-        }
+macro_rules! import {
+    ($name:ident) => {
+        #[cfg(not(feature = "libfreuden"))]
+        mod $name;
+        #[cfg(not(feature = "libfreuden"))]
+        use $name::*;
+
+        #[cfg(feature = "libfreuden")]
+        #[allow(unused_imports)]
+        use libfreuden::$name::*;
     };
-    }
-
-fn read_str() -> String {
-    let mut response = String::new();
-    std::io::stdin()
-        .read_line(&mut response)
-        .expect("Failed to get input");
-    response.trim_end().to_string()
 }
 
-fn read_one<T: std::str::FromStr>() -> T
-where
-    T::Err: std::fmt::Debug,
-{
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.trim().parse::<T>().unwrap()
-}
-
-fn read_vec<T: std::str::FromStr>() -> Vec<T>
-where
-    T::Err: std::fmt::Debug,
-{
-    let mut line = String::new();
-    std::io::stdin().read_line(&mut line).unwrap();
-    line.split_whitespace()
-        .map(|tok| tok.parse::<T>().expect("Failed to parse input"))
-        .collect()
-}
-
-fn read_array<T: std::str::FromStr + std::fmt::Debug, const K: usize>() -> [T; K]
-where
-    T::Err: std::fmt::Debug,
-{
-    read_vec::<T>().try_into().unwrap()
-}
+import!(input);
 
 fn main() {
     leftbeehind();

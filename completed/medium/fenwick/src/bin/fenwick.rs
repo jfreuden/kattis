@@ -1,16 +1,18 @@
 // noinspection
 #[allow(unused)]
-macro_rules! import {($name:ident) => {
-    #[cfg(not(feature="libfreuden"))]
-    mod $name;
-    #[cfg(not(feature="libfreuden"))]
-    #[allow(unused_imports)]
-    use $name::*;
+macro_rules! import {
+    ($name:ident) => {
+        #[cfg(not(feature = "libfreuden"))]
+        mod $name;
+        #[cfg(not(feature = "libfreuden"))]
+        #[allow(unused_imports)]
+        use $name::*;
 
-    #[cfg(feature="libfreuden")]
-    #[allow(unused_imports)]
-    use libfreuden::$name::*;
-    };}
+        #[cfg(feature = "libfreuden")]
+        #[allow(unused_imports)]
+        use libfreuden::$name::*;
+    };
+}
 
 import!(input);
 import!(fenwick_tree);
@@ -55,7 +57,9 @@ fn parse_bytes(bytes: &[u8]) -> (i64, usize) {
     let mut index = 0usize;
     while index < bytes.len() {
         let b = unsafe { *bytes.get_unchecked(index) };
-        if b > b' ' { break; }
+        if b > b' ' {
+            break;
+        }
         index += 1;
     }
     let is_negative = if unsafe { *bytes.get_unchecked(index) } == b'-' {
@@ -83,7 +87,8 @@ fn parse_bytes(bytes: &[u8]) -> (i64, usize) {
 
 fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, mut write_source: W) {
     let mut bufreader = std::io::BufReader::new(read_source);
-    let [array_len, operations_count]: [usize; 2] = read_vec(&mut bufreader).try_into().unwrap();
+    let [array_len, operations_count]: [usize; 2] =
+        read_vec_source(&mut bufreader).try_into().unwrap();
     let mut operations_list = Vec::with_capacity(operations_count);
 
     let mut all_lines = String::new();
@@ -97,7 +102,9 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, mut write_so
                 break 'outer;
             }
             let b = unsafe { *bytes.get_unchecked(index) };
-            if b > b' ' { break; }
+            if b > b' ' {
+                break;
+            }
             index += 1;
         }
         let opchar = unsafe { *bytes.get_unchecked(index) };
@@ -109,9 +116,12 @@ fn run_problem<R: std::io::Read, W: std::io::Write>(read_source: R, mut write_so
         } else if opchar == b'+' {
             let (op_value, offset) = parse_bytes(&bytes[index..]);
             index += offset;
-            operations_list.push(Op::new_increment(op_index as IndexType, op_value as ValueType));
+            operations_list.push(Op::new_increment(
+                op_index as IndexType,
+                op_value as ValueType,
+            ));
         } else {
-            break
+            break;
         }
     }
 

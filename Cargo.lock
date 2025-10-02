@@ -3,14 +3,6 @@
 version = 4
 
 [[package]]
-name = "aldur"
-version = "0.1.0"
-
-[[package]]
-name = "aleidibio"
-version = "0.1.0"
-
-[[package]]
 name = "bowlstack"
 version = "0.1.0"
 
@@ -29,10 +21,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dragafra"
-version = "0.1.0"
-
-[[package]]
 name = "fenwick"
 version = "0.1.0"
 dependencies = [
@@ -40,39 +28,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fifa"
-version = "0.1.0"
-
-[[package]]
 name = "financialplanning"
-version = "0.1.0"
-
-[[package]]
-name = "flatbokuveisla"
-version = "0.1.0"
-
-[[package]]
-name = "flytibaka"
-version = "0.1.0"
-
-[[package]]
-name = "hello"
-version = "0.1.0"
-
-[[package]]
-name = "hipphipp"
-version = "0.1.0"
-
-[[package]]
-name = "hradgreining"
-version = "0.1.0"
-
-[[package]]
-name = "kvedja"
-version = "0.1.0"
-
-[[package]]
-name = "leggjasaman"
 version = "0.1.0"
 
 [[package]]
@@ -80,20 +36,11 @@ name = "libfreuden"
 version = "0.1.0"
 
 [[package]]
-name = "lubbilaerir"
+name = "multi_trivials"
 version = "0.1.0"
-
-[[package]]
-name = "lvable"
-version = "0.1.0"
-
-[[package]]
-name = "metronome"
-version = "0.1.0"
-
-[[package]]
-name = "millifaersla"
-version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "new_crate"
@@ -109,6 +56,13 @@ version = "0.1.0"
 [[package]]
 name = "placeholder"
 version = "0.1.0"
+
+[[package]]
+name = "powerstringmatching"
+version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "princesse_server"

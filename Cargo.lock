@@ -79,6 +79,9 @@ version = "0.1.0"
 [[package]]
 name = "setnja"
 version = "0.1.0"
+dependencies = [
+ "libfreuden",
+]
 
 [[package]]
 name = "shortcuttowhat"

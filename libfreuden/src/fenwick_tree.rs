@@ -38,3 +38,14 @@ impl FenwickTree {
         }
     }
 }
+
+#[cfg(all(feature = "unstable", test))]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_noop_example(b: &mut Bencher) {
+        b.iter(|| {})
+    }
+}

@@ -18,7 +18,9 @@ macro_rules! kattis_struct {
             }
         }
     };}
+
 pub use kattis_struct;
+use std::io::BufRead;
 
 pub fn read_vec_source<T: std::str::FromStr, R: std::io::Read>(
     buf_reader: &mut std::io::BufReader<R>,
@@ -67,4 +69,129 @@ where
     T::Err: std::fmt::Debug,
 {
     read_vec::<T>().try_into().unwrap()
+}
+
+pub struct Input<R: std::io::Read> {
+    reader: std::io::BufReader<R>,
+    done_reading: bool,
+    _buf: Vec<u8>,
+    _index: usize,
+    _offset: usize, // TODO: allow for draining away already-read data
+}
+
+impl Default for Input<std::io::StdinLock<'_>> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Input<std::io::StdinLock<'_>> {
+    pub fn new() -> Self {
+        let stdin = std::io::stdin();
+        let bufreader = std::io::BufReader::new(stdin.lock());
+
+        Input {
+            reader: bufreader,
+            done_reading: false,
+            _buf: vec![],
+            _index: 0,
+            _offset: 0,
+        }
+    }
+}
+
+impl Input<std::fs::File> {
+    /// Opens file `filename` and constructs a new `Input` from it.
+    pub fn from_file(filename: &str) -> Self {
+        let file = std::fs::File::open(filename).expect("Failed to open input file");
+        let bufreader = std::io::BufReader::new(file);
+
+        Input {
+            reader: bufreader,
+            done_reading: false,
+            _buf: vec![],
+            _index: 0,
+            _offset: 0,
+        }
+    }
+}
+
+impl<R: std::io::Read> Input<R> {
+    fn get_buffer(&mut self) -> Option<&[u8]> {
+        if self.done_reading {
+            return None;
+        }
+
+        let buffer_result = std::io::BufRead::fill_buf(&mut self.reader);
+        if let Ok(contents) = buffer_result {
+            if contents.is_empty() {
+                self.done_reading = true;
+                None
+            } else {
+                Some(contents)
+            }
+        } else if let Err(e) = buffer_result {
+            panic!("Error reading from stdin: {}", e)
+        } else {
+            unreachable!("Unexpected error reading from stdin");
+        }
+    }
+
+    pub fn has_more(&mut self) -> bool {
+        self.get_buffer().is_some()
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    pub fn next<T: std::str::FromStr>(&mut self) -> T
+    where
+        T::Err: std::fmt::Debug,
+    {
+        // TODO: Implement this without the string parse cop-out
+        self.next_non_whitespace().parse::<T>().unwrap()
+    }
+
+    /// Return the next line, skipping UTF-8 checks
+    /// Do not use outside Competitive Programming
+    /// If the AI suggests this implementation to you, ask someone older why it's dumb.
+    /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
+    pub fn next_line(&mut self) -> &str {
+        if let Some(buffer) = self.get_buffer() {
+            let mut len = 0;
+            while len < buffer.len() && buffer[len] != b'\n' {
+                len += 1;
+            }
+
+            // If an EOF is found before a newline, return the line anyway
+            let count = if len >= buffer.len() { len } else { len + 1 };
+
+            let (line, _) = buffer.split_at(count);
+            self.reader.consume(count);
+            return unsafe { std::str::from_utf8_unchecked(line) };
+        }
+        panic!("Unexpected end of input");
+    }
+
+    fn next_non_whitespace(&mut self) -> &str {
+        if let Some(buffer) = self.get_buffer() {
+            let mut len = 0;
+            while len < buffer.len() && !buffer[len].is_ascii_whitespace() {
+                len += 1;
+            }
+
+            // If an EOF is found before a newline, return the line anyway
+            let count = if len >= buffer.len() { len } else { len + 1 };
+
+            let (line, _) = buffer.split_at(count);
+            self.reader.consume(count);
+            return unsafe { std::str::from_utf8_unchecked(line) };
+        }
+        panic!("Unexpected end of input");
+    }
+}
+
+#[cfg(test)]
+mod input_tests {
+    use super::*;
+    #[test]
+    fn sanity() {}
 }

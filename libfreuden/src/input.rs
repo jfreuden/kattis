@@ -74,9 +74,7 @@ where
 pub struct Input<R: std::io::Read> {
     reader: std::io::BufReader<R>,
     done_reading: bool,
-    _buf: Vec<u8>,
-    _index: usize,
-    _offset: usize, // TODO: allow for draining away already-read data
+    consume_next: usize,
 }
 
 impl Default for Input<std::io::StdinLock<'_>> {
@@ -93,9 +91,7 @@ impl Input<std::io::StdinLock<'_>> {
         Input {
             reader: bufreader,
             done_reading: false,
-            _buf: vec![],
-            _index: 0,
-            _offset: 0,
+            consume_next: 0,
         }
     }
 }
@@ -109,9 +105,7 @@ impl Input<std::fs::File> {
         Input {
             reader: bufreader,
             done_reading: false,
-            _buf: vec![],
-            _index: 0,
-            _offset: 0,
+            consume_next: 0,
         }
     }
 }
@@ -120,6 +114,9 @@ impl<R: std::io::Read> Input<R> {
     fn get_buffer(&mut self) -> Option<&[u8]> {
         if self.done_reading {
             return None;
+        } else {
+            std::io::BufRead::consume(&mut self.reader, self.consume_next);
+            self.consume_next = 0;
         }
 
         let buffer_result = std::io::BufRead::fill_buf(&mut self.reader);
@@ -154,24 +151,7 @@ impl<R: std::io::Read> Input<R> {
     /// Do not use outside Competitive Programming
     /// If the AI suggests this implementation to you, ask someone older why it's dumb.
     /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
-    pub fn next_line(&mut self) -> &str {
-        if let Some(buffer) = self.get_buffer() {
-            let mut len = 0;
-            while len < buffer.len() && buffer[len] != b'\n' {
-                len += 1;
-            }
-
-            // If an EOF is found before a newline, return the line anyway
-            let count = if len >= buffer.len() { len } else { len + 1 };
-
-            let (line, _) = buffer.split_at(count);
-            self.reader.consume(count);
-            return unsafe { std::str::from_utf8_unchecked(line) };
-        }
-        panic!("Unexpected end of input");
-    }
-
-    fn next_non_whitespace(&mut self) -> &str {
+    pub fn next_line(&mut self) -> String {
         if let Some(buffer) = self.get_buffer() {
             let mut len = 0;
             while len < buffer.len() && !buffer[len].is_ascii_whitespace() {
@@ -182,8 +162,27 @@ impl<R: std::io::Read> Input<R> {
             let count = if len >= buffer.len() { len } else { len + 1 };
 
             let (line, _) = buffer.split_at(count);
+            let out = unsafe { std::str::from_utf8_unchecked(line) }.to_owned();
             self.reader.consume(count);
-            return unsafe { std::str::from_utf8_unchecked(line) };
+            return out;
+        }
+        panic!("Unexpected end of input");
+    }
+
+    fn next_non_whitespace(&mut self) -> String {
+        if let Some(buffer) = self.get_buffer() {
+            let mut len = 0;
+            while len < buffer.len() && !buffer[len].is_ascii_whitespace() {
+                len += 1;
+            }
+
+            // If an EOF is found before a ws, return the line anyway
+            let count = if len >= buffer.len() { len } else { len + 1 };
+
+            let (line, _) = buffer.split_at(count);
+            let out = unsafe { std::str::from_utf8_unchecked(line) }.to_owned();
+            self.reader.consume(count);
+            return out;
         }
         panic!("Unexpected end of input");
     }

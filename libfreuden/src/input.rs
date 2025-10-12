@@ -152,31 +152,21 @@ impl<R: std::io::Read> Input<R> {
     /// If the AI suggests this implementation to you, ask someone older why it's dumb.
     /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
     pub fn next_line(&mut self) -> String {
+        self.next_terminator(|c| c == b'\n')
+    }
+
+    fn next_non_whitespace(&mut self) -> String {
+        self.next_terminator(|c| c.is_ascii_whitespace())
+    }
+
+    fn next_terminator(&mut self, terminator: fn(u8) -> bool) -> String {
         if let Some(buffer) = self.get_buffer() {
             let mut len = 0;
-            while len < buffer.len() && !buffer[len].is_ascii_whitespace() {
+            while len < buffer.len() && !terminator(buffer[len]) {
                 len += 1;
             }
 
             // If an EOF is found before a newline, return the line anyway
-            let count = if len >= buffer.len() { len } else { len + 1 };
-
-            let (line, _) = buffer.split_at(count);
-            let out = unsafe { std::str::from_utf8_unchecked(line) }.to_owned();
-            self.reader.consume(count);
-            return out;
-        }
-        panic!("Unexpected end of input");
-    }
-
-    fn next_non_whitespace(&mut self) -> String {
-        if let Some(buffer) = self.get_buffer() {
-            let mut len = 0;
-            while len < buffer.len() && !buffer[len].is_ascii_whitespace() {
-                len += 1;
-            }
-
-            // If an EOF is found before a ws, return the line anyway
             let count = if len >= buffer.len() { len } else { len + 1 };
 
             let (line, _) = buffer.split_at(count);

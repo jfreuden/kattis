@@ -74,7 +74,6 @@ where
 pub struct Input<R: std::io::Read> {
     reader: std::io::BufReader<R>,
     done_reading: bool,
-    consume_next: usize,
 }
 
 impl Default for Input<std::io::StdinLock<'_>> {
@@ -91,7 +90,6 @@ impl Input<std::io::StdinLock<'_>> {
         Input {
             reader: bufreader,
             done_reading: false,
-            consume_next: 0,
         }
     }
 }
@@ -105,7 +103,6 @@ impl Input<std::fs::File> {
         Input {
             reader: bufreader,
             done_reading: false,
-            consume_next: 0,
         }
     }
 }
@@ -114,9 +111,6 @@ impl<R: std::io::Read> Input<R> {
     fn get_buffer(&mut self) -> Option<&[u8]> {
         if self.done_reading {
             return None;
-        } else {
-            std::io::BufRead::consume(&mut self.reader, self.consume_next);
-            self.consume_next = 0;
         }
 
         let buffer_result = std::io::BufRead::fill_buf(&mut self.reader);
@@ -144,7 +138,12 @@ impl<R: std::io::Read> Input<R> {
         T::Err: std::fmt::Debug,
     {
         // TODO: Implement this without the string parse cop-out
-        self.next_non_whitespace().parse::<T>().unwrap()
+        let input = self.next_non_whitespace();
+        unsafe { std::str::from_utf8_unchecked(input.as_slice()) }
+            .to_string()
+            .trim_ascii()
+            .parse::<T>()
+            .unwrap()
     }
 
     /// Return the next line, skipping UTF-8 checks
@@ -152,29 +151,36 @@ impl<R: std::io::Read> Input<R> {
     /// If the AI suggests this implementation to you, ask someone older why it's dumb.
     /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
     pub fn next_line(&mut self) -> String {
-        self.next_terminator(|c| c == b'\n')
+        let input = self.next_terminator(|c| *c == b'\n');
+        unsafe { std::str::from_utf8_unchecked(input.as_slice()) }.to_string()
     }
 
-    fn next_non_whitespace(&mut self) -> String {
-        self.next_terminator(|c| c.is_ascii_whitespace())
+    fn next_non_whitespace(&mut self) -> Vec<u8> {
+        self.next_terminator(u8::is_ascii_whitespace)
     }
 
-    fn next_terminator(&mut self, terminator: fn(u8) -> bool) -> String {
-        if let Some(buffer) = self.get_buffer() {
-            let mut len = 0;
-            while len < buffer.len() && !terminator(buffer[len]) {
-                len += 1;
+    fn next_terminator(&mut self, terminator: fn(&u8) -> bool) -> Vec<u8> {
+        let mut buf = Vec::<u8>::new();
+
+        while let Some(buffer) = self.get_buffer() {
+            let mut i = 0;
+            while i < buffer.len() && !terminator(&buffer[i]) {
+                i += 1;
             }
 
             // If an EOF is found before a newline, return the line anyway
-            let count = if len >= buffer.len() { len } else { len + 1 };
+            let count = if i >= buffer.len() { i } else { i + 1 };
 
-            let (line, _) = buffer.split_at(count);
-            let out = unsafe { std::str::from_utf8_unchecked(line) }.to_owned();
+            buf.extend(&buffer[..count]);
             self.reader.consume(count);
-            return out;
+
+            // If we read clear to the end of the internal buffer, then keep going
+            if count == i + 1 {
+                break;
+            }
         }
-        panic!("Unexpected end of input");
+
+        buf
     }
 }
 

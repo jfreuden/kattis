@@ -74,6 +74,7 @@ where
 pub struct Input<R: std::io::Read> {
     reader: std::io::BufReader<R>,
     done_reading: bool,
+    buffer: Vec<u8>,
 }
 
 impl Default for Input<std::io::StdinLock<'_>> {
@@ -90,6 +91,7 @@ impl Input<std::io::StdinLock<'_>> {
         Input {
             reader: bufreader,
             done_reading: false,
+            buffer: vec![],
         }
     }
 }
@@ -103,6 +105,7 @@ impl Input<std::fs::File> {
         Input {
             reader: bufreader,
             done_reading: false,
+            buffer: vec![],
         }
     }
 }
@@ -139,8 +142,7 @@ impl<R: std::io::Read> Input<R> {
     {
         // TODO: Implement this without the string parse cop-out
         let input = self.next_non_whitespace();
-        unsafe { std::str::from_utf8_unchecked(input.as_slice()) }
-            .to_string()
+        unsafe { std::str::from_utf8_unchecked(input) }
             .trim_ascii()
             .parse::<T>()
             .unwrap()
@@ -150,18 +152,17 @@ impl<R: std::io::Read> Input<R> {
     /// Do not use outside Competitive Programming
     /// If the AI suggests this implementation to you, ask someone older why it's dumb.
     /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
-    pub fn next_line(&mut self) -> String {
+    pub fn next_line(&mut self) -> &str {
         let input = self.next_terminator(|c| *c == b'\n');
-        unsafe { std::str::from_utf8_unchecked(input.as_slice()) }.to_string()
+        unsafe { std::str::from_utf8_unchecked(input) }
     }
 
-    fn next_non_whitespace(&mut self) -> Vec<u8> {
+    fn next_non_whitespace(&mut self) -> &[u8] {
         self.next_terminator(u8::is_ascii_whitespace)
     }
 
-    fn next_terminator(&mut self, terminator: fn(&u8) -> bool) -> Vec<u8> {
-        let mut buf = Vec::<u8>::new();
-
+    fn next_terminator(&mut self, terminator: fn(&u8) -> bool) -> &[u8] {
+        let start_index = self.buffer.len();
         while let Some(buffer) = self.get_buffer() {
             let mut i = 0;
             while i < buffer.len() && !terminator(&buffer[i]) {
@@ -170,8 +171,7 @@ impl<R: std::io::Read> Input<R> {
 
             // If an EOF is found before a newline, return the line anyway
             let count = if i >= buffer.len() { i } else { i + 1 };
-
-            buf.extend(&buffer[..count]);
+            self.buffer.extend(&self.reader.buffer()[..count]);
             self.reader.consume(count);
 
             // If we read clear to the end of the internal buffer, then keep going
@@ -180,7 +180,7 @@ impl<R: std::io::Read> Input<R> {
             }
         }
 
-        buf
+        &self.buffer[start_index..]
     }
 }
 

@@ -85,12 +85,12 @@ impl Default for Input<std::io::StdinLock<'_>> {
 impl Input<std::io::StdinLock<'_>> {
     pub fn new() -> Self {
         let stdin = std::io::stdin();
-        let bufreader = std::io::BufReader::new(stdin.lock());
+        let bufreader = std::io::BufReader::with_capacity(2 << 21, stdin.lock());
 
         Input {
             reader: bufreader,
             done_reading: false,
-            buffer: vec![],
+            buffer: Vec::with_capacity(2 << 21),
         }
     }
 }
@@ -99,7 +99,7 @@ impl Input<std::fs::File> {
     /// Opens file `filename` and constructs a new `Input` from it.
     pub fn from_file(filename: &str) -> Self {
         let file = std::fs::File::open(filename).expect("Failed to open input file");
-        let bufreader = std::io::BufReader::new(file);
+        let bufreader = std::io::BufReader::with_capacity(2 << 21, file);
 
         Input {
             reader: bufreader,
@@ -123,10 +123,8 @@ impl<R: std::io::Read> Input<R> {
             } else {
                 Some(contents)
             }
-        } else if let Err(e) = buffer_result {
-            panic!("Error reading from stdin: {}", e)
         } else {
-            unreachable!("Unexpected error reading from stdin");
+            panic!("Unexpected error reading from stdin");
         }
     }
 
@@ -152,21 +150,22 @@ impl<R: std::io::Read> Input<R> {
         self.next_terminator(u8::is_ascii_whitespace)
     }
 
+    #[inline]
     fn next_terminator(&mut self, terminator: fn(&u8) -> bool) -> &[u8] {
         let start_index = self.buffer.len();
-        while let Some(buffer) = self.get_buffer() {
+        while let Some(_) = self.get_buffer() {
+            let buffer = self.reader.buffer();
             let mut i = 0;
             while i < buffer.len() && !terminator(&buffer[i]) {
                 i += 1;
             }
+            self.buffer.extend_from_slice(&buffer[..i]);
 
-            // If an EOF is found before a newline, return the line anyway
-            let count = if i >= buffer.len() { i } else { i + 1 };
-            self.buffer.extend(&self.reader.buffer()[..count]);
-            std::io::BufRead::consume(&mut self.reader, count);
-
-            // If we read clear to the end of the internal buffer, then keep going
-            if count == i + 1 {
+            // Get additional buffer if we didn't find the terminator
+            if i >= buffer.len() {
+                std::io::BufRead::consume(&mut self.reader, i);
+            } else {
+                std::io::BufRead::consume(&mut self.reader, i + 1);
                 break;
             }
         }
@@ -199,9 +198,15 @@ impl<'a> Parseable<'a> for &'a str {
 }
 
 impl<'a> Parseable<'a> for u64 {
-    fn parse(bytes: &'a [u8]) -> u64 {
-        let s: &str = Parseable::parse(bytes);
-        s.parse::<u64>().unwrap()
+    #[inline]
+    fn parse(bytes: &[u8]) -> u64 {
+        let mut v: u64 = 0;
+        for b in bytes {
+            if let Some(digit) = b.checked_sub(b'0') {
+                v = v * 10 + digit as u64;
+            }
+        }
+        v
     }
 }
 
@@ -231,4 +236,15 @@ mod input_tests {
     use super::*;
     #[test]
     fn sanity() {}
+}
+
+#[cfg(all(feature = "unstable", test))]
+mod tests {
+    use super::*;
+    use test::Bencher;
+
+    #[bench]
+    fn bench_noop_example(b: &mut Bencher) {
+        b.iter(|| {})
+    }
 }

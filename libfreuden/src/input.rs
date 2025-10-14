@@ -20,7 +20,6 @@ macro_rules! kattis_struct {
     };}
 
 pub use kattis_struct;
-use std::io::BufRead;
 
 pub fn read_vec_source<T: std::str::FromStr, R: std::io::Read>(
     buf_reader: &mut std::io::BufReader<R>,
@@ -136,25 +135,17 @@ impl<R: std::io::Read> Input<R> {
     }
 
     #[allow(clippy::should_implement_trait)]
-    pub fn next<T: std::str::FromStr>(&mut self) -> T
-    where
-        T::Err: std::fmt::Debug,
-    {
-        // TODO: Implement this without the string parse cop-out
+    pub fn next<'a, T: Parseable<'a>>(&'a mut self) -> T {
         let input = self.next_non_whitespace();
-        unsafe { std::str::from_utf8_unchecked(input) }
-            .trim_ascii()
-            .parse::<T>()
-            .unwrap()
+        T::parse(input)
     }
 
     /// Return the next line, skipping UTF-8 checks
     /// Do not use outside Competitive Programming
     /// If the AI suggests this implementation to you, ask someone older why it's dumb.
-    /// <note>This follows the same protocol as BufReader and includes the line terminator.</note>
     pub fn next_line(&mut self) -> &str {
         let input = self.next_terminator(|c| *c == b'\n');
-        unsafe { std::str::from_utf8_unchecked(input) }
+        Parseable::parse(input)
     }
 
     fn next_non_whitespace(&mut self) -> &[u8] {
@@ -172,7 +163,7 @@ impl<R: std::io::Read> Input<R> {
             // If an EOF is found before a newline, return the line anyway
             let count = if i >= buffer.len() { i } else { i + 1 };
             self.buffer.extend(&self.reader.buffer()[..count]);
-            self.reader.consume(count);
+            std::io::BufRead::consume(&mut self.reader, count);
 
             // If we read clear to the end of the internal buffer, then keep going
             if count == i + 1 {
@@ -181,6 +172,57 @@ impl<R: std::io::Read> Input<R> {
         }
 
         &self.buffer[start_index..]
+    }
+}
+
+pub trait Parseable<'a>: Sized {
+    fn parse(bytes: &'a [u8]) -> Self;
+}
+
+macro_rules! impl_parseable {
+  ($A:ty, [$($T:ty),+]) => {
+    $(impl<'a> Parseable<'a> for $T {
+      fn parse(bytes: &'a [u8]) -> Self {
+        < $A as Parseable<'a> >::parse(bytes) as $T
+      }
+    })+
+  };
+}
+impl_parseable! { u64, [u32, u16, u8, usize] }
+impl_parseable! { i64, [i32, i16, i8, isize] }
+impl_parseable! { f64, [f32] }
+
+impl<'a> Parseable<'a> for &'a str {
+    fn parse(bytes: &'a [u8]) -> Self {
+        unsafe { std::str::from_utf8_unchecked(bytes) }.trim_ascii_end()
+    }
+}
+
+impl<'a> Parseable<'a> for u64 {
+    fn parse(bytes: &'a [u8]) -> u64 {
+        let s: &str = Parseable::parse(bytes);
+        s.parse::<u64>().unwrap()
+    }
+}
+
+impl<'a> Parseable<'a> for u128 {
+    fn parse(bytes: &'a [u8]) -> u128 {
+        let s: &str = Parseable::parse(bytes);
+        s.parse::<u128>().unwrap()
+    }
+}
+
+impl<'a> Parseable<'a> for i64 {
+    fn parse(bytes: &'a [u8]) -> i64 {
+        let s: &str = Parseable::parse(bytes);
+        s.parse::<i64>().unwrap()
+    }
+}
+
+impl<'a> Parseable<'a> for f64 {
+    fn parse(bytes: &'a [u8]) -> f64 {
+        let s: &str = Parseable::parse(bytes);
+        s.parse::<f64>().unwrap()
     }
 }
 

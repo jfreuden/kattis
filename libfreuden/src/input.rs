@@ -200,11 +200,15 @@ impl<'a> Parseable<'a> for &'a str {
 impl<'a> Parseable<'a> for u64 {
     #[inline]
     fn parse(bytes: &[u8]) -> u64 {
+        let mut i = 0;
         let mut v: u64 = 0;
-        for b in bytes {
-            if let Some(digit) = b.checked_sub(b'0') {
-                v = v * 10 + digit as u64;
+        while i < bytes.len() {
+            let b = unsafe { bytes.get_unchecked(i) };
+            if !b.is_ascii_digit() {
+                break;
             }
+            v = v * 10 + (b - b'0') as u64;
+            i += 1;
         }
         v
     }

@@ -126,8 +126,13 @@ impl<R: std::io::Read> Input<R> {
     }
 
     #[allow(clippy::should_implement_trait)]
+    #[inline]
     pub fn next<'a, T: Parseable<'a>>(&'a mut self) -> T {
-        let input = self.next_non_whitespace();
+        let input = if self.done_reading {
+            self.next_alphanum_optimized()
+        } else {
+            self.next_terminator(|c| *c <= b' ')
+        };
         T::parse(input)
     }
 
@@ -139,18 +144,22 @@ impl<R: std::io::Read> Input<R> {
         Parseable::parse(input)
     }
 
-    fn next_non_whitespace(&mut self) -> &[u8] {
-        if self.done_reading {
-            self.next_alphanum_optimized()
-        } else {
-            self.next_terminator(|c| *c <= b' ')
-        }
-    }
-
     #[inline]
     /// This implementation eschews the buffer fill checking when reading is complete
     fn next_alphanum_optimized(&mut self) -> &[u8] {
-        todo!()
+        let read_start = self.idx;
+        while self.idx < self.buffer.len() {
+            let b = unsafe { self.buffer.get_unchecked(self.idx) };
+            if *b <= b' ' {
+                break;
+            }
+            self.idx += 1;
+        }
+
+        // Return the slice without the terminator, but push the index to skip it on next read.
+        let out = &self.buffer[read_start..self.idx];
+        self.idx += 1;
+        out
     }
 
     #[inline]

@@ -96,7 +96,7 @@ impl Input<std::io::Stdin> {
         } else {
             let mut buffer = vec![];
             std::io::Read::read_to_end(&mut stdin, &mut buffer).unwrap();
-
+            // TODO: Consider dropping the stdin when finished (converting reader to an Option)
             Input {
                 reader: stdin,
                 done_reading: true,
@@ -140,7 +140,17 @@ impl<R: std::io::Read> Input<R> {
     }
 
     fn next_non_whitespace(&mut self) -> &[u8] {
-        self.next_terminator(u8::is_ascii_whitespace)
+        if self.done_reading {
+            self.next_alphanum_optimized()
+        } else {
+            self.next_terminator(|c| *c <= b' ')
+        }
+    }
+
+    #[inline]
+    /// This implementation eschews the buffer fill checking when reading is complete
+    fn next_alphanum_optimized(&mut self) -> &[u8] {
+        todo!()
     }
 
     #[inline]
@@ -152,12 +162,12 @@ impl<R: std::io::Read> Input<R> {
             if self.idx >= current_end {
                 // Refill buffer
                 let bytecount = self.refill_buffer();
+                current_end += bytecount;
                 if bytecount == 0 {
                     break; // Break out if it's the EOF
                 }
-                current_end += bytecount;
             }
-            if terminator(&self.buffer[self.idx]) {
+            if terminator(unsafe { self.buffer.get_unchecked(self.idx) }) {
                 break;
             }
             self.idx += 1;
@@ -216,17 +226,9 @@ impl<'a> Parseable<'a> for &'a str {
 impl<'a> Parseable<'a> for u64 {
     #[inline]
     fn parse(bytes: &[u8]) -> u64 {
-        let mut i = 0;
-        let mut v: u64 = 0;
-        while i < bytes.len() {
-            let b = unsafe { bytes.get_unchecked(i) };
-            if !b.is_ascii_digit() {
-                break;
-            }
-            v = v * 10 + (b - b'0') as u64;
-            i += 1;
-        }
-        v
+        bytes
+            .iter()
+            .fold(0, move |v, b| v * 10 + (*b - b'0') as u64)
     }
 }
 

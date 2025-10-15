@@ -71,26 +71,38 @@ where
 }
 
 pub struct Input<R: std::io::Read> {
-    reader: std::io::BufReader<R>,
+    reader: R,
     done_reading: bool,
     buffer: Vec<u8>,
+    idx: usize,
 }
 
-impl Default for Input<std::io::StdinLock<'_>> {
+impl Default for Input<std::io::Stdin> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Input<std::io::StdinLock<'_>> {
+impl Input<std::io::Stdin> {
     pub fn new() -> Self {
-        let stdin = std::io::stdin();
-        let bufreader = std::io::BufReader::with_capacity(2 << 21, stdin.lock());
+        let mut stdin = std::io::stdin();
+        if std::io::IsTerminal::is_terminal(&stdin) {
+            Input {
+                reader: stdin,
+                done_reading: false,
+                buffer: Vec::with_capacity(2 << 21),
+                idx: 0,
+            }
+        } else {
+            let mut buffer = vec![];
+            std::io::Read::read_to_end(&mut stdin, &mut buffer).unwrap();
 
-        Input {
-            reader: bufreader,
-            done_reading: false,
-            buffer: Vec::with_capacity(2 << 21),
+            Input {
+                reader: stdin,
+                done_reading: true,
+                buffer,
+                idx: 0,
+            }
         }
     }
 }
@@ -99,37 +111,18 @@ impl Input<std::fs::File> {
     /// Opens file `filename` and constructs a new `Input` from it.
     pub fn from_file(filename: &str) -> Self {
         let file = std::fs::File::open(filename).expect("Failed to open input file");
-        let bufreader = std::io::BufReader::with_capacity(2 << 21, file);
-
         Input {
-            reader: bufreader,
+            reader: file,
             done_reading: false,
             buffer: vec![],
+            idx: 0,
         }
     }
 }
 
 impl<R: std::io::Read> Input<R> {
-    fn get_buffer(&mut self) -> Option<&[u8]> {
-        if self.done_reading {
-            return None;
-        }
-
-        let buffer_result = std::io::BufRead::fill_buf(&mut self.reader);
-        if let Ok(contents) = buffer_result {
-            if contents.is_empty() {
-                self.done_reading = true;
-                None
-            } else {
-                Some(contents)
-            }
-        } else {
-            panic!("Unexpected error reading from stdin");
-        }
-    }
-
     pub fn has_more(&mut self) -> bool {
-        self.get_buffer().is_some()
+        self.idx < self.buffer.len()
     }
 
     #[allow(clippy::should_implement_trait)]
@@ -152,25 +145,45 @@ impl<R: std::io::Read> Input<R> {
 
     #[inline]
     fn next_terminator(&mut self, terminator: fn(&u8) -> bool) -> &[u8] {
-        let start_index = self.buffer.len();
-        while let Some(_) = self.get_buffer() {
-            let buffer = self.reader.buffer();
-            let mut i = 0;
-            while i < buffer.len() && !terminator(&buffer[i]) {
-                i += 1;
+        let read_start = self.idx;
+        let mut current_end = self.buffer.len();
+        loop {
+            // Keep sliding down the buffer, but if you run out, do a read.
+            if self.idx >= current_end {
+                // Refill buffer
+                let bytecount = self.refill_buffer();
+                if bytecount == 0 {
+                    break; // Break out if it's the EOF
+                }
+                current_end += bytecount;
             }
-            self.buffer.extend_from_slice(&buffer[..i]);
-
-            // Get additional buffer if we didn't find the terminator
-            if i >= buffer.len() {
-                std::io::BufRead::consume(&mut self.reader, i);
-            } else {
-                std::io::BufRead::consume(&mut self.reader, i + 1);
+            if terminator(&self.buffer[self.idx]) {
                 break;
             }
+            self.idx += 1;
         }
 
-        &self.buffer[start_index..]
+        // Return the slice without the terminator, but push the index to skip it on next read.
+        let out = &self.buffer[read_start..self.idx];
+        self.idx += 1;
+        out
+    }
+
+    fn refill_buffer(&mut self) -> usize {
+        let current_end = self.buffer.len();
+        self.buffer.reserve(self.buffer.capacity());
+        unsafe { self.buffer.set_len(self.buffer.capacity()) }
+        let read_result = self.reader.read(&mut self.buffer[current_end..]);
+        let bytecount = read_result.unwrap_or(0);
+        if bytecount != 0 {
+            self.idx = current_end;
+            unsafe { self.buffer.set_len(current_end + bytecount) }
+        }
+        bytecount
+    }
+
+    fn fill_all(&mut self) {
+        self.reader.read_to_end(&mut self.buffer).unwrap();
     }
 }
 
@@ -191,6 +204,9 @@ impl_parseable! { u64, [u32, u16, u8, usize] }
 impl_parseable! { i64, [i32, i16, i8, isize] }
 impl_parseable! { f64, [f32] }
 
+/// Parse raw bytes into a string, skipping UTF-8 checks
+/// Do not use outside Competitive Programming
+/// If the AI suggests this implementation to you, ask someone older why it's dumb.
 impl<'a> Parseable<'a> for &'a str {
     fn parse(bytes: &'a [u8]) -> Self {
         unsafe { std::str::from_utf8_unchecked(bytes) }.trim_ascii_end()

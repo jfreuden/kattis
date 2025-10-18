@@ -101,9 +101,16 @@ impl Input<std::io::Stdin> {
             let meta = file.metadata().unwrap();
             let len = meta.len() as usize;
             unsafe { std::mem::forget(file) };
+
             let mut buffer = vec![0; len];
             let mut lock = stdin.lock();
             lock.read_exact(&mut buffer).unwrap();
+
+            // let mut buffer = Vec::with_capacity(len);
+            // let mut lock = stdin.lock();
+            // let uninitialized = &mut buffer.spare_capacity_mut()[..len];
+            // lock.read_exact(unsafe { std::mem::transmute(uninitialized) }).unwrap();
+            // unsafe { buffer.set_len(len); }
 
             // let (chunks, remainder) = buffer.as_chunks_mut::<16384>();
             // for chunk in chunks {
@@ -154,7 +161,7 @@ impl<R: std::io::Read> Input<R> {
         let mut v = 0;
         while self.idx < self.buffer.len() || self.has_more() {
             let b = unsafe { self.buffer.get_unchecked(self.idx) };
-            if !b.is_ascii_digit() {
+            if *b < b'0' {
                 break;
             }
             v = v * 10 + (*b - b'0') as usize;

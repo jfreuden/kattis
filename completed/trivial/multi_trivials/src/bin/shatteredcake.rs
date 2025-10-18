@@ -21,14 +21,14 @@ fn main() {
     // let start = Instant::now();
 
     let mut input = Input::new();
-    let cake_width = input.next();
-    let cake_pieces: usize = input.next();
+    let cake_width = input.next_usize();
+    let cake_pieces: usize = input.next_usize();
 
     let mut total_area: usize = 0;
 
     for _ in 0..cake_pieces {
-        let shard_width: usize = input.next();
-        let shard_height: usize = input.next();
+        let shard_width: usize = input.next_usize();
+        let shard_height: usize = input.next_usize();
         total_area += shard_width * shard_height;
     }
 

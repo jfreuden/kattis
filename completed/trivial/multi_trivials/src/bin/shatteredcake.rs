@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 // noinspection
 #[allow(unused)]
 macro_rules! import {
@@ -16,16 +18,23 @@ macro_rules! import {
 import!(input);
 
 fn main() {
-    let mut input = Input::new();
-    let cake_width: u64 = input.next();
-    let cake_pieces: u64 = input.next();
+    // let start = Instant::now();
 
-    let mut total_area: u64 = 0;
+    let mut input = Input::new();
+    let cake_width = input.next();
+    let cake_pieces: usize = input.next();
+
+    let mut total_area: usize = 0;
 
     for _ in 0..cake_pieces {
-        let shard_width: u64 = input.next();
-        let shard_height: u64 = input.next();
+        let shard_width: usize = input.next();
+        let shard_height: usize = input.next();
         total_area += shard_width * shard_height;
     }
+
     println!("{}", total_area.div_euclid(cake_width));
+
+    std::process::exit(0);
+    // let wait_until = start + Instant::now().duration_since(start) * 50;
+    // while Instant::now() < wait_until {}
 }

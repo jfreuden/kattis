@@ -71,10 +71,10 @@ where
 }
 
 pub struct Input<R: std::io::Read> {
-    reader: R,
-    done_reading: bool,
+    reader: Option<R>,
     buffer: Vec<u8>,
     idx: usize,
+    blob_fn: fn(&mut Input<R>) -> &[u8],
 }
 
 impl Default for Input<std::io::Stdin> {
@@ -88,20 +88,35 @@ impl Input<std::io::Stdin> {
         let mut stdin = std::io::stdin();
         if std::io::IsTerminal::is_terminal(&stdin) {
             Input {
-                reader: stdin,
-                done_reading: false,
+                reader: Some(stdin),
                 buffer: Vec::with_capacity(2 << 21),
                 idx: 0,
+                blob_fn: |input: &mut Input<std::io::Stdin>| input.next_terminator(|c| *c <= b' '),
             }
         } else {
-            let mut buffer = vec![];
-            std::io::Read::read_to_end(&mut stdin, &mut buffer).unwrap();
-            // TODO: Consider dropping the stdin when finished (converting reader to an Option)
+            use std::io::Read;
+            use std::os::fd::{AsRawFd, FromRawFd};
+            let fd = stdin.as_raw_fd();
+            let file = unsafe { std::fs::File::from_raw_fd(fd) };
+            let meta = file.metadata().unwrap();
+            let len = meta.len() as usize;
+            unsafe { std::mem::forget(file) };
+            let mut buffer = vec![0; len];
+            let mut lock = stdin.lock();
+            lock.read_exact(&mut buffer).unwrap();
+
+            // let (chunks, remainder) = buffer.as_chunks_mut::<16384>();
+            // for chunk in chunks {
+            //     lock.read(chunk).unwrap();
+            // }
+            // lock.read(remainder).unwrap();
+
+            // std::io::Read::read_to_end(&mut stdin, &mut buffer).unwrap();
             Input {
-                reader: stdin,
-                done_reading: true,
+                reader: None,
                 buffer,
                 idx: 0,
+                blob_fn: Input::next_alphanum_optimized,
             }
         }
     }
@@ -112,28 +127,50 @@ impl Input<std::fs::File> {
     pub fn from_file(filename: &str) -> Self {
         let file = std::fs::File::open(filename).expect("Failed to open input file");
         Input {
-            reader: file,
-            done_reading: false,
+            reader: Some(file),
             buffer: vec![],
             idx: 0,
+            blob_fn: |input: &mut Input<_>| input.next_terminator(|c| *c <= b' '),
         }
     }
 }
 
 impl<R: std::io::Read> Input<R> {
     pub fn has_more(&mut self) -> bool {
+        // TODO: Transform this into a read call which will return true when bytes were added or false when bytes weren't.
         self.idx < self.buffer.len()
     }
 
     #[allow(clippy::should_implement_trait)]
     #[inline]
     pub fn next<'a, T: Parseable<'a>>(&'a mut self) -> T {
-        let input = if self.done_reading {
-            self.next_alphanum_optimized()
-        } else {
-            self.next_terminator(|c| *c <= b' ')
-        };
+        // TODO: see if I can dynamically switch pointers instead of using a conditional
+        let input = (self.blob_fn)(self);
         T::parse(input)
+    }
+
+    pub fn next_usize(&mut self) -> usize {
+        self.skip_ws();
+        let mut v = 0;
+        while self.idx < self.buffer.len() || self.has_more() {
+            let b = unsafe { self.buffer.get_unchecked(self.idx) };
+            if !b.is_ascii_digit() {
+                break;
+            }
+            v = v * 10 + (*b - b'0') as usize;
+            self.idx += 1;
+        }
+        v
+    }
+
+    #[inline]
+    fn skip_ws(&mut self) {
+        while self.idx < self.buffer.len() || self.has_more() {
+            if self.buffer[self.idx] > b' ' {
+                break;
+            }
+            self.idx += 1;
+        }
     }
 
     /// Return the next line, skipping UTF-8 checks
@@ -190,10 +227,18 @@ impl<R: std::io::Read> Input<R> {
 
     fn refill_buffer(&mut self) -> usize {
         let current_end = self.buffer.len();
-        self.buffer.reserve(self.buffer.capacity());
-        unsafe { self.buffer.set_len(self.buffer.capacity()) }
-        let read_result = self.reader.read(&mut self.buffer[current_end..]);
-        let bytecount = read_result.unwrap_or(0);
+        self.buffer.reserve(self.buffer.capacity()); // TODO: find a specific size to use
+
+        let spare = self.buffer.spare_capacity_mut();
+        let bytecount = self
+            .reader
+            .as_mut()
+            .unwrap()
+            .read(unsafe {
+                std::mem::transmute::<&mut [std::mem::MaybeUninit<u8>], &mut [u8]>(spare)
+            })
+            .unwrap();
+
         if bytecount != 0 {
             self.idx = current_end;
             unsafe { self.buffer.set_len(current_end + bytecount) }
@@ -202,7 +247,11 @@ impl<R: std::io::Read> Input<R> {
     }
 
     fn fill_all(&mut self) {
-        self.reader.read_to_end(&mut self.buffer).unwrap();
+        self.reader
+            .as_mut()
+            .unwrap()
+            .read_to_end(&mut self.buffer)
+            .unwrap();
     }
 }
 

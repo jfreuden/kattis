@@ -34,7 +34,7 @@ fn main() {
 
     println!("{}", total_area.div_euclid(cake_width));
 
-    std::process::exit(0);
     // let wait_until = start + Instant::now().duration_since(start) * 50;
     // while Instant::now() < wait_until {}
+    std::process::exit(0);
 }

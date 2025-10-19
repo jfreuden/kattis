@@ -83,48 +83,74 @@ impl Default for Input<std::io::Stdin> {
     }
 }
 
+use core::ffi::{c_int, c_void};
+
+unsafe extern "C" {
+    fn read(fd: c_int, buf: *mut c_void, count: usize) -> isize;
+    fn isatty(fd: c_int) -> c_int;
+    pub fn mmap(
+        addr: *mut c_void,
+        len: usize,
+        prot: c_int,
+        flags: c_int,
+        fd: c_int,
+        offset: i64,
+    ) -> *mut c_void;
+    pub fn malloc(size: usize) -> *mut c_void;
+}
+const PROT_READ: c_int = 0x1;
+const MAP_SHARED: c_int = 0x01;
+
+fn is_terminal(fd: &std::os::fd::RawFd) -> bool {
+    unsafe { isatty(*fd) != 0 }
+}
+
+#[inline]
+pub(self) fn arguably_safe_read(
+    fd: std::os::fd::RawFd,
+    buf: &mut [std::mem::MaybeUninit<u8>],
+) -> std::io::Result<usize> {
+    let buf_ptr = buf.as_mut_ptr() as *mut c_void;
+    let count = buf.len();
+    let bytes_read = unsafe { read(fd, buf_ptr, count) };
+    if bytes_read < 0 {
+        Err(std::io::Error::last_os_error())
+    } else {
+        Ok(bytes_read as usize)
+    }
+}
+
 impl Input<std::io::Stdin> {
     pub fn new() -> Self {
-        let mut stdin = std::io::stdin();
-        if std::io::IsTerminal::is_terminal(&stdin) {
-            Input {
-                reader: Some(stdin),
-                buffer: Vec::with_capacity(2 << 21),
-                idx: 0,
-                blob_fn: |input: &mut Input<std::io::Stdin>| input.next_terminator(|c| *c <= b' '),
-            }
-        } else {
-            use std::io::Read;
-            use std::os::fd::{AsRawFd, FromRawFd};
-            let fd = stdin.as_raw_fd();
-            let file = unsafe { std::fs::File::from_raw_fd(fd) };
+        // let mut stdin = std::io::stdin();
+        // if std::io::IsTerminal::is_terminal(&stdin) {
+        //     Input {
+        //         reader: Some(stdin),
+        //         buffer: Vec::with_capacity(2 << 21),
+        //         idx: 0,
+        //         blob_fn: |input: &mut Input<std::io::Stdin>| input.next_terminator(|c| *c <= b' '),
+        //     }
+        // } else {
+        //
+        // }
+
+        let buffer = unsafe {
+            use std::os::fd::FromRawFd;
+            let fd = 0;
+            let file = std::fs::File::from_raw_fd(fd);
             let meta = file.metadata().unwrap();
+            std::mem::forget(file);
             let len = meta.len() as usize;
-            unsafe { std::mem::forget(file) };
+            let buf_ptr = mmap(std::ptr::null_mut(), len, PROT_READ, MAP_SHARED, fd, 0);
+            let buffer = Vec::from_raw_parts(buf_ptr as *mut u8, len, len);
+            buffer
+        };
 
-            let mut buffer = vec![0; len];
-            let mut lock = stdin.lock();
-            lock.read_exact(&mut buffer).unwrap();
-
-            // let mut buffer = Vec::with_capacity(len);
-            // let mut lock = stdin.lock();
-            // let uninitialized = &mut buffer.spare_capacity_mut()[..len];
-            // lock.read_exact(unsafe { std::mem::transmute(uninitialized) }).unwrap();
-            // unsafe { buffer.set_len(len); }
-
-            // let (chunks, remainder) = buffer.as_chunks_mut::<16384>();
-            // for chunk in chunks {
-            //     lock.read(chunk).unwrap();
-            // }
-            // lock.read(remainder).unwrap();
-
-            // std::io::Read::read_to_end(&mut stdin, &mut buffer).unwrap();
-            Input {
-                reader: None,
-                buffer,
-                idx: 0,
-                blob_fn: Input::next_alphanum_optimized,
-            }
+        Input {
+            reader: None,
+            buffer,
+            idx: 0,
+            blob_fn: Input::next_alphanum_optimized,
         }
     }
 }
@@ -157,7 +183,6 @@ impl<R: std::io::Read> Input<R> {
     }
 
     pub fn next_usize(&mut self) -> usize {
-        self.skip_ws();
         let mut v = 0;
         while self.idx < self.buffer.len() || self.has_more() {
             let b = unsafe { self.buffer.get_unchecked(self.idx) };
@@ -167,13 +192,15 @@ impl<R: std::io::Read> Input<R> {
             v = v * 10 + (*b - b'0') as usize;
             self.idx += 1;
         }
+        self.skip_ws();
         v
     }
 
     #[inline]
     fn skip_ws(&mut self) {
         while self.idx < self.buffer.len() || self.has_more() {
-            if self.buffer[self.idx] > b' ' {
+            let b = unsafe { self.buffer.get_unchecked(self.idx) };
+            if *b > b' ' {
                 break;
             }
             self.idx += 1;

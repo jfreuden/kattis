@@ -185,17 +185,47 @@ fn main() {
 
     let mut input = Input::new();
     let cake_width = input.next();
-    let cake_pieces = input.next();
+    let mut cake_pieces = input.next();
     let mut total_area: u32 = 0;
 
+    // let mut areas: Vec<u32> = Vec::with_capacity(cake_pieces as usize * 2);
+    /////////////////////////////////////////////////////////////////////////////////////////
+    const ARRSIZE: usize = 4096 * 64;
+    const BATCH_SIZE: usize = ARRSIZE / 2;
+    let mut scratchpad: [u32; ARRSIZE] = [0; ARRSIZE];
+    // let mut widths_batch = [0; BATCH_SIZE];
+    // let mut heights_batch = [0; BATCH_SIZE];
+
+    while cake_pieces >= BATCH_SIZE as u32 {
+        // for i in 0..BATCH_SIZE {
+        //     widths_batch[i] = input.next();
+        //     heights_batch[i] = input.next();
+        // }
+        // for i in 0..BATCH_SIZE {
+        //     total_area += widths_batch[i] * heights_batch[i];
+        // }
+        for i in (0..ARRSIZE).step_by(2) {
+            let width = input.next();
+            let height = input.next();
+            scratchpad[i] = width;
+            scratchpad[i + 1] = height;
+        }
+        for i in (0..ARRSIZE).step_by(2) {
+            total_area += scratchpad[i] * scratchpad[i + 1]
+        }
+
+        cake_pieces -= BATCH_SIZE as u32;
+    }
+    ////////////////////////////////////////////////////////////////////////////////////////
     for _ in 0..cake_pieces {
+        // for _ in 0..cake_pieces.rem_euclid(BATCH_SIZE as u32) {
         let shard_width = input.next();
         let shard_height = input.next();
 
         total_area += shard_width * shard_height;
     }
 
-    println!("{}", total_area.div_euclid(cake_width));
+    println!("{}", total_area / cake_width);
     // let wait_until = start + std::time::Instant::now().duration_since(start) * 50;
     // while std::time::Instant::now() < wait_until {}
     eprintln!("{:?}", std::time::Instant::now().duration_since(start));

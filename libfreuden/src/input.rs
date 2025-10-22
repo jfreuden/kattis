@@ -88,7 +88,7 @@ use core::ffi::{c_int, c_void};
 unsafe extern "C" {
     fn read(fd: c_int, buf: *mut c_void, count: usize) -> isize;
     fn isatty(fd: c_int) -> c_int;
-    pub fn mmap(
+    fn mmap(
         addr: *mut c_void,
         len: usize,
         prot: c_int,
@@ -96,6 +96,7 @@ unsafe extern "C" {
         fd: c_int,
         offset: i64,
     ) -> *mut c_void;
+    fn munmap(addr: *mut c_void, len: usize) -> isize;
     pub fn malloc(size: usize) -> *mut c_void;
 }
 const PROT_READ: c_int = 0x1;
@@ -120,20 +121,18 @@ pub(self) fn arguably_safe_read(
     }
 }
 
+impl<R: std::io::Read> Drop for Input<R> {
+    fn drop(&mut self) {
+        if self.reader.is_none() {
+            unsafe {
+                munmap(self.buffer.as_mut_ptr() as *mut c_void, self.buffer.len());
+            }
+        }
+    }
+}
+
 impl Input<std::io::Stdin> {
     pub fn new() -> Self {
-        // let mut stdin = std::io::stdin();
-        // if std::io::IsTerminal::is_terminal(&stdin) {
-        //     Input {
-        //         reader: Some(stdin),
-        //         buffer: Vec::with_capacity(2 << 21),
-        //         idx: 0,
-        //         blob_fn: |input: &mut Input<std::io::Stdin>| input.next_terminator(|c| *c <= b' '),
-        //     }
-        // } else {
-        //
-        // }
-
         let buffer = unsafe {
             use std::os::fd::FromRawFd;
             let fd = 0;
@@ -141,14 +140,20 @@ impl Input<std::io::Stdin> {
             let meta = file.metadata().unwrap();
             std::mem::forget(file);
             let len = meta.len() as usize;
+
+            // let buf_ptr = malloc(len);
+            // read(fd, buf_ptr, len);
+
             let buf_ptr = mmap(std::ptr::null_mut(), len, PROT_READ, MAP_SHARED, fd, 0);
-            let buffer = Vec::from_raw_parts(buf_ptr as *mut u8, len, len);
+            let buffer = std::slice::from_raw_parts(buf_ptr as *mut u8, len);
             buffer
         };
 
+        // let mut buffer = Vec::new();
+        // std::io::Read::read_to_end(&mut std::io::stdin(), &mut buffer).unwrap();
         Input {
             reader: None,
-            buffer,
+            buffer: buffer.to_vec(),
             idx: 0,
             blob_fn: Input::next_alphanum_optimized,
         }
@@ -182,9 +187,12 @@ impl<R: std::io::Read> Input<R> {
         T::parse(input)
     }
 
+    #[inline]
     pub fn next_usize(&mut self) -> usize {
+        // self.skip_ws();
+
         let mut v = 0;
-        while self.idx < self.buffer.len() || self.has_more() {
+        while self.idx < self.buffer.len() {
             let b = unsafe { self.buffer.get_unchecked(self.idx) };
             if *b < b'0' {
                 break;
@@ -192,8 +200,112 @@ impl<R: std::io::Read> Input<R> {
             v = v * 10 + (*b - b'0') as usize;
             self.idx += 1;
         }
-        self.skip_ws();
+        // self.skip_ws();
+        self.idx += 1;
+        // unsafe { std::arch::x86_64::_mm_prefetch::<{ std::arch::x86_64::_MM_HINT_T1 }>(std::ptr::from_ref(&self.buffer.get_unchecked(self.idx)) as *const _) }
+
         v
+    }
+
+    #[inline]
+    pub fn next_u32(&mut self) -> usize {
+        // let read_ptr = unsafe { self.buffer.as_ptr().add(self.idx).cast() as *const u64 };
+        let read_ptr = std::ptr::from_ref(&self.buffer[self.idx]) as *const u64;
+        // let chunk = unsafe { std::ptr::read_unaligned(read_ptr) }; // max 8 chars
+        // let chunk = std::hint::black_box(chunk);
+        let (value, len) = Self::parse_1e8(read_ptr);
+        self.idx += len as usize;
+        self.idx += 1;
+
+        value
+    }
+    #[inline]
+    fn parse_1e8(data: *const u64) -> (usize, u8) {
+        // let chunk_a = unsafe { std::ptr::read_unaligned(data) }; // max 8 chars;
+        let mut chunk_a: u64;
+        unsafe {
+            core::arch::asm!(
+            "mov {0}, [{1}]",
+            out(reg) chunk_a,
+            in(reg) data,
+            options(nostack)
+            );
+        }
+
+        let zero_to_nine = chunk_a ^ 0x3030303030303030;
+        let non_zero = zero_to_nine & 0xF0F0F0F0F0F0F0F0;
+        let len = non_zero.trailing_zeros() as u8 >> 3;
+
+        // https://lemire.me/blog/2022/01/21/swar-explained-parsing-eight-digits/
+        let chunk_b = zero_to_nine << (8 * (8 - len));
+        let out = Self::parse_chunk(chunk_b);
+        (out as usize, len)
+    }
+
+    #[inline]
+    fn parse_chunk(mut chunk: u64) -> usize {
+        // let mut chunk: u64 = *chunk as u64;
+        // let mut chunk: u64;
+        let mut _intermediate1: u64;
+        let mut _intermediate2: u64;
+
+        unsafe {
+            core::arch::asm!(
+                // "mov {0}, [{1}]",
+                "mov {1}, {0}",
+                "shr {1}, 0x8",
+                "imul {0}, 0xA",
+                "add {0}, {1}",
+
+                "mov {1}, {0}",
+                "shr {1}, 0x10",
+
+                "mov {2}, 0x000000FF000000FF",
+                "and {0}, {2}",
+                "and {1}, {2}",
+
+                "mov {2}, 0x000F424000000064",
+                "imul {0}, {2}",
+
+                "mov {2}, 0x0000271000000001",
+                "imul {1}, {2}",
+                "add {0}, {1}",
+                "shr {0}, 0x20",
+
+                inout(reg) chunk,
+                lateout(reg) _intermediate1,
+                lateout(reg) _intermediate2,
+
+                options(nostack)
+            );
+        }
+
+        /*
+                    uint32_t  parse_eight_digits_unrolled(uint64_t val) {
+                    const uint64_t mask = 0x000000FF000000FF;
+                    const uint64_t mul1 = 0x000F424000000064; // 100 + (1000000ULL << 32)
+                    const uint64_t mul2 = 0x0000271000000001; // 1 + (10000ULL << 32)
+
+                    val = ((val1 * mul1) + ((val2 * mul2)) >> 32;
+                    return val;
+
+
+        }
+                 */
+
+        // const MASK: u64 = 0x000000FF000000FF;
+        // const MUL1: u64 = 0x000F424000000064; // 100 + (1000000ULL << 32)
+        // const MUL2: u64 = 0x0000271000000001; // 1 + (10000ULL << 32)
+        // println!("{chunk:x}");
+        // chunk = (chunk * 10) + (chunk >> 8); // val = (val * 2561) >> 8;
+        // println!("{chunk:x}");
+        // chunk = (((chunk & MASK) * MUL1) + (((chunk >> 16) & MASK) * MUL2)) >> 32;
+        // println!("{chunk:x}");
+
+        let out = chunk as u32;
+        debug_assert!(out <= 9999_9999);
+        unsafe { std::hint::assert_unchecked(out <= 9999_9999) };
+        out as usize
     }
 
     #[inline]
